@@ -170,8 +170,7 @@ export default function Home() {
       setProdLoading(false)
     }
   }
-
-  // navegar / seleccionar categoría (acepta objeto o id)
+    // navegar / seleccionar categoría (acepta objeto o id)
   const goToCategory = (catOrId) => {
     if (!catOrId) {
       setSelectedCategory(null)
@@ -308,6 +307,7 @@ export default function Home() {
         <title>Luna Streaming</title>
         <link rel="icon" href="/logofavicon.ico" type="image/x-icon" />
         <meta name="description" content="Luna Streaming - Visuales ritualizados y experiencias simbólicas" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
       </Head>
 
       <Navbar />
@@ -336,33 +336,38 @@ export default function Home() {
               <div className="circle-strip-outer">
                 <div className="fade left" style={{ display: hasOverflow ? 'block' : 'none' }} />
                 <div className="circle-strip" ref={stripRef} role="list" tabIndex={0}>
-                  {/* "Todas" button */}
-                  <button
-                    key="circle-all"
-                    className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
-                    onClick={() => goToCategory(null)}
-                    title="Ver todos los productos"
-                    aria-label="Ver todos los productos"
-                  >
-                    <div className="circle-fallback">ALL</div>
+                  <div className="circle-item-wrap" role="listitem">
+                    <button
+                      key="circle-all"
+                      className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
+                      onClick={() => goToCategory(null)}
+                      title="Ver todos los productos"
+                      aria-label="Ver todos los productos"
+                      aria-pressed={selectedCategory === null}
+                    >
+                      <div className="circle-fallback">ALL</div>
+                    </button>
                     <span className="circle-name">Todos</span>
-                  </button>
+                  </div>
 
                   {categories.map(cat => (
-                    <button
-                      key={`circle-${cat.id}`}
-                      className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
-                      onClick={() => goToCategory(cat)}
-                      title={cat.name}
-                      aria-label={`Abrir ${cat.name}`}
-                    >
-                      {cat.image ? (
-                        <img src={cat.image} alt={cat.name} loading="lazy" />
-                      ) : (
-                        <div className="circle-fallback">{(cat.name || '').slice(0,2).toUpperCase()}</div>
-                      )}
+                    <div className="circle-item-wrap" role="listitem" key={`wrap-${cat.id}`}>
+                      <button
+                        key={`circle-${cat.id}`}
+                        className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
+                        onClick={() => goToCategory(cat)}
+                        title={cat.name}
+                        aria-label={`Abrir ${cat.name}`}
+                        aria-pressed={selectedCategory === cat.id}
+                      >
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} loading="lazy" />
+                        ) : (
+                          <div className="circle-fallback">{(cat.name || '').slice(0,2).toUpperCase()}</div>
+                        )}
+                      </button>
                       <span className="circle-name">{cat.name}</span>
-                    </button>
+                    </div>
                   ))}
                 </div>
                 <div className="fade right" style={{ display: hasOverflow ? 'block' : 'none' }} />
@@ -447,39 +452,196 @@ export default function Home() {
       )}
 
       <Footer />
+            <style jsx>{`
+        /* Estilos actualizados para asegurar etiqueta siempre visible junto a la imagen */
+        :root{
+          --bg-surface: rgba(255,255,255,0.02);
+          --bg-surface-strong: rgba(255,255,255,0.04);
+          --muted: #bfbfbf;
+          --accent-1: #06b6d4;
+          --accent-2: #6b46c1;
+          --accent-contrast: #021018;
+          --glass-blur: 8px;
+          --shadow-subtle: 0 12px 30px rgba(2,6,23,0.45);
+        }
 
-      <style jsx>{`
         .page-root { background-color: #0D0D0D; color: #D1D1D1; min-height: 100vh; }
 
         .hero { max-width: 1200px; margin: 36px auto 12px; padding: 20px 28px; border-radius: 16px;
           background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
           display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
-        .hero-title { margin: 0; font-size: 1.8rem; font-weight: 800; }
-        .hero-sub { margin: 0; color: #bfbfbf; }
+        .hero-title { margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Poppins', Inter, sans-serif; }
+        .hero-sub { margin: 0; color: #bfbfbf; font-family: Inter, sans-serif; }
 
         .categories-section { max-width: 1200px; margin: 20px auto 80px; padding: 18px 20px; border-radius: 14px; }
         .section-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
-        .muted { color: #9a9a9a; font-size: 0.95rem; }
+        .muted { color: var(--muted); font-size: 0.95rem; }
 
-        /* circle strip */
-        .circle-strip-wrapper { margin-bottom: 18px; position: relative; }
-        .circle-strip-outer { position: relative; display:flex; align-items:center; gap:8px; }
-        .circle-strip { display:flex; gap:16px; overflow-x:auto; overflow-y:hidden; padding:12px 8px 28px; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; align-items:center; width:100%; scroll-snap-type: x proximity; }
-        .circle-item { flex:0 0 auto; width:120px; height:120px; border-radius:999px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; position: relative; cursor:pointer; transition: transform .18s ease, box-shadow .18s ease; padding: 8px; scroll-snap-align:center; }
-        .circle-item img { width:100%; height:100%; object-fit:cover; border-radius:999px; display:block; }
-        .circle-fallback { width:100%; height:100%; border-radius:999px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; background: linear-gradient(90deg,#6b46c1,#06b6d4); }
-        .circle-name { position:absolute; bottom:-26px; left:50%; transform:translateX(-50%); font-size:0.8rem; color:#bfbfbf; width:150px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .circle-item.active-cat { box-shadow: 0 12px 30px rgba(11,58,110,0.18); transform: translateY(-4px); }
+        /* --- Wrapper / strip --- */
+        .circle-strip-wrapper {
+          margin-bottom: 18px;
+          position: relative;
+          background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+          border-radius: 14px;
+          padding: 10px 12px;
+          box-shadow: var(--shadow-subtle);
+          overflow: visible; /* crucial: allow labels to show */
+        }
 
-        .fade { position:absolute; top:0; bottom:20px; width:64px; pointer-events:none; z-index:2; }
-        .fade.left { left:0; background: linear-gradient(90deg, rgba(13,13,13,1) 0%, rgba(13,13,13,0.0) 60%); }
-        .fade.right { right:0; background: linear-gradient(270deg, rgba(13,13,13,1) 0%, rgba(13,13,13,0.0) 60%); }
+        .circle-strip-outer {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
 
-        .subtle-arrow { position:absolute; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:999px; background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.75); display:inline-grid; place-items:center; border:1px solid rgba(255,255,255,0.04); cursor:pointer; z-index:3; transition: background .12s ease, transform .12s ease; font-size:20px; line-height:1; }
-        .subtle-arrow.left { left:6px } .subtle-arrow.right { right:6px }
-        .subtle-arrow:hover { background: rgba(255,255,255,0.06); transform: translateY(-50%) scale(1.03); }
+        /* ensure enough bottom padding so labels are visible */
+        .circle-strip {
+          display: flex;
+          gap: 16px;
+          overflow-x: auto;
+          overflow-y: visible;
+          padding: 8px 6px 48px;
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+          align-items: center;
+          width: 100%;
+          scroll-snap-type: x proximity;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,0.06) transparent;
+        }
 
-        /* products section */
+        .circle-strip::-webkit-scrollbar { height: 8px; }
+        .circle-strip::-webkit-scrollbar-track { background: transparent; }
+        .circle-strip::-webkit-scrollbar-thumb {
+          background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.06));
+          border-radius: 999px;
+          border: 2px solid transparent;
+        }
+
+        /* each item + label grouped so label is always visible */
+        .circle-item-wrap {
+          flex: 0 0 auto;
+          width: 120px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 8px;
+          margin-bottom: 0; /* visual alignment handled by padding on strip */
+          scroll-snap-align: center;
+          box-sizing: border-box;
+          background: transparent;
+        }
+
+        /* circular button */
+        .circle-item {
+          width: 120px;
+          height: 120px;
+          border-radius: 999px;
+          background: linear-gradient(180deg, var(--bg-surface), var(--bg-surface-strong));
+          border: 1px solid rgba(255,255,255,0.04);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          cursor: pointer;
+          transition: transform 240ms cubic-bezier(.2,.9,.3,1), box-shadow 240ms ease;
+          padding: 6px;
+          overflow: visible; /* important so label not clipped */
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .circle-item img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 999px;
+          display: block;
+          transition: transform 240ms ease;
+        }
+
+        .circle-fallback {
+          width: 100%;
+          height: 100%;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          color: #fff;
+          background: linear-gradient(90deg, var(--accent-2), var(--accent-1));
+          box-shadow: 0 6px 18px rgba(6,27,48,0.35);
+        }
+
+        /* label below circle — always visible */
+        .circle-name {
+          display: block;
+          font-family: 'Poppins', Inter, sans-serif;
+          font-weight: 600;
+          font-size: 0.92rem;
+          color: var(--muted);
+          text-align: center;
+          width: 160px;
+          line-height: 1.1;
+          margin-top: 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          pointer-events: none;
+          z-index: 50;
+        }
+
+        /* hover/focus purely cosmetic — do not hide label */
+        .circle-item:hover,
+        .circle-item:focus {
+          transform: translateY(-6px) scale(1.03);
+          box-shadow: 0 22px 48px rgba(6,20,40,0.5);
+        }
+
+        .circle-item.active-cat {
+          transform: translateY(-6px) scale(1.03);
+          box-shadow: 0 18px 40px rgba(6,20,40,0.45);
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* fades and arrows */
+        .fade {
+          position: absolute;
+          top: 8px;
+          bottom: 18px;
+          width: 48px;
+          pointer-events: none;
+          z-index: 2;
+          border-radius: 8px;
+        }
+        .fade.left { left: 6px; background: linear-gradient(90deg, rgba(13,13,13,0.95), rgba(13,13,13,0.0)); }
+        .fade.right { right: 6px; background: linear-gradient(270deg, rgba(13,13,13,0.95), rgba(13,13,13,0.0)); }
+
+        .subtle-arrow {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.03);
+          color: rgba(255,255,255,0.85);
+          display: inline-grid;
+          place-items: center;
+          border: 1px solid rgba(255,255,255,0.04);
+          cursor: pointer;
+          z-index: 3;
+          transition: background 140ms ease, transform 140ms ease;
+          font-size: 20px;
+          line-height: 1;
+          backdrop-filter: blur(var(--glass-blur));
+        }
+        .subtle-arrow.left { left: 8px; }
+        .subtle-arrow.right { right: 8px; }
+        .subtle-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(255,255,255,0.06); }
+
+        /* products */
         .products-section { margin-top: 18px; }
         .products-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:12px; }
         .cards-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
@@ -502,11 +664,11 @@ export default function Home() {
         .product-title { font-weight:800; color:#fff; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .product-price { color:#9ee7d9; font-weight:700; }
         .product-actions { margin-top:auto; display:flex; gap:8px; }
-        .btn-primary { background: linear-gradient(90deg,#06b6d4,#10b981); color: #021018; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+        .btn-primary { background: linear-gradient(90deg,#06b6d4,#10b981); color: var(--accent-contrast); border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
         .btn-outline { background: transparent; border:1px solid rgba(255,255,255,0.06); color:#E6EEF7; padding:8px 10px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
 
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .empty { color: #9a9a9a; padding: 20px; text-align: center; }
+        .empty { color: var(--muted); padding: 20px; text-align: center; }
 
         /* modal */
         .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display:flex; justify-content:center; align-items:center; z-index: 999; cursor: pointer; }
@@ -516,12 +678,36 @@ export default function Home() {
 
         /* responsive */
         @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); } }
-        @media (max-width: 820px) { .cards-grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); } .circle-item { width:100px; height:100px; } .circle-name { bottom:-22px; width:120px; font-size:0.78rem; } }
-        @media (max-width: 520px) { .cards-grid { grid-template-columns: 1fr; } .circle-item { width:84px; height:84px; } .circle-name { display:none; } .fade { display:none; } .subtle-arrow { display:none; } }
+        @media (max-width: 820px) {
+          .cards-grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); }
+          .circle-item { width:100px; height:100px; }
+          .circle-item-wrap { width:100px; }
+          .circle-name { bottom: -28px; width: 140px; font-size: 0.86rem; white-space: nowrap; }
+        }
+        @media (max-width: 520px) {
+          .cards-grid { grid-template-columns: 1fr; }
+          .circle-item { width:84px; height:84px; }
+          .circle-item-wrap { width:84px; }
+          .circle-name {
+            bottom: -26px;
+            width:120px;
+            font-size:0.76rem;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          .fade { display:none; }
+          .subtle-arrow { display:none; }
+        }
       `}</style>
 
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
         body { background-color: #0D0D0D; margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: #D1D1D; }
+        .circle-name, .hero-title { font-family: 'Poppins', Inter, sans-serif; }
         html { box-sizing: border-box; } *, *:before, *:after { box-sizing: inherit; }
       `}</style>
     </>
