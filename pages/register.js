@@ -177,7 +177,7 @@ export default function Register() {
       username: username.trim(),
       password,
       phone,
-      role: 'user',
+      role: 'seller',
       referrerCode: refCode?.trim() || null,
     }
 
@@ -233,7 +233,7 @@ export default function Register() {
           </button>
 
           <h1 className="title">Regístrate</h1>
-          <p className="subtitle">Crea tu ritual</p>
+          <p className="subtitle">Registrate a Luna</p>
 
           {error && <div style={{ color: '#ffb4b4', textAlign: 'center' }}>{error}</div>}
 

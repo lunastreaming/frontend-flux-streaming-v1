@@ -1,4 +1,3 @@
-// pages/login.js
 import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -16,7 +15,6 @@ export default function Login() {
   const [error, setError] = useState(null)
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-seller`
-  console.log('POST', apiUrl);
 
   const pickToken = (data) => {
     if (!data) return null
@@ -27,7 +25,7 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     if (!username.trim() || !password) {
-      setError('Usuario y contraseña son obligatorios')
+      setError('Por favor ingresa tu usuario y contraseña.')
       return
     }
     setLoading(true)
@@ -40,7 +38,7 @@ export default function Login() {
 
       if (!resp.ok) {
         if (resp.status === 400 || resp.status === 401) {
-          setError('Usuario o contraseña incorrecta, inténtelo nuevamente')
+          setError('No pudimos iniciar sesión. Verifica tus credenciales e inténtalo nuevamente.')
           setUsername('')
           setPassword('')
           return
@@ -62,26 +60,16 @@ export default function Login() {
         return
       }
 
-      // Normalizamos y llamamos login del provider; provider guardará bajo accessToken y programará expiración
       login({
-        token, // provider acepta `token`
+        token,
         refresh_token: data.refreshToken || data.refresh_token
       })
 
-      // espera breve para asegurar que AuthProvider haya escrito localStorage y programado timeout
       await new Promise(resolve => setTimeout(resolve, 40))
-
-      // debug opcional: confirmar almacenamiento
-      try {
-        console.log('[Login] localStorage accessToken:', localStorage.getItem('accessToken'))
-        console.log('[Login] localStorage accessTokenExpiresAt:', localStorage.getItem('accessTokenExpiresAt'))
-      } catch (err) {
-        console.warn('[Login] no se pudo leer localStorage:', err)
-      }
 
       router.push('/')
     } catch (err) {
-      setError(err.message || 'Error desconocido al iniciar sesión')
+      setError('Ocurrió un error inesperado. Por favor, inténtalo nuevamente.')
     } finally {
       setLoading(false)
     }
@@ -107,7 +95,11 @@ export default function Login() {
           <h1 className="title">Bienvenido</h1>
           <p className="subtitle">Login Luna Plataformas</p>
 
-          {error && <div style={{ color: '#ffb4b4', textAlign: 'center' }}>{error}</div>}
+          {error && (
+            <div className="error-box" role="alert">
+              <p className="error-text">{error}</p>
+            </div>
+          )}
 
           <div className="group">
             <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
@@ -162,8 +154,17 @@ export default function Login() {
           opacity: 0.25;
           animation: float 12s ease-in-out infinite alternate;
         }
-        @keyframes float { from { transform: translateY(-10px) translateX(6px) rotate(0.5deg); } to { transform: translateY(10px) translateX(-6px) rotate(-0.5deg); } }
-        .grain { position: absolute; inset: 0; opacity: 0.06; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.6'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); mix-blend-mode: soft-light; }
+        @keyframes float {
+          from { transform: translateY(-10px) translateX(6px) rotate(0.5deg); }
+          to { transform: translateY(10px) translateX(-6px) rotate(-0.5deg); }
+        }
+        .grain {
+          position: absolute;
+          inset: 0;
+          opacity: 0.06;
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.6'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+          mix-blend-mode: soft-light;
+        }
 
         .card {
           width: 92%;
@@ -180,12 +181,63 @@ export default function Login() {
           position: relative;
           animation: rise 0.35s ease forwards;
         }
-        @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .close { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: #cfcfcf; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; transition: all 0.2s ease; }
-        .close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+        @keyframes rise {
+          from { opacity: 0; transform: translateY(10px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
 
-        .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; letter-spacing: 0.2px; }
-        .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px; }
+        .close {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .close:hover {
+          background: rgba(255, 255, 255, 0.12);
+          color: #fff;
+        }
+
+        .title {
+          color: #f3f3f3;
+          font-size: 1.9rem;
+          text-align: center;
+          font-weight: 800;
+          letter-spacing: 0.2px;
+        }
+        .subtitle {
+          color: #afafaf;
+          font-size: 0.98rem;
+          text-align: center;
+          margin-bottom: 6px;
+        }
+
+        .error-box {
+          background: rgba(255, 92, 92, 0.08);
+          border: 1px solid rgba(255, 92, 92, 0.2);
+          border-radius: 12px;
+          padding: 12px 16px;
+          text-align: center;
+          animation: fadeInError 0.3s ease forwards;
+        }
+        .error-text {
+          color: #ffb4b4;
+          font-size: 0.95rem;
+          font-weight: 500;
+          margin: 0;
+        }
+        @keyframes fadeInError {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
 
         .group {
           position: relative;
@@ -216,6 +268,7 @@ export default function Login() {
           box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
         }
         .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22); }
+        .cta:disabled { opacity: 0.7; cursor: not-allowed; filter: none; box-shadow: none; }
 
         .back-login { text-align: center; font-size: 0.95rem; color: #afafaf; margin-top: 6px; }
         .link { color: #f3f3f3; font-weight: 600; text-decoration: underline; cursor: pointer; }
@@ -231,6 +284,12 @@ export default function Login() {
         .popup-button { padding: 10px 14px; background: #f3f3f3; color: #0e0e0e; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; transition: transform 0.08s ease, filter 0.2s ease; }
         .popup-button:hover { filter: brightness(0.98); }
         .popup-button:active { transform: translateY(1px); }
+
+        @media (max-width: 560px) {
+          .card { padding: 20px; border-radius: 16px; }
+          .title { font-size: 1.4rem; }
+          .cta { width: 100%; }
+        }
       `}</style>
     </>
   )

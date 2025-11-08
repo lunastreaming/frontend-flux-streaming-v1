@@ -4,9 +4,14 @@ export default function Document() {
   return (
     <Html>
       <Head>
-        <title>Luna Streaming</title>
-        <link rel="icon" href="/logo.png" type="image/png" />
-        <meta name="description" content="Luna Streaming - Visuales ritualizados y experiencias simbólicas" />
+        {/* Favicon global */}
+        <link rel="icon" href="/logofavicon.ico" type="image/png" />
+
+        {/* Metadatos globales */}
+        <meta
+          name="description"
+          content="Luna Streaming - Visuales ritualizados y experiencias simbólicas"
+        />
       </Head>
       <body>
         <Main />
