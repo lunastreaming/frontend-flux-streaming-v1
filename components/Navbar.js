@@ -1,3 +1,4 @@
+// components/Navbar.js
 import Link from 'next/link'
 import { FaUserAlt, FaWallet, FaShoppingCart, FaSignOutAlt } from 'react-icons/fa'
 import { useRouter } from 'next/router'
@@ -8,6 +9,14 @@ export default function Navbar() {
   const router = useRouter()
   const { user, ready, logout } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
+
+  // Normalizar NEXT_PUBLIC_API_URL (quitar slash final). Si no está definida, usar rutas relativas.
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE = rawApiBase.replace(/\/+$/, '')
+  const logoutEndpoint = API_BASE ? `${API_BASE}/api/users/logout` : '/api/users/logout'
+  if (!rawApiBase && typeof window !== 'undefined') {
+    console.warn('NEXT_PUBLIC_API_URL no está definida. El endpoint de logout usará ruta relativa /api/users/logout.')
+  }
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -27,7 +36,7 @@ export default function Navbar() {
         return
       }
 
-      const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/users/logout`
+      const endpoint = logoutEndpoint
 
       const headers = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
@@ -40,11 +49,11 @@ export default function Navbar() {
         // credentials: 'include',
       })
 
-      // Log de depuración
+      // Logs de depuración
       console.log('Logout request sent to', endpoint)
       console.log('Logout response status:', res.status)
 
-      const raw = await res.text()
+      const raw = await res.text().catch(() => null)
       try {
         const parsed = raw ? JSON.parse(raw) : null
         console.log('Logout response body (parsed):', parsed)

@@ -17,11 +17,21 @@ export default function BilleteraSupplier() {
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const hasFetched = useRef(false);
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+  // Tomar la URL base desde la variable de entorno NEXT_PUBLIC_API_URL
+  // Normaliza quitando slash final. Si no existe, usamos cadena vacía (rutas relativas).
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
+  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '';
+  if (!rawApiBase && typeof window !== 'undefined') {
+    console.warn('NEXT_PUBLIC_API_URL no está definida. Usando rutas relativas.');
+  }
+
+  // util: construir endpoint sin duplicar slashes
+  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
 
   useEffect(() => {
     if (!router.isReady || hasFetched.current) return;
-    const token = localStorage.getItem('accessToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!token) {
       router.push('/supplier/loginSupplier');
       return;
@@ -40,7 +50,7 @@ export default function BilleteraSupplier() {
   }, [router.isReady]);
 
   async function fetchMeAndPopulate(token) {
-    const res = await fetch(`${apiBase}/api/users/me`, {
+    const res = await fetch(buildUrl('/api/users/me'), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Token inválido');
@@ -50,7 +60,7 @@ export default function BilleteraSupplier() {
   }
 
   async function fetchUserTransactions(token) {
-    const res = await fetch(`${apiBase}/api/wallet/user/transactions?status=complete`, {
+    const res = await fetch(buildUrl('/api/wallet/user/transactions?status=complete'), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
@@ -59,7 +69,7 @@ export default function BilleteraSupplier() {
   }
 
   async function fetchPendingRequests(token) {
-    const res = await fetch(`${apiBase}/api/wallet/user/pending`, {
+    const res = await fetch(buildUrl('/api/wallet/user/pending'), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
@@ -73,8 +83,8 @@ export default function BilleteraSupplier() {
   const handleLiquidarClick = () => router.push('/supplier/liquidar');
 
   const handleAdd = async ({ amount, currency }) => {
-    const token = localStorage.getItem('accessToken');
-    const res = await fetch(`${apiBase}/api/wallet/recharge`, {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const res = await fetch(buildUrl('/api/wallet/recharge'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ amount, isSoles: currency === 'PEN' }),
@@ -104,7 +114,8 @@ export default function BilleteraSupplier() {
             </div>
           </div>
         </section>
-                {pending.length > 0 && (
+
+        {pending.length > 0 && (
           <section className="pending-card">
             <h3>Solicitudes pendientes</h3>
             <ul className="pending-list">

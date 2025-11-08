@@ -10,7 +10,10 @@ import {
 
 export default function AdminUsersPage() {
   const { ensureValidAccess } = useAuth()
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+
+  // Normalize NEXT_PUBLIC_API_URL from envs (remove trailing slash). If not set use empty string (relative paths).
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE = rawApiBase.replace(/\/+$/, '')
   const USERS_ENDPOINT = `${API_BASE}/api/users/sellers`
 
   const [users, setUsers] = useState([])
@@ -29,7 +32,7 @@ export default function AdminUsersPage() {
     loading: false
   })
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => { fetchUsers() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getAuthToken = async () => {
     try {
@@ -135,12 +138,13 @@ export default function AdminUsersPage() {
     setLoading(true)
     try {
       if (action === 'verify') {
-        const url = `http://localhost:8080/api/users/${encodeURIComponent(userId)}/status?status=active`
+        // Use API_BASE (from env) instead of hardcoded localhost
+        const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchUsers()
         alert(`Usuario ${username} activado correctamente`)
       } else if (action === 'disable') {
-        const url = `http://localhost:8080/api/users/${encodeURIComponent(userId)}/status?status=inactive`
+        const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchUsers()
         alert(`Usuario ${username} inhabilitado correctamente`)

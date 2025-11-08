@@ -29,7 +29,13 @@ export default function Home() {
   const scrollStartX = useRef(0)
   const [hasOverflow, setHasOverflow] = useState(false)
 
-  const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+  // BASE toma la variable de entorno NEXT_PUBLIC_API_URL en build/deployment.
+  // Si no existe, mantiene el fallback local. Normaliza quitando slash final.
+  const rawBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+  const BASE = rawBase.replace(/\/+$/, '')
+
+  // util: construye URL sin duplicar slashes
+  const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
 
   // Cerrar vista ampliada
   const cerrarVistaAmpliada = () => {
@@ -57,7 +63,7 @@ export default function Home() {
   // Fetch categorías (endpoint público)
   useEffect(() => {
     let mounted = true
-    const api = `${BASE}/api/categories`
+    const api = joinApi('/api/categories')
 
     async function load() {
       setCatLoading(true)
@@ -111,8 +117,8 @@ export default function Home() {
     setProdError(null)
     try {
       const url = selectedCategory
-        ? `${BASE}/api/categories/products/${selectedCategory}/active`
-        : `${BASE}/api/categories/products/active`
+        ? joinApi(`/api/categories/products/${selectedCategory}/active`)
+        : joinApi('/api/categories/products/active')
 
       console.debug('[fetchProducts] URL =>', url)
       const res = await fetch(url, { method: 'GET' })
@@ -143,7 +149,7 @@ export default function Home() {
         id: p.id ?? p._id ?? p.uuid ?? null,
         name: p.name ?? p.title ?? 'Sin nombre',
         imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
-        salePrice: p.salePrice ?? p.price ?? p.sale_price ?? null, // en centavos u otra unidad según backend
+        salePrice: p.salePrice ?? p.price ?? p.sale_price ?? null,
         categoryId: p.categoryId ?? p.category_id ?? null,
         productDetail: p.productDetail ?? p.product_detail ?? p.detail ?? null,
         terms: p.terms ?? null,
@@ -296,8 +302,7 @@ export default function Home() {
     if (Number.isNaN(value)) return '—'
     return moneyFormatter.format(value)
   }
-
-  return (
+    return (
     <>
       <Head>
         <title>Luna Streaming</title>
@@ -516,7 +521,7 @@ export default function Home() {
       `}</style>
 
       <style jsx global>{`
-        body { background-color: #0D0D0D; margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: #D1D1D1; }
+        body { background-color: #0D0D0D; margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: #D1D1D; }
         html { box-sizing: border-box; } *, *:before, *:after { box-sizing: inherit; }
       `}</style>
     </>

@@ -8,6 +8,27 @@ import ConfirmModal from '../components/ConfirmModal';
 
 export default function Billetera() {
   const router = useRouter();
+
+  // Leer token sincronamente en la inicialización del hook para evitar flash
+  // (esto mantiene el orden de hooks y permite devolver null si no existe token).
+  const [token] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('accessToken');
+  });
+
+  // Si no hay token en el cliente, no renderizamos la UI y redirigimos.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!token) {
+      // replace para no dejar entrada en el history
+      router.replace('/login');
+    }
+  }, [router, token]);
+
+  // Mientras no haya token no mostramos nada (evita el "flash" de la página protegida)
+  if (!token) return null;
+
+  // --- Estado y refs normales, se ejecutan siempre (orden de hooks constante) ---
   const [balance, setBalance] = useState(0);
   const [movimientos, setMovimientos] = useState([]);
   const [pending, setPending] = useState([]);
@@ -18,13 +39,23 @@ export default function Billetera() {
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   const hasFetched = useRef(false);
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+  // Tomar la URL base desde la variable de entorno NEXT_PUBLIC_API_URL
+  // Normaliza quitando slash final. Si no existe, usamos cadena vacía (rutas relativas).
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
+  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '';
+  if (!rawApiBase && typeof window !== 'undefined') {
+    console.warn('NEXT_PUBLIC_API_URL no está definida. Usando rutas relativas.');
+  }
+
+  // util: construir endpoint sin duplicar slashes
+  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
 
   useEffect(() => {
     if (!router.isReady || hasFetched.current) return;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    // token ya leído sincrónicamente; aquí solo confirmamos existencia y usamos.
     if (!token) {
-      router.push('/login');
+      router.replace('/login');
       return;
     }
     hasFetched.current = true;
@@ -35,15 +66,16 @@ export default function Billetera() {
         await fetchUserTransactions(token);
       } catch (err) {
         console.error('Error inicial:', err);
-        router.push('/login');
+        router.replace('/login');
       }
     })();
-  }, [router.isReady, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router, token]);
 
-  async function fetchMeAndPopulate(token) {
-    const apiUrl = `${apiBase}/api/users/me`;
+  async function fetchMeAndPopulate(tokenVal) {
+    const apiUrl = buildUrl('/api/users/me');
     const res = await fetch(apiUrl, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${tokenVal}` },
     });
     if (!res.ok) throw new Error('Token inválido o expirado');
     const data = await res.json();
@@ -63,14 +95,14 @@ export default function Billetera() {
     }
   }
 
-  async function fetchUserTransactions(token) {
-    const endpoint = `${apiBase}/api/wallet/user/transactions?status=complete`;
+  async function fetchUserTransactions(tokenVal) {
+    const endpoint = buildUrl('/api/wallet/user/transactions?status=complete');
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${tokenVal}`, Accept: 'application/json' },
     });
 
     if (res.status === 401) {
-      router.push('/login');
+      router.replace('/login');
       return;
     }
 
@@ -103,14 +135,14 @@ export default function Billetera() {
     setMovimientos(normalized);
   }
 
-  async function fetchPendingRequests(token) {
-    const endpoint = `${apiBase}/api/wallet/user/pending`;
+  async function fetchPendingRequests(tokenVal) {
+    const endpoint = buildUrl('/api/wallet/user/pending');
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${tokenVal}` },
     });
     if (!res.ok) {
       if (res.status === 401) {
-        router.push('/login');
+        router.replace('/login');
       }
       setPending([]);
       return;
@@ -124,20 +156,20 @@ export default function Billetera() {
   const handleAddClick = () => setModalOpen(true);
 
   const handleAdd = async ({ amount, currency }) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) throw new Error('No autorizado');
+    const tokenVal = localStorage.getItem('accessToken');
+    if (!tokenVal) throw new Error('No autorizado');
 
-    const endpoint = `${apiBase}/api/wallet/recharge`;
+    const endpoint = buildUrl('/api/wallet/recharge');
     const payload = { amount, isSoles: currency === 'PEN' };
 
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenVal}` },
       body: JSON.stringify(payload),
     });
 
     if (res.status === 401) {
-      router.push('/login');
+      router.replace('/login');
       throw new Error('No autorizado');
     }
     if (!res.ok) {
@@ -146,9 +178,9 @@ export default function Billetera() {
       throw new Error(msg);
     }
 
-    await fetchMeAndPopulate(token);
-    await fetchPendingRequests(token);
-    await fetchUserTransactions(token);
+    await fetchMeAndPopulate(tokenVal);
+    await fetchPendingRequests(tokenVal);
+    await fetchUserTransactions(tokenVal);
   };
 
   const openConfirmCancel = (id) => {
@@ -165,22 +197,22 @@ export default function Billetera() {
     if (!confirmTargetId) { closeConfirm(); return; }
 
     setConfirmLoading(true);
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) {
+    const tokenVal = localStorage.getItem('accessToken');
+    if (!tokenVal) {
       setConfirmLoading(false);
       closeConfirm();
-      router.push('/login');
+      router.replace('/login');
       return;
     }
 
     try {
-      const endpoint = `${apiBase}/api/wallet/cancel/pending/${encodeURIComponent(confirmTargetId)}`;
+      const endpoint = buildUrl(`/api/wallet/cancel/pending/${encodeURIComponent(confirmTargetId)}`);
       const res = await fetch(endpoint, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${tokenVal}`, 'Content-Type': 'application/json' },
       });
 
-      if (res.status === 401) { router.push('/login'); return; }
+      if (res.status === 401) { router.replace('/login'); return; }
       if (!res.ok) {
         let msg = `Error ${res.status}`;
         try { const body = await res.json(); msg = body?.message || JSON.stringify(body); } catch (e) {}
@@ -188,9 +220,9 @@ export default function Billetera() {
         return;
       }
 
-      await fetchPendingRequests(token);
-      await fetchMeAndPopulate(token);
-      await fetchUserTransactions(token);
+      await fetchPendingRequests(tokenVal);
+      await fetchMeAndPopulate(tokenVal);
+      await fetchUserTransactions(tokenVal);
     } catch (err) {
       console.error('Error cancelando solicitud pendiente:', err);
       alert('Error al cancelar la solicitud. Intenta nuevamente.');
@@ -205,13 +237,12 @@ export default function Billetera() {
       <Navbar />
       <main className="wallet-container">
         <section className="balance-card">
-  <h2>Saldo disponible</h2>
-  <div className="balance-row">
-    <div className="balance-amount">${balance.toFixed(2)}</div>
-    <button className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
-  </div>
-</section>
-
+          <h2>Saldo disponible</h2>
+          <div className="balance-row">
+            <div className="balance-amount">${balance.toFixed(2)}</div>
+            <button className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
+          </div>
+        </section>
 
         {pending.length > 0 && (
           <section className="pending-card">
@@ -240,7 +271,6 @@ export default function Billetera() {
         <section className="movements-card">
           <h3>Movimientos</h3>
 
-          {/* Movimientos con mismo diseño que solicitudes pendientes */}
           <ul className="pending-list movements-as-pending">
             {movimientos.length === 0 && <li className="empty">No hay movimientos</li>}
             {movimientos.map((m) => (
@@ -318,13 +348,12 @@ export default function Billetera() {
         }
         
         .balance-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
 
         .btn-add {
           padding: 10px 16px;
@@ -338,7 +367,6 @@ export default function Billetera() {
         }
         .btn-add:hover { filter: brightness(1.05); }
 
-        /* Pending list (shared for pendientes y movimientos) */
         .pending-list {
           list-style: none;
           margin: 0;
