@@ -145,20 +145,29 @@ export default function Home() {
         arr = []
       }
 
-      const normalized = arr.map(p => ({
-        id: p.id ?? p._id ?? p.uuid ?? null,
-        name: p.name ?? p.title ?? 'Sin nombre',
-        imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
-        salePrice: p.salePrice ?? p.price ?? p.sale_price ?? null,
-        categoryId: p.categoryId ?? p.category_id ?? null,
-        productDetail: p.productDetail ?? p.product_detail ?? p.detail ?? null,
-        terms: p.terms ?? null,
-        requestDetail: p.requestDetail ?? p.request_detail ?? null,
-        active: typeof p.active !== 'undefined' ? p.active : (p.isActive ?? true),
-        publishStart: p.publishStart ?? p.publish_start ?? null,
-        publishEnd: p.publishEnd ?? p.publish_end ?? null,
-        daysPublished: p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? p.days_published ?? null
-      }))
+      const normalized = arr.map(p => {
+        // intentar determinar stock desde distintas fuentes
+        const stockFromArray = Array.isArray(p.stockResponses) ? p.stockResponses.length : undefined
+        const stockFromField = p.stock ?? p.stock_count ?? p.stockCount ?? p.quantity ?? undefined
+        const stock = (typeof stockFromArray === 'number') ? stockFromArray : (typeof stockFromField === 'number' ? stockFromField : 0)
+
+        return {
+          id: p.id ?? p._id ?? p.uuid ?? null,
+          name: p.name ?? p.title ?? 'Sin nombre',
+          imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
+          salePrice: p.salePrice ?? p.price ?? p.sale_price ?? null,
+          categoryId: p.categoryId ?? p.category_id ?? null,
+          productDetail: p.productDetail ?? p.product_detail ?? p.detail ?? null,
+          terms: p.terms ?? null,
+          requestDetail: p.requestDetail ?? p.request_detail ?? null,
+          active: typeof p.active !== 'undefined' ? p.active : (p.isActive ?? true),
+          publishStart: p.publishStart ?? p.publish_start ?? null,
+          publishEnd: p.publishEnd ?? p.publish_end ?? null,
+          daysPublished: p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? p.days_published ?? null,
+          stockResponses: p.stockResponses ?? p.stocks ?? [],
+          stock
+        }
+      })
 
       console.debug('[fetchProducts] normalized count =>', normalized.length)
       setProducts(normalized)
@@ -170,20 +179,18 @@ export default function Home() {
       setProdLoading(false)
     }
   }
-    // navegar / seleccionar categoría (acepta objeto o id)
+
+  // navegar / seleccionar categoría (acepta objeto o id)
   const goToCategory = (catOrId) => {
     if (!catOrId) {
       setSelectedCategory(null)
-      setImagenActiva(null)
       return
     }
 
     const id = (typeof catOrId === 'object') ? (catOrId.id ?? catOrId._id ?? null) : catOrId
-    const image = (typeof catOrId === 'object') ? (catOrId.image ?? null) : null
 
-    console.debug('[goToCategory] selected id =>', id, 'image =>', image)
+    console.debug('[goToCategory] selected id =>', id)
     setSelectedCategory(id)
-    setImagenActiva(image || null)
   }
 
   // --- Carrusel circular drag handlers (unchanged) ---
@@ -301,7 +308,8 @@ export default function Home() {
     if (Number.isNaN(value)) return '—'
     return moneyFormatter.format(value)
   }
-    return (
+
+  return (
     <>
       <Head>
         <title>Luna Streaming</title>
@@ -316,7 +324,7 @@ export default function Home() {
       <main className="page-root">
         <section className="hero">
           <h1 className="hero-title">Explora nuestras categorías</h1>
-          <p className="hero-sub">Curaduría visual y ritmo ritualizado. Selecciona una categoría para descubrir contenidos.</p>
+          <p className="hero-sub">Disfruta del mejor contenido digital. Selecciona una categoría para descubrir contenidos.</p>
         </section>
 
         <section className="categories-section">
@@ -406,30 +414,59 @@ export default function Home() {
                 <div className="empty">No hay productos activos.</div>
               )}
 
-              {!prodLoading && products.map(p => (
-                <article className="product-card" key={p.id}>
-                  <div className="product-media">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} loading="lazy" />
-                    ) : (
-                      <div className="product-media placeholder" />
-                    )}
-                  </div>
+              {!prodLoading && products.map(p => {
+                const stockCount = Number(p.stock ?? 0)
+                const hasStock = stockCount > 0
 
-                  <div className="product-body">
-                    <div className="product-title" title={p.name}>{p.name}</div>
-                    <div className="product-price">{formatPrice(p.salePrice)}</div>
-                    <div className="product-actions">
-                      <button className="btn-primary" onClick={() => { setImagenActiva(p.imageUrl || null) }}>
-                        Ver imagen
-                      </button>
-                      <a className="btn-outline" href={`/products/${p.id}`}>
-                        Ver
-                      </a>
+                return (
+                  <article className="product-card" key={p.id}>
+                    {/* Stock banner */}
+                    {hasStock ? (
+                      <div className="stock-bar stock-available">
+                        <span className="stock-text">STOCKS DISPONIBLES</span>
+                        <span className="stock-qty">{stockCount}</span>
+                      </div>
+                    ) : (
+                      <div className="stock-bar stock-empty">
+                        <span className="stock-text">SIN STOCK</span>
+                      </div>
+                    )}
+
+                    <div className="product-media">
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name} loading="lazy" />
+                      ) : (
+                        <div className="product-media placeholder" />
+                      )}
                     </div>
-                  </div>
-                </article>
-              ))}
+
+                    <div className="product-body">
+                      <div className="product-title" title={p.name}>{p.name}</div>
+                      <div className="product-price">{formatPrice(p.salePrice)}</div>
+                      <div className="product-actions">
+                        <button
+                          className="btn-primary"
+                          onClick={() => {
+                            // acción comprar: si no hay stock, evitar compra o mostrar modal (ejemplo: evitar)
+                            if (!hasStock) return
+                            // abrir página de producto o iniciar flujo de compra
+                            window.location.href = `/products/${p.id}`
+                          }}
+                          aria-disabled={!hasStock}
+                        >
+                          Comprar
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => setImagenActiva(p.imageUrl || null)}
+                        >
+                          Ver imagen
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -452,8 +489,7 @@ export default function Home() {
       )}
 
       <Footer />
-            <style jsx>{`
-        /* Estilos actualizados para asegurar etiqueta siempre visible junto a la imagen */
+      <style jsx>{`
         :root{
           --bg-surface: rgba(255,255,255,0.02);
           --bg-surface-strong: rgba(255,255,255,0.04);
@@ -463,6 +499,10 @@ export default function Home() {
           --accent-contrast: #021018;
           --glass-blur: 8px;
           --shadow-subtle: 0 12px 30px rgba(2,6,23,0.45);
+          --green-stock: #31C950;
+          --green-stock-bg: rgba(49,201,80,0.08);
+          --red-stock: #EF4444;
+          --red-stock-bg: rgba(239,68,68,0.08);
         }
 
         .page-root { background-color: #0D0D0D; color: #D1D1D1; min-height: 100vh; }
@@ -477,169 +517,22 @@ export default function Home() {
         .section-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
         .muted { color: var(--muted); font-size: 0.95rem; }
 
-        /* --- Wrapper / strip --- */
-        .circle-strip-wrapper {
-          margin-bottom: 18px;
-          position: relative;
-          background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-          border-radius: 14px;
-          padding: 10px 12px;
-          box-shadow: var(--shadow-subtle);
-          overflow: visible; /* crucial: allow labels to show */
-        }
-
-        .circle-strip-outer {
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        /* ensure enough bottom padding so labels are visible */
-        .circle-strip {
-          display: flex;
-          gap: 16px;
-          overflow-x: auto;
-          overflow-y: visible;
-          padding: 8px 6px 48px;
-          -webkit-overflow-scrolling: touch;
-          scroll-behavior: smooth;
-          align-items: center;
-          width: 100%;
-          scroll-snap-type: x proximity;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.06) transparent;
-        }
-
-        .circle-strip::-webkit-scrollbar { height: 8px; }
-        .circle-strip::-webkit-scrollbar-track { background: transparent; }
-        .circle-strip::-webkit-scrollbar-thumb {
-          background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.06));
-          border-radius: 999px;
-          border: 2px solid transparent;
-        }
-
-        /* each item + label grouped so label is always visible */
-        .circle-item-wrap {
-          flex: 0 0 auto;
-          width: 120px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 8px;
-          margin-bottom: 0; /* visual alignment handled by padding on strip */
-          scroll-snap-align: center;
-          box-sizing: border-box;
-          background: transparent;
-        }
-
-        /* circular button */
-        .circle-item {
-          width: 120px;
-          height: 120px;
-          border-radius: 999px;
-          background: linear-gradient(180deg, var(--bg-surface), var(--bg-surface-strong));
-          border: 1px solid rgba(255,255,255,0.04);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          cursor: pointer;
-          transition: transform 240ms cubic-bezier(.2,.9,.3,1), box-shadow 240ms ease;
-          padding: 6px;
-          overflow: visible; /* important so label not clipped */
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .circle-item img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          border-radius: 999px;
-          display: block;
-          transition: transform 240ms ease;
-        }
-
-        .circle-fallback {
-          width: 100%;
-          height: 100%;
-          border-radius: 999px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          color: #fff;
-          background: linear-gradient(90deg, var(--accent-2), var(--accent-1));
-          box-shadow: 0 6px 18px rgba(6,27,48,0.35);
-        }
-
-        /* label below circle — always visible */
-        .circle-name {
-          display: block;
-          font-family: 'Poppins', Inter, sans-serif;
-          font-weight: 600;
-          font-size: 0.92rem;
-          color: var(--muted);
-          text-align: center;
-          width: 160px;
-          line-height: 1.1;
-          margin-top: 4px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          pointer-events: none;
-          z-index: 50;
-        }
-
-        /* hover/focus purely cosmetic — do not hide label */
-        .circle-item:hover,
-        .circle-item:focus {
-          transform: translateY(-6px) scale(1.03);
-          box-shadow: 0 22px 48px rgba(6,20,40,0.5);
-        }
-
-        .circle-item.active-cat {
-          transform: translateY(-6px) scale(1.03);
-          box-shadow: 0 18px 40px rgba(6,20,40,0.45);
-          border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        /* fades and arrows */
-        .fade {
-          position: absolute;
-          top: 8px;
-          bottom: 18px;
-          width: 48px;
-          pointer-events: none;
-          z-index: 2;
-          border-radius: 8px;
-        }
+        /* strip and circle styles (unchanged) ... */
+        .circle-strip-wrapper { margin-bottom: 18px; position: relative; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow-subtle); overflow: visible; }
+        .circle-strip-outer { position: relative; display: flex; align-items: center; gap: 8px; }
+        .circle-strip { display: flex; gap: 16px; overflow-x: auto; overflow-y: visible; padding: 8px 6px 48px; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; align-items: center; width: 100%; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent; }
+        .circle-item-wrap { flex: 0 0 auto; width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 0; scroll-snap-align: center; box-sizing: border-box; background: transparent; }
+        .circle-item { width: 120px; height: 120px; border-radius: 999px; background: linear-gradient(180deg, var(--bg-surface), var(--bg-surface-strong)); border: 1px solid rgba(255,255,255,0.04); display: inline-flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: transform 240ms cubic-bezier(.2,.9,.3,1), box-shadow 240ms ease; padding: 6px; overflow: visible; -webkit-tap-highlight-color: transparent; }
+        .circle-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 999px; display: block; transition: transform 240ms ease; }
+        .circle-fallback { width: 100%; height: 100%; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: linear-gradient(90deg, var(--accent-2), var(--accent-1)); box-shadow: 0 6px 18px rgba(6,27,48,0.35); }
+        .circle-name { display: block; font-family: 'Poppins', Inter, sans-serif; font-weight: 600; font-size: 0.92rem; color: var(--muted); text-align: center; width: 160px; line-height: 1.1; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; z-index: 50; }
+        .circle-item:hover, .circle-item:focus { transform: translateY(-6px) scale(1.03); box-shadow: 0 22px 48px rgba(6,20,40,0.5); }
+        .circle-item.active-cat { transform: translateY(-6px) scale(1.03); box-shadow: 0 18px 40px rgba(6,20,40,0.45); border: 1px solid rgba(255,255,255,0.08); }
+        .fade { position: absolute; top: 8px; bottom: 18px; width: 48px; pointer-events: none; z-index: 2; border-radius: 8px; }
         .fade.left { left: 6px; background: linear-gradient(90deg, rgba(13,13,13,0.95), rgba(13,13,13,0.0)); }
         .fade.right { right: 6px; background: linear-gradient(270deg, rgba(13,13,13,0.95), rgba(13,13,13,0.0)); }
-
-        .subtle-arrow {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 36px;
-          height: 36px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.03);
-          color: rgba(255,255,255,0.85);
-          display: inline-grid;
-          place-items: center;
-          border: 1px solid rgba(255,255,255,0.04);
-          cursor: pointer;
-          z-index: 3;
-          transition: background 140ms ease, transform 140ms ease;
-          font-size: 20px;
-          line-height: 1;
-          backdrop-filter: blur(var(--glass-blur));
-        }
-        .subtle-arrow.left { left: 8px; }
-        .subtle-arrow.right { right: 8px; }
-        .subtle-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(255,255,255,0.06); }
+        .subtle-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 999px; background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.85); display: inline-grid; place-items: center; border: 1px solid rgba(255,255,255,0.04); cursor: pointer; z-index: 3; transition: background 140ms ease, transform 140ms ease; font-size: 20px; line-height: 1; backdrop-filter: blur(var(--glass-blur)); }
+        .subtle-arrow.left { left: 8px; } .subtle-arrow.right { right: 8px; } .subtle-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(255,255,255,0.06); }
 
         /* products */
         .products-section { margin-top: 18px; }
@@ -654,9 +547,35 @@ export default function Home() {
           display: flex;
           flex-direction: column;
           transition: transform .18s ease, box-shadow .18s ease;
+          position: relative;
         }
         .product-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
         .product-card.skeleton { min-height: 220px; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03)); animation: shimmer 1.2s linear infinite; }
+
+        /* stock bar (top) */
+        .stock-bar {
+          display:flex;
+          align-items:center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 12px;
+          font-weight: 800;
+          font-size: 0.86rem;
+          text-transform: uppercase;
+        }
+        .stock-available {
+          background: var(--green-stock-bg);
+          color: var(--green-stock);
+          border-bottom: 1px solid rgba(49,201,80,0.12);
+        }
+        .stock-empty {
+          background: var(--red-stock-bg);
+          color: var(--red-stock);
+          border-bottom: 1px solid rgba(239,68,68,0.12);
+        }
+        .stock-text { flex:1; }
+        .stock-qty { background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 8px; color: inherit; font-weight: 900; }
+
         .product-media { width:100%; aspect-ratio: 4/3; background: #0b0b0b; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .product-media img { width:100%; height:100%; object-fit:cover; display:block; }
         .product-media.placeholder { background: linear-gradient(135deg,#1f2937,#111827); min-height: 140px; }
@@ -664,7 +583,8 @@ export default function Home() {
         .product-title { font-weight:800; color:#fff; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .product-price { color:#9ee7d9; font-weight:700; }
         .product-actions { margin-top:auto; display:flex; gap:8px; }
-        .btn-primary { background: linear-gradient(90deg,#06b6d4,#10b981); color: var(--accent-contrast); border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+        .btn-primary { background: linear-gradient(90deg,#06b6d4,var(--green-stock)); color: var(--accent-contrast); border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+        .btn-primary[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
         .btn-outline { background: transparent; border:1px solid rgba(255,255,255,0.06); color:#E6EEF7; padding:8px 10px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
 
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
