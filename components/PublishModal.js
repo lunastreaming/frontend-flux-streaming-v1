@@ -8,9 +8,6 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
   const [balance, setBalance] = useState(null)
   const [price, setPrice] = useState(null)
   const [error, setError] = useState(null)
-  const [publishStart, setPublishStart] = useState(null)
-  const [publishEnd, setPublishEnd] = useState(null)
-  const [daysRemaining, setDaysRemaining] = useState(null)
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
@@ -18,9 +15,6 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
     setError(null)
     setBalance(null)
     setPrice(null)
-    setPublishStart(null)
-    setPublishEnd(null)
-    setDaysRemaining(null)
     fetchInfo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product])
@@ -55,13 +49,6 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
         }
       }
       setPrice(cfgPrice)
-
-      // Si el producto ya tiene fechas (por ejemplo producto cargado previamente), mostrar localmente
-      if (product) {
-        setPublishStart(normalizeDate(product.publish_start ?? product.publishStart))
-        setPublishEnd(normalizeDate(product.publish_end ?? product.publishEnd))
-        setDaysRemaining(product.daysRemaining ?? product.days_remaining ?? null)
-      }
     } catch (err) {
       console.error('PublishModal fetch error:', err)
       setError(err.message || String(err))
@@ -88,17 +75,6 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
       }
 
       const updated = await res.json()
-
-      // Actualizar UI: leer explícitamente publish_start, publish_end y daysRemaining/days_remaining
-      const serverStart = normalizeDate(updated.publish_start ?? updated.publishStart)
-      const serverEnd = normalizeDate(updated.publish_end ?? updated.publishEnd)
-      const serverDays = updated.daysRemaining ?? updated.days_remaining ?? null
-
-      setPublishStart(serverStart)
-      setPublishEnd(serverEnd)
-      setDaysRemaining(serverDays)
-
-      // Actualizar balance local si backend devuelve el nuevo saldo (opcional)
       setBalance(updated.providerBalance ?? updated.userBalance ?? updated.balance ?? balance)
 
       if (onPublished) onPublished(updated)
@@ -118,22 +94,6 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
     const n = typeof v === 'number' ? v : Number(v)
     if (Number.isNaN(n)) return String(v)
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-  }
-
-  // muestra solo fecha (sin hora). acepta Date, timestamp string, or null
-  function normalizeDate(value) {
-    if (!value) return null
-    try {
-      const d = (value instanceof Date) ? value : new Date(value)
-      if (Number.isNaN(d.getTime())) return null
-      // devolver ISO local date yyyy-mm-dd para mostrar sin hora
-      const year = d.getFullYear()
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    } catch {
-      return null
-    }
   }
 
   const insufficient = price != null && balance != null && Number(balance) < Number(price)
@@ -158,23 +118,29 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
           <div style={content}>
             <div style={header}>
               <h2 style={title}>{product?.name ?? 'Publicar producto'}</h2>
-              <p style={subtitle}>Fechas de publicación</p>
+              <p style={subtitle}>Resumen de publicación</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, width: '100%', marginTop: 6 }}>
-              <div style={infoBox}>
-                <div style={infoLabel}>Fecha inicio</div>
-                <div style={dateBox}>{publishStart ?? '—'}</div>
+            {/* Reemplazo total de las cajas de fecha por valores grandes y centrados */}
+            <div style={bigValuesRow}>
+              <div style={bigValueCard}>
+                <div style={bigLabel}>Saldo disponible</div>
+                <div style={bigValue}>{formatMoney(balance)}</div>
               </div>
 
-              <div style={infoBox}>
-                <div style={infoLabel}>Fecha fin</div>
-                <div style={dateBox}>{publishEnd ?? '—'}</div>
+              <div style={bigValueCard}>
+                <div style={bigLabel}>Precio publicación</div>
+                <div style={bigValue}>{formatMoney(price)}</div>
               </div>
+            </div>
 
-              <div style={infoBox}>
-                <div style={infoLabel}>Días restantes</div>
-                <div style={dateBox}>{daysRemaining == null ? '—' : String(daysRemaining)}</div>
+            {price != null && balance != null && Number(balance) < Number(price) && (
+              <div style={insufficientBanner}>Saldo insuficiente para publicar</div>
+            )}
+
+            <div style={infoBox}>
+              <div style={{ fontSize: 13, color: '#9FB4C8', textAlign: 'center' }}>
+                Confirma la publicación solo si estás de acuerdo con el cargo de publicación.
               </div>
             </div>
 
@@ -195,7 +161,7 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
   )
 }
 
-/* ===== estilos (mantengo los anteriores con pequeño ajuste en dateBox) ===== */
+/* ===== estilos actualizados para dar peso y tamaño a los nuevos valores ===== */
 
 const backdrop = {
   position: 'fixed',
@@ -210,20 +176,20 @@ const backdrop = {
 
 const card = {
   width: '100%',
-  maxWidth: 640,
+  maxWidth: 680,
   background: 'linear-gradient(180deg, #071026 0%, #081426 100%)',
   color: '#EDF2F7',
-  borderRadius: 14,
-  padding: '22px',
+  borderRadius: 16,
+  padding: '24px',
   position: 'relative',
-  boxShadow: '0 12px 40px rgba(2,6,23,0.7)',
+  boxShadow: '0 18px 48px rgba(2,6,23,0.75)',
   fontFamily: '"Rubik", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial'
 }
 
 const closeBtn = {
   position: 'absolute',
-  right: 14,
-  top: 14,
+  right: 16,
+  top: 16,
   background: 'transparent',
   border: 'none',
   color: '#9CA3AF',
@@ -231,35 +197,66 @@ const closeBtn = {
   cursor: 'pointer'
 }
 
-const content = { display: 'flex', flexDirection: 'column', gap: 18, alignItems: 'center', textAlign: 'center' }
+const content = { display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center', textAlign: 'center' }
 
-const header = { marginBottom: 4 }
-const title = { margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }
+const header = { marginBottom: 2 }
+const title = { margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }
 const subtitle = { margin: 0, marginTop: 6, fontSize: 13, color: '#BBD2E6' }
 
-const infoBox = {
+/* Big values row */
+const bigValuesRow = {
+  width: '100%',
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 16,
+  marginTop: 12,
+  alignItems: 'stretch'
+}
+
+const bigValueCard = {
   background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
-  borderRadius: 10,
-  padding: 14,
+  border: '1px solid rgba(255,255,255,0.04)',
+  borderRadius: 12,
+  padding: '18px',
   display: 'flex',
   flexDirection: 'column',
+  gap: 10,
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 110
+}
+
+const bigLabel = { fontSize: 13, color: '#9FB4C8', fontWeight: 700, textTransform: 'uppercase' }
+const bigValue = { fontSize: 28, fontWeight: 900, color: '#E6EEF7', letterSpacing: '-0.02em' }
+
+const insufficientBanner = {
+  marginTop: 12,
+  background: 'linear-gradient(90deg, rgba(252,165,165,0.06), rgba(252,165,165,0.04))',
+  color: '#FCA5A5',
+  padding: '10px 14px',
+  borderRadius: 10,
+  fontWeight: 800,
+  width: '100%',
+  textAlign: 'center',
+  border: '1px solid rgba(252,165,165,0.08)'
+}
+
+const infoBox = {
+  width: '100%',
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
+  borderRadius: 10,
+  padding: 12,
+  display: 'flex',
   gap: 6,
-  alignItems: 'center'
+  alignItems: 'center',
+  justifyContent: 'center'
 }
 
-const infoLabel = { fontSize: 12, color: '#9FB4C8' }
-
-const dateBox = {
-  fontSize: 16,
-  fontWeight: 700,
-  color: '#E6EEF7'
-}
-
-const actions = { display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, width: '100%' }
+const actions = { display: 'flex', gap: 12, justifyContent: 'center', marginTop: 6, width: '100%' }
 
 const outlineBtn = {
-  padding: '8px 12px',
-  borderRadius: 8,
+  padding: '10px 14px',
+  borderRadius: 10,
   border: '1px solid rgba(255,255,255,0.06)',
   background: 'transparent',
   color: '#E6EEF7',
@@ -267,24 +264,25 @@ const outlineBtn = {
 }
 
 const secondaryBtn = {
-  padding: '10px 14px',
+  padding: '12px 16px',
   borderRadius: 10,
   background: '#E6EEF7',
   color: '#081426',
-  fontWeight: 700,
+  fontWeight: 800,
   border: 'none',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  minWidth: 120
 }
 
 const confirmBtn = (disabled) => ({
-  padding: '10px 14px',
+  padding: '12px 16px',
   borderRadius: 10,
   background: disabled ? 'linear-gradient(90deg, #94A3B8, #6B7280)' : 'linear-gradient(90deg, #06B6D4, #10B981)',
   color: disabled ? '#E6EEF7' : '#021018',
-  fontWeight: 800,
+  fontWeight: 900,
   border: 'none',
   cursor: disabled ? 'not-allowed' : 'pointer',
-  minWidth: 180
+  minWidth: 220
 })
 
 const centerSection = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 18 }
