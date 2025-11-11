@@ -34,6 +34,9 @@ export default function Home() {
   const rawBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
   const BASE = rawBase.replace(/\/+$/, '')
 
+  // ruta donde pedir stocks en bloque. Cámbiala si tu API usa otra ruta.
+  const STOCKS_PATH = '/api/stocks' // ejemplo: /api/stocks?productIds=id1,id2
+
   // util: construye URL sin duplicar slashes
   const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
 
@@ -112,6 +115,84 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory])
 
+  // Helper: pedimos stocks en bloque dado array de productIds
+  async function fetchStocksForProductIds(productIds) {
+    if (!productIds || productIds.length === 0) return {}
+
+    // construye query productIds=id1,id2,...
+    const q = productIds.join(',')
+    const url = joinApi(`${STOCKS_PATH}?productIds=${encodeURIComponent(q)}`)
+
+    try {
+      const res = await fetch(url, { method: 'GET' })
+      if (!res.ok) {
+        console.warn('[fetchStocksForProductIds] stocks endpoint returned', res.status)
+        return {}
+      }
+      const data = await res.json()
+
+      // Normalizar distintas posibles formas de devolver stocks
+      const map = new Map()
+
+      if (Array.isArray(data)) {
+        const first = data[0]
+        if (!first) return {}
+
+        if (first.productId !== undefined && Array.isArray(first.stocks)) {
+          data.forEach(g => {
+            map.set(String(g.productId), { stockResponses: Array.isArray(g.stocks) ? g.stocks : [], stockCount: Array.isArray(g.stocks) ? g.stocks.length : 0 })
+          })
+        } else if (first.productId !== undefined && first.count !== undefined) {
+          data.forEach(it => {
+            map.set(String(it.productId), { stockResponses: [], stockCount: Number(it.count) || 0 })
+          })
+        } else if (first.productId !== undefined || first.product_id !== undefined) {
+          data.forEach(row => {
+            const pid = String(row.productId ?? row.product_id ?? row.product?.id ?? row.productId)
+            const existing = map.get(pid) || { stockResponses: [], stockCount: 0 }
+            existing.stockResponses.push(row)
+            existing.stockCount = existing.stockResponses.length
+            map.set(pid, existing)
+          })
+        } else if (typeof first === 'object') {
+          data.forEach(row => {
+            const pid = String(row.productId ?? row.product_id ?? row.product?.id ?? '')
+            if (!pid) return
+            const existing = map.get(pid) || { stockResponses: [], stockCount: 0 }
+            existing.stockResponses.push(row)
+            existing.stockCount = existing.stockResponses.length
+            map.set(pid, existing)
+          })
+        }
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.items)) {
+          data.items.forEach(row => {
+            const pid = String(row.productId ?? row.product_id ?? row.product?.id ?? '')
+            if (!pid) return
+            const existing = map.get(pid) || { stockResponses: [], stockCount: 0 }
+            existing.stockResponses.push(row)
+            existing.stockCount = existing.stockResponses.length
+            map.set(pid, existing)
+          })
+        } else {
+          Object.keys(data).forEach(k => {
+            const v = data[k]
+            const count = typeof v === 'number' ? v : (v?.count ?? null)
+            if (count === null) return
+            map.set(String(k), { stockResponses: [], stockCount: Number(count) || 0 })
+          })
+        }
+      }
+
+      const result = {}
+      map.forEach((v, k) => { result[k] = v })
+      return result
+    } catch (err) {
+      console.error('[fetchStocksForProductIds] failed', err)
+      return {}
+    }
+  }
+
   async function fetchProducts() {
     setProdLoading(true)
     setProdError(null)
@@ -131,41 +212,95 @@ export default function Home() {
       console.debug('[fetchProducts] raw response =>', data)
 
       // Si backend devuelve Page<T> (Spring), extraer content
-      let arr = []
+      let raw = []
       if (Array.isArray(data)) {
-        arr = data
+        raw = data
       } else if (Array.isArray(data?.content)) {
-        arr = data.content
+        raw = data.content
       } else if (Array.isArray(data?.items)) {
-        arr = data.items
+        raw = data.items
       } else if (Array.isArray(data?.rows)) {
-        arr = data.rows
+        raw = data.rows
       } else {
         console.warn('[fetchProducts] respuesta no contiene array en content/items/rows', data)
-        arr = []
+        raw = []
       }
 
-      const normalized = arr.map(p => {
-        // intentar determinar stock desde distintas fuentes
-        const stockFromArray = Array.isArray(p.stockResponses) ? p.stockResponses.length : undefined
+      // Detectar si cada elemento es { product, stockResponses } (tu backend actual)
+      let productsArr = []
+      let inlineStocksMap = {} // productId -> { stockResponses, stockCount }
+      if (raw.length > 0 && raw[0] && (raw[0].product || Array.isArray(raw[0].stockResponses))) {
+        // normalizamos: cada item puede tener .product y .stockResponses
+        raw.forEach(item => {
+          const prod = item.product ?? item
+          const id = String(prod?.id ?? prod?._id ?? prod?.uuid ?? '')
+          if (id) {
+            productsArr.push(prod)
+            const sres = Array.isArray(item.stockResponses) ? item.stockResponses : (Array.isArray(item.stocks) ? item.stocks : [])
+            inlineStocksMap[id] = { stockResponses: sres, stockCount: sres.length }
+          } else if (prod) {
+            productsArr.push(prod) // fallback
+          }
+        })
+      } else {
+        productsArr = raw
+      }
+
+      // Extraer productIds únicos
+      const productIds = Array.from(new Set(productsArr.map(p => p.id ?? p._id ?? p.uuid).filter(Boolean)))
+      // solicitar stocks en bloque (si tienes endpoint) - se usará como prioridad si devuelve datos
+      const stocksMapFromApi = await fetchStocksForProductIds(productIds)
+
+      // Merge: stocksMapFromApi has priority, inlineStocksMap is fallback
+      const mergedStocksMap = { ...inlineStocksMap, ...stocksMapFromApi }
+
+      const normalized = productsArr.map(p => {
+        // product shape is nested product object from backend
+        const idRaw = p.id ?? p._id ?? p.uuid ?? null
+        const pidKey = String(idRaw ?? '')
+
+        // Values from product payload
+        const categoryNameFromProduct = p.categoryName ?? null
+        const name = p.name ?? p.title ?? 'Sin nombre'
+        const salePrice = p.salePrice ?? p.price ?? p.sale_price ?? null
+
+        // Get stockResponses and count (priority: mergedStocksMap, then product.stockResponses, then [])
+        const mapped = mergedStocksMap[pidKey] || {}
+        const stockResponsesFromMap = Array.isArray(mapped.stockResponses) ? mapped.stockResponses : (Array.isArray(p.stockResponses) ? p.stockResponses : [])
+        const stockCountFromMap = typeof mapped.stockCount === 'number' ? mapped.stockCount : (Array.isArray(p.stockResponses) ? p.stockResponses.length : undefined)
+
         const stockFromField = p.stock ?? p.stock_count ?? p.stockCount ?? p.quantity ?? undefined
-        const stock = (typeof stockFromArray === 'number') ? stockFromArray : (typeof stockFromField === 'number' ? stockFromField : 0)
+
+        const stockCount = (typeof stockCountFromMap === 'number')
+          ? stockCountFromMap
+          : (typeof stockFromField === 'number' ? stockFromField : 0)
+
+        const finalStockResponses = stockResponsesFromMap.length > 0 ? stockResponsesFromMap : (Array.isArray(p.stockResponses) ? p.stockResponses : [])
 
         return {
-          id: p.id ?? p._id ?? p.uuid ?? null,
-          name: p.name ?? p.title ?? 'Sin nombre',
-          imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
-          salePrice: p.salePrice ?? p.price ?? p.sale_price ?? null,
+          id: idRaw,
+          providerId: p.providerId ?? p.provider?.id ?? p.providerId ?? null,
+          providerName: p.providerName ?? p.provider?.username ?? p.provider?.name ?? null,
           categoryId: p.categoryId ?? p.category_id ?? null,
-          productDetail: p.productDetail ?? p.product_detail ?? p.detail ?? null,
+          categoryName: categoryNameFromProduct,
+          name: name,
           terms: p.terms ?? null,
+          productDetail: p.productDetail ?? p.product_detail ?? p.detail ?? null,
           requestDetail: p.requestDetail ?? p.request_detail ?? null,
+          days: p.days ?? null,
+          salePrice: salePrice,
+          renewalPrice: p.renewalPrice ?? p.renewal_price ?? null,
+          isRenewable: p.isRenewable ?? p.is_renewable ?? null,
+          isOnRequest: p.isOnRequest ?? p.is_on_request ?? null,
           active: typeof p.active !== 'undefined' ? p.active : (p.isActive ?? true),
+          createdAt: p.createdAt ?? p.created_at ?? null,
+          updatedAt: p.updatedAt ?? p.updated_at ?? null,
+          imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
           publishStart: p.publishStart ?? p.publish_start ?? null,
           publishEnd: p.publishEnd ?? p.publish_end ?? null,
-          daysPublished: p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? p.days_published ?? null,
-          stockResponses: p.stockResponses ?? p.stocks ?? [],
-          stock
+          daysRemaining: p.daysRemaining ?? p.days_remaining ?? null,
+          stockResponses: finalStockResponses,
+          stock: stockCount
         }
       })
 
@@ -418,19 +553,15 @@ export default function Home() {
                 const stockCount = Number(p.stock ?? 0)
                 const hasStock = stockCount > 0
 
+                // find category name for centered banner (use categoryName from product first)
+                const categoryName = p.categoryName ?? categories.find(c => String(c.id) === String(p.categoryId))?.name ?? 'Sin categoría'
+
                 return (
                   <article className="product-card" key={p.id}>
-                    {/* Stock banner */}
-                    {hasStock ? (
-                      <div className="stock-bar stock-available">
-                        <span className="stock-text">STOCKS DISPONIBLES</span>
-                        <span className="stock-qty">{stockCount}</span>
-                      </div>
-                    ) : (
-                      <div className="stock-bar stock-empty">
-                        <span className="stock-text">SIN STOCK</span>
-                      </div>
-                    )}
+                    {/* Category banner (centred) */}
+                    <div className={`stock-bar stock-cat ${hasStock ? 'stock-available' : 'stock-empty'}`}>
+                      <div className="stock-cat-name">{categoryName}</div>
+                    </div>
 
                     <div className="product-media">
                       {p.imageUrl ? (
@@ -441,27 +572,42 @@ export default function Home() {
                     </div>
 
                     <div className="product-body">
-                      <div className="product-title" title={p.name}>{p.name}</div>
-                      <div className="product-price">{formatPrice(p.salePrice)}</div>
+                      <div className="product-title marquee" title={p.name}>
+                        <span>{p.name}</span>
+                      </div>
+
+                      {/* price badge above actions */}
+                      <div className="price-badge">{formatPrice(p.salePrice)}</div>
+
                       <div className="product-actions">
-                        <button
-                          className="btn-primary"
-                          onClick={() => {
-                            // acción comprar: si no hay stock, evitar compra o mostrar modal (ejemplo: evitar)
-                            if (!hasStock) return
-                            // abrir página de producto o iniciar flujo de compra
-                            window.location.href = `/products/${p.id}`
-                          }}
-                          aria-disabled={!hasStock}
-                        >
-                          Comprar
-                        </button>
-                        <button
-                          className="btn-outline"
-                          onClick={() => setImagenActiva(p.imageUrl || null)}
-                        >
-                          Ver imagen
-                        </button>
+                        {hasStock ? (
+                          <>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                              <button
+                                className={`btn-primary in-stock`}
+                                onClick={() => { window.location.href = `/products/${p.id}` }}
+                                aria-disabled="false"
+                              >
+                                <span className="btn-text">Comprar</span>
+                              </button>
+
+                              {/* stock pill to the right of the button */}
+                              <div className="stock-pill" aria-hidden>
+                                <span className="stock-icon">📦</span>
+                                <span className="stock-count-pill">{stockCount}</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          // disabled red button when no stock (centered, full width)
+                          <button
+                            className="btn-primary out-stock disabled-sin-stock"
+                            aria-disabled="true"
+                            onClick={() => {}}
+                          >
+                            SIN STOCK
+                          </button>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -503,6 +649,8 @@ export default function Home() {
           --green-stock-bg: rgba(49,201,80,0.08);
           --red-stock: #EF4444;
           --red-stock-bg: rgba(239,68,68,0.08);
+          --blue-buy: #0677f5;
+          --red-buy: #ef4444;
         }
 
         .page-root { background-color: #0D0D0D; color: #D1D1D1; min-height: 100vh; }
@@ -582,10 +730,60 @@ export default function Home() {
         .product-body { padding: 12px; display:flex; flex-direction:column; gap:8px; flex:1; }
         .product-title { font-weight:800; color:#fff; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .product-price { color:#9ee7d9; font-weight:700; }
-        .product-actions { margin-top:auto; display:flex; gap:8px; }
+        .product-actions { margin-top:auto; display:flex; gap:8px; align-items:center; justify-content:center; }
+
         .btn-primary { background: linear-gradient(90deg,#06b6d4,var(--green-stock)); color: var(--accent-contrast); border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
-        .btn-primary[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary[aria-disabled="true"] { opacity: 0.95; cursor: not-allowed; }
         .btn-outline { background: transparent; border:1px solid rgba(255,255,255,0.06); color:#E6EEF7; padding:8px 10px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+
+        /* new card-design styles (only these changed) */
+        .stock-cat { display:flex; align-items:center; justify-content:center; padding:10px 16px; font-weight:900; font-size:0.95rem; text-transform:none; border-bottom: 1px solid rgba(255,255,255,0.04); background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); color: var(--muted); }
+        .stock-cat-name { color: #E6EEF7; font-size:0.95rem; letter-spacing:0.02em; }
+
+        .product-title.marquee { height: 26px; overflow: hidden; position: relative; }
+        .product-title.marquee span { display: inline-block; padding-left: 100%; animation: marquee 8s linear infinite; white-space: nowrap; }
+        @keyframes marquee { 0% { transform: translateX(0%); } 10% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
+
+        .price-badge { margin: 8px auto 0; background: rgba(0,0,0,0.35); padding:6px 10px; border-radius:999px; color:#9ee7d9; font-weight:800; border:1px solid rgba(255,255,255,0.04); }
+
+        .btn-primary.in-stock { background: linear-gradient(90deg, var(--accent-1), #06b6d4); color: #fff; display:flex; align-items:center; gap:8px; }
+        .btn-primary.out-stock { background: linear-gradient(90deg, rgba(255,240,240,0.02), rgba(255,240,240,0.01)); color: var(--red-stock); display:flex; align-items:center; gap:8px; border:1px solid rgba(239,68,68,0.08); }
+
+        /* specific: ensure disabled out-stock button is red */
+        .btn-primary.out-stock[aria-disabled="true"],
+        .btn-primary.out-stock.disabled-sin-stock {
+          background: linear-gradient(90deg, rgba(239,68,68,0.98), rgba(239,68,68,0.9));
+          color: #fff;
+          border: none;
+          opacity: 1;
+        }
+
+        /* Stock pill (right of Comprar button) */
+        .stock-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.04);
+          color: var(--muted);
+          font-weight: 800;
+        }
+        .stock-pill .stock-icon { font-size: 14px; }
+        .stock-pill .stock-count-pill { font-weight: 900; color: #E6EEF7; }
+
+        /* Disabled red SIN STOCK button (full) */
+        .disabled-sin-stock {
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-weight: 900;
+          letter-spacing: 0.02em;
+        }
+
+        .stock-icon { font-size:16px; }
+        .stock-count { font-weight:900; }
 
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .empty { color: var(--muted); padding: 20px; text-align: center; }
@@ -620,6 +818,8 @@ export default function Home() {
           }
           .fade { display:none; }
           .subtle-arrow { display:none; }
+          .product-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+          .stock-pill { justify-content: center; }
         }
       `}</style>
 
