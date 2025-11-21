@@ -108,9 +108,10 @@ export default function WalletSupplierPending() {
     }
   }
 
-  const requestActionWithConfirm = (id, action, userName, amount) => {
+  // requestActionWithConfirm now expects a pre-formatted displayAmount string
+  const requestActionWithConfirm = (id, action, userName, displayAmount) => {
     const actionText = action === 'approve' ? 'aprobar' : 'rechazar'
-    const message = `¿Seguro que quieres ${actionText} la solicitud de ${userName ?? 'este proveedor'} por ${typeof amount === 'number' ? amount.toFixed(2) : amount}?`
+    const message = `¿Seguro que quieres ${actionText} la solicitud de ${userName ?? 'este proveedor'} por ${displayAmount}?`
     setConfirmData({ open: true, id, action, message })
   }
 
@@ -206,7 +207,7 @@ export default function WalletSupplierPending() {
                     <div className="actions">
                       <button
                         className="btn-approve"
-                        onClick={() => requestActionWithConfirm(item.id, 'approve', item.user, item.amount)}
+                        onClick={() => requestActionWithConfirm(item.id, 'approve', item.user, formatItemAmount(item))}
                         disabled={Boolean(actionLoading[item.id])}
                         aria-label={`Aprobar solicitud ${item.id}`}
                       >
@@ -215,7 +216,7 @@ export default function WalletSupplierPending() {
 
                       <button
                         className="btn-reject"
-                        onClick={() => requestActionWithConfirm(item.id, 'reject', item.user, item.amount)}
+                        onClick={() => requestActionWithConfirm(item.id, 'reject', item.user, formatItemAmount(item))}
                         disabled={Boolean(actionLoading[item.id])}
                         aria-label={`Rechazar solicitud ${item.id}`}
                       >

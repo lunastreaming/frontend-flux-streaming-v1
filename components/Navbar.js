@@ -1,127 +1,60 @@
-// components/Navbar.js
 import Link from 'next/link'
 import { FaUserAlt, FaWallet, FaShoppingCart, FaSignOutAlt } from 'react-icons/fa'
 import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function Navbar() {
   const router = useRouter()
-  const { user, ready, logout } = useAuth()
+  const { user, logout } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
 
-  // Normalizar NEXT_PUBLIC_API_URL (quitar slash final). Si no está definida, usar rutas relativas.
-  const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
-  const API_BASE = rawApiBase.replace(/\/+$/, '')
-  const logoutEndpoint = API_BASE ? `${API_BASE}/api/users/logout` : '/api/users/logout'
-  if (!rawApiBase && typeof window !== 'undefined') {
-    console.warn('NEXT_PUBLIC_API_URL no está definida. El endpoint de logout usará ruta relativa /api/users/logout.')
-  }
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  // Evitamos render en SSR para prevenir mismatches de hidratación
+  if (!hasMounted) return null
 
   const handleLogout = async () => {
     if (loggingOut) return
     setLoggingOut(true)
 
     try {
-      const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null
-      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+      const refreshToken = localStorage.getItem('refreshToken')
+      const accessToken = localStorage.getItem('accessToken')
 
-      // Si no hay refresh token, limpiamos sesión local y redirigimos
-      if (!refreshToken) {
-        try { logout() } catch (e) {
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-        }
-        router.push('/')
-        return
-      }
-
-      const endpoint = logoutEndpoint
+      const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
+      const API_BASE = rawApiBase.replace(/\/+$/, '')
+      const logoutEndpoint = API_BASE ? `${API_BASE}/api/users/logout` : '/api/users/logout'
 
       const headers = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      const res = await fetch(endpoint, {
+      // Intentamos llamar al endpoint de logout; fallos no deben bloquear limpieza local
+      await fetch(logoutEndpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ refreshToken }),
-        // Si tu backend usa cookies httpOnly para refresh token, habilita credentials:
-        // credentials: 'include',
+        body: JSON.stringify({ refreshToken })
       })
-
-      // Logs de depuración
-      console.log('Logout request sent to', endpoint)
-      console.log('Logout response status:', res.status)
-
-      const raw = await res.text().catch(() => null)
-      try {
-        const parsed = raw ? JSON.parse(raw) : null
-        console.log('Logout response body (parsed):', parsed)
-      } catch (e) {
-        console.log('Logout response body (raw):', raw)
-      }
-
-      // Si el servidor devuelve 401/403 igual forzamos limpieza local
-      if (res.status === 401 || res.status === 403) {
-        console.warn('Logout endpoint returned unauthorized/forbidden', res.status)
-      } else if (!res.ok) {
-        console.warn('Logout endpoint returned non-ok status', res.status)
-      }
     } catch (err) {
-      // "Failed to fetch" o CORS aparecerán aquí
-      console.error('Error calling logout endpoint:', err)
+      console.error('Error during logout:', err)
     } finally {
-      // Siempre limpiar sesión local y redirigir
       try {
         logout()
-      } catch (e) {
-        try {
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-        } catch (ee) {}
+      } catch {
+        try { localStorage.removeItem('accessToken'); localStorage.removeItem('refreshToken') } catch {}
       }
       setLoggingOut(false)
       router.push('/')
     }
   }
 
-  if (typeof ready !== 'undefined' ? !ready : false) {
-    return (
-      <nav className="navbar">
-        <div className="logo-container">
-          <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
-        </div>
-        <div className="nav-right">
-          <div className="nav-items-placeholder" />
-        </div>
-
-        <style jsx>{`
-          .navbar {
-            width: 100%;
-            max-width: 1200px;
-            margin: 32px auto;
-            padding: 16px 32px;
-            background-color: rgba(26, 26, 26, 0.8);
-            backdrop-filter: blur(12px);
-            border-radius: 20px;
-            border: 1px solid #2E2E2E;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: 'Inter', sans-serif;
-          }
-          .logo-image { height: 40px; object-fit: contain; opacity: 0.95; }
-          .nav-items-placeholder { width: 120px; height: 32px; background: rgba(255,255,255,0.03); border-radius: 8px; }
-        `}</style>
-      </nav>
-    )
-  }
-
   return (
     <nav className="navbar">
       <Link href="/" passHref legacyBehavior>
-        <a className="logo-container">
+        <a className="logo-container" aria-label="Ir al inicio">
           <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
         </a>
       </Link>
@@ -136,6 +69,7 @@ export default function Navbar() {
               </a>
             </Link>
           </li>
+
           <li className="nav-item">
             <Link href="/billetera" passHref legacyBehavior>
               <a>
@@ -144,6 +78,7 @@ export default function Navbar() {
               </a>
             </Link>
           </li>
+
           <li className="nav-item">
             <Link href="/compras" passHref legacyBehavior>
               <a>
@@ -156,7 +91,7 @@ export default function Navbar() {
 
         {!user ? (
           <Link href="/login" passHref legacyBehavior>
-            <a className="login-box">Login</a>
+            <a className="login-box" aria-label="Iniciar sesión">Login</a>
           </Link>
         ) : (
           <button
@@ -171,9 +106,7 @@ export default function Navbar() {
           </button>
         )}
       </div>
-
-      <style jsx>{`
-        /* Estilos ritualizados */
+            <style jsx>{`
         .navbar {
           width: 100%;
           max-width: 1200px;
@@ -281,7 +214,6 @@ export default function Navbar() {
           transform: scale(1.05);
         }
 
-        /* Estilo moderno rojo para Cerrar sesión */
         .login-box.logout {
           background: linear-gradient(135deg, #ff4d6d 0%, #ff233f 100%);
           color: #ffffff;
@@ -309,39 +241,16 @@ export default function Navbar() {
         }
 
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @media (max-width: 768px) {
-          .navbar {
-            flex-direction: column;
-            align-items: flex-start;
-            padding: 16px;
-          }
-          .logo-container {
-            margin-bottom: 12px;
-          }
-          .nav-right {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 16px;
-            width: 100%;
-          }
-          .nav-items {
-            flex-direction: column;
-            gap: 16px;
-            width: 100%;
-          }
-          .login-box {
-            align-self: flex-end;
-          }
+          .navbar { flex-direction: column; align-items: flex-start; padding: 16px; }
+          .logo-container { margin-bottom: 12px; }
+          .nav-right { flex-direction: column; align-items: flex-start; gap: 16px; width: 100%; }
+          .nav-items { flex-direction: column; gap: 16px; width: 100%; }
+          .login-box { align-self: flex-end; }
         }
       `}</style>
     </nav>

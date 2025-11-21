@@ -9,28 +9,13 @@ import ConfirmModal from '../components/ConfirmModal';
 export default function Billetera() {
   const router = useRouter();
 
-  // Leer token sincronamente en la inicialización del hook para evitar flash
-  // (esto mantiene el orden de hooks y permite devolver null si no existe token).
-  const [token] = useState(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  });
+  // ---- Hooks: siempre declarados en el mismo orden ----
+  const [hasMounted, setHasMounted] = useState(false);
+  const [token, setToken] = useState(null);
 
-  // Si no hay token en el cliente, no renderizamos la UI y redirigimos.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!token) {
-      // replace para no dejar entrada en el history
-      router.replace('/login');
-    }
-  }, [router, token]);
-
-  // Mientras no haya token no mostramos nada (evita el "flash" de la página protegida)
-  if (!token) return null;
-
-  // --- Estado y refs normales, se ejecutan siempre (orden de hooks constante) ---
-  const [balance, setBalance] = useState(0);
-  const [movimientos, setMovimientos] = useState([]);
+  // Estado y refs que antes causaban el problema al declararse después del early return
+  const [balance, setBalance] = useState(null); // null = loading, number = loaded
+  const [movimientos, setMovimientos] = useState([]); // store formatted items
   const [pending, setPending] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -40,25 +25,33 @@ export default function Billetera() {
 
   const hasFetched = useRef(false);
 
-  // Tomar la URL base desde la variable de entorno NEXT_PUBLIC_API_URL
-  // Normaliza quitando slash final. Si no existe, usamos cadena vacía (rutas relativas).
+  // BASE desde env (SSR-safe)
   const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
   const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '';
-  if (!rawApiBase && typeof window !== 'undefined') {
-    console.warn('NEXT_PUBLIC_API_URL no está definida. Usando rutas relativas.');
-  }
-
-  // util: construir endpoint sin duplicar slashes
   const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
 
+  // ---- Effects ----
+  useEffect(() => { setHasMounted(true); }, []);
+
+  // leer token solo en cliente, después del montaje
   useEffect(() => {
-    if (!router.isReady || hasFetched.current) return;
-    // token ya leído sincrónicamente; aquí solo confirmamos existencia y usamos.
-    if (!token) {
+    if (!hasMounted) return;
+    try {
+      const t = localStorage.getItem('accessToken');
+      setToken(t);
+      if (!t) router.replace('/login');
+    } catch (e) {
+      setToken(null);
       router.replace('/login');
-      return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMounted]);
+
+  // Fetch inicial: solo cuando estamos montados, router.ready y token presente
+  useEffect(() => {
+    if (!hasMounted || !router.isReady || hasFetched.current || !token) return;
     hasFetched.current = true;
+
     (async () => {
       try {
         await fetchMeAndPopulate(token);
@@ -70,8 +63,9 @@ export default function Billetera() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady, router, token]);
+  }, [hasMounted, router.isReady, token]);
 
+  // ---- Fetchers (client-side) ----
   async function fetchMeAndPopulate(tokenVal) {
     const apiUrl = buildUrl('/api/users/me');
     const res = await fetch(apiUrl, {
@@ -79,19 +73,27 @@ export default function Billetera() {
     });
     if (!res.ok) throw new Error('Token inválido o expirado');
     const data = await res.json();
-    const monto = parseFloat(data.balance) || 0;
+    const monto = Number.parseFloat(data.balance) || 0;
     setBalance(monto);
 
-    if (Array.isArray(data.movements) && data.movements.length > 0) {
-      setMovimientos(data.movements.map(m => ({
+    const rawMov = Array.isArray(data.movements) ? data.movements : [];
+    if (rawMov.length > 0) {
+      const mapped = rawMov.map(m => ({
         id: m.id,
-        date: m.createdAt || m.date || new Date().toISOString(),
+        dateRaw: m.createdAt || m.date || new Date().toISOString(),
         desc: m.description || m.desc || (m.type ? m.type : 'Movimiento'),
-        amount: typeof m.amount === 'number' ? m.amount : parseFloat(m.amount || 0),
+        amount: typeof m.amount === 'number' ? m.amount : Number.parseFloat(m.amount || 0),
         currency: m.currency || 'PEN',
         status: m.status || 'unknown',
         approvedBy: m.approvedBy ? (m.approvedBy.username || m.approvedBy.id || m.approvedBy) : null,
-      })));
+      }));
+      const normalized = mapped.map(m => ({
+        ...m,
+        date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : '',
+      }));
+      setMovimientos(normalized);
+    } else {
+      setMovimientos([]);
     }
   }
 
@@ -119,9 +121,9 @@ export default function Billetera() {
 
     const mapped = data.map(tx => ({
       id: tx.id,
-      date: tx.approvedAt || tx.createdAt || new Date().toISOString(),
+      dateRaw: tx.approvedAt || tx.createdAt || new Date().toISOString(),
       desc: tx.description || tx.type || 'Transacción',
-      amount: typeof tx.amount === 'number' ? tx.amount : parseFloat(tx.amount || 0),
+      amount: typeof tx.amount === 'number' ? tx.amount : Number.parseFloat(tx.amount || 0),
       currency: tx.currency || 'PEN',
       status: tx.status || 'unknown',
       approvedBy: tx.approvedBy ? (tx.approvedBy.username || tx.approvedBy.id || tx.approvedBy) : null,
@@ -129,7 +131,7 @@ export default function Billetera() {
 
     const normalized = mapped.map(m => ({
       ...m,
-      date: m.date ? new Date(m.date).toLocaleString() : '',
+      date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : '',
     }));
 
     setMovimientos(normalized);
@@ -148,11 +150,19 @@ export default function Billetera() {
       return;
     }
     const data = await res.json();
-    if (Array.isArray(data)) setPending(data);
-    else if (Array.isArray(data.pending)) setPending(data.pending);
-    else setPending([]);
+    const list = Array.isArray(data) ? data : Array.isArray(data.pending) ? data.pending : [];
+    const normalized = list.map(p => ({
+      ...p,
+      createdAtRaw: p.createdAt || p.created_at || null,
+    }));
+    const presented = normalized.map(p => ({
+      ...p,
+      createdAtFormatted: p.createdAtRaw ? new Date(p.createdAtRaw).toLocaleString() : '',
+    }));
+    setPending(presented);
   }
 
+  // ---- Actions ----
   const handleAddClick = () => setModalOpen(true);
 
   const handleAdd = async ({ amount, currency }) => {
@@ -232,6 +242,37 @@ export default function Billetera() {
     }
   };
 
+  // helper: mostrar monto con dos decimales; balance null = loading
+  const formatAmount = (v) => {
+    if (v === null) return 'Cargando…';
+    const n = Number(v);
+    if (Number.isNaN(n)) return '—';
+    return `$${n.toFixed(2)}`;
+  };
+
+  // ---- Render ----
+  // Si aún no estamos montados devolvimos un placeholder idéntico en server y cliente
+  if (!hasMounted) {
+    return (
+      <>
+        <Navbar />
+        <main className="wallet-container">
+          <section className="balance-card">
+            <h2>Saldo disponible</h2>
+            <div className="balance-row">
+              <div className="balance-amount">Cargando…</div>
+              <button className="btn-add" disabled>Agregar saldo</button>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Si estamos montados pero token no existe, ya se solicitó redirección en useEffect; no renderizamos nada
+  if (!token) return null;
+
   return (
     <>
       <Navbar />
@@ -239,7 +280,7 @@ export default function Billetera() {
         <section className="balance-card">
           <h2>Saldo disponible</h2>
           <div className="balance-row">
-            <div className="balance-amount">${balance.toFixed(2)}</div>
+            <div className="balance-amount">{formatAmount(balance)}</div>
             <button className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
           </div>
         </section>
@@ -251,10 +292,10 @@ export default function Billetera() {
               {pending.map((p) => (
                 <li key={p.id || p.requestId || JSON.stringify(p)}>
                   <div className="pending-info">
-                    <div className="pending-amt">{p.currency || 'PEN'} {Number(p.amount).toFixed(2)}</div>
+                    <div className="pending-amt">{p.currency || 'PEN'} {Number(p.amount || 0).toFixed(2)}</div>
                     <div className="pending-meta">
                       <div className="pending-desc">{p.description || 'Solicitud de recarga'}</div>
-                      <div className="pending-date">{p.createdAt ? new Date(p.createdAt).toLocaleString() : ''}</div>
+                      <div className="pending-date">{p.createdAtFormatted || ''}</div>
                     </div>
                   </div>
                   <div className="pending-actions">
@@ -279,7 +320,7 @@ export default function Billetera() {
                   <div className="pending-amt">{m.currency || 'PEN'} {Number(m.amount).toFixed(2)}</div>
                   <div className="pending-meta">
                     <div className="pending-desc">{m.desc}</div>
-                    <div className="pending-date">{m.date}</div>
+                    <div className="pending-date">{m.date || ''}</div>
                   </div>
                 </div>
 
@@ -310,132 +351,25 @@ export default function Billetera() {
       />
 
       <style jsx>{`
-        .wallet-container {
-          min-height: 80vh;
-          padding: 60px 24px;
-          background: #0d0d0d;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 24px;
-        }
-
-        .balance-card,
-        .movements-card,
-        .pending-card {
-          width: 100%;
-          max-width: 680px;
-          background: rgba(22, 22, 22, 0.6);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(12px);
-          border-radius: 16px;
-          padding: 18px;
-          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-          color: #f3f3f3;
-        }
-
-        .balance-card h2,
-        .movements-card h3,
-        .pending-card h3 {
-          margin: 0 0 12px;
-          font-weight: 700;
-        }
-
-        .balance-amount {
-          font-size: 2.2rem;
-          font-weight: 800;
-          margin-bottom: 12px;
-        }
-        
-        .balance-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 16px;
-          flex-wrap: wrap;
-        }
-
-        .btn-add {
-          padding: 10px 16px;
-          background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
-          color: #0d0d0d;
-          border: none;
-          border-radius: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: filter 0.2s ease;
-        }
-        .btn-add:hover { filter: brightness(1.05); }
-
-        .pending-list {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .pending-list li {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 10px;
-          border-radius: 10px;
-          background: rgba(10, 10, 10, 0.35);
-          border: 1px solid rgba(255, 255, 255, 0.04);
-        }
-        .pending-list li.empty {
-          justify-content: center;
-          color: #9aa0a6;
-        }
-
-        .pending-info {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-        .pending-amt {
-          font-weight: 800;
-          color: #ffd166;
-          min-width: 110px;
-        }
-        .pending-meta { color: #cfcfcf; font-size: 0.95rem; }
-        .pending-desc { font-weight: 700; color: #e6e6e6; }
-        .pending-date { color: #a6a6a6; font-size: 0.85rem; }
-
-        .btn-cancel {
-          padding: 8px 12px;
-          border-radius: 10px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          background: transparent;
-          color: #ffdede;
-          cursor: pointer;
-          font-weight: 700;
-        }
-        .btn-cancel:hover { filter: brightness(0.95); }
-
-        .pending-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .tx-badge {
-          padding: 6px 10px;
-          border-radius: 999px;
-          font-weight: 700;
-          font-size: 0.75rem;
-          color: #07101a;
-        }
+        .wallet-container { min-height: 80vh; padding: 60px 24px; background: #0d0d0d; display:flex; flex-direction:column; align-items:center; gap:24px; }
+        .balance-card, .movements-card, .pending-card { width:100%; max-width:680px; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); border-radius:16px; padding:18px; box-shadow:0 12px 24px rgba(0,0,0,0.4); color:#f3f3f3; }
+        .balance-card h2, .movements-card h3, .pending-card h3 { margin:0 0 12px; font-weight:700; }
+        .balance-amount { font-size:2.2rem; font-weight:800; margin-bottom:12px; }
+        .balance-row { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+        .btn-add { padding:10px 16px; background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%); color:#0d0d0d; border:none; border-radius:12px; font-weight:700; cursor:pointer; transition:filter 0.2s ease; }
+        .pending-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+        .pending-list li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px; border-radius:10px; background: rgba(10,10,10,0.35); border:1px solid rgba(255,255,255,0.04); }
+        .pending-info { display:flex; gap:12px; align-items:center; }
+        .pending-amt { font-weight:800; color:#ffd166; min-width:110px; }
+        .pending-meta { color:#cfcfcf; font-size:0.95rem; }
+        .pending-desc { font-weight:700; color:#e6e6e6; }
+        .pending-date { color:#a6a6a6; font-size:0.85rem; }
+        .btn-cancel { padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:#ffdede; cursor:pointer; font-weight:700; }
+        .tx-badge { padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.75rem; color:#07101a; }
         .tx-badge.approved { background: linear-gradient(90deg,#bbf7d0,#34d399); color:#04261a; }
         .tx-badge.pending { background: linear-gradient(90deg,#fef3c7,#f59e0b); color:#3a2700; }
         .tx-badge.rejected { background: linear-gradient(90deg,#fecaca,#fb7185); color:#2b0404; }
-
-        @media (max-width: 640px) {
-          .balance-amount { font-size: 1.8rem; }
-          .pending-amt { min-width: 90px; }
-        }
+        @media (max-width:640px) { .balance-amount{font-size:1.8rem} .pending-amt{min-width:90px} }
       `}</style>
     </>
   );
