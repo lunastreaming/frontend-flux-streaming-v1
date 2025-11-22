@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import NavbarSupplier from '../../components/NavBarSupplier'
 import StockModal from '../../components/StockModal'
 import ConfirmModal from '../../components/ConfirmModal'
-import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt } from 'react-icons/fa'
+import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt, FaEye, FaEyeSlash } from 'react-icons/fa'
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([])
@@ -13,6 +13,9 @@ export default function StocksPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmPayload, setConfirmPayload] = useState({ id: null, name: '', action: '', stock: null })
   const [confirmLoading, setConfirmLoading] = useState(false)
+
+  // toggle state to show/hide passwords per stock id
+  const [visiblePasswords, setVisiblePasswords] = useState({})
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -200,7 +203,12 @@ export default function StocksPage() {
     setShowModal(false)
     setEditingStock(null)
   }
-    const confirmMessage = () => {
+
+  const togglePasswordVisibility = (id) => {
+    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const confirmMessage = () => {
     if (!confirmPayload) return ''
     if (confirmPayload.action === 'toggleStatus') {
       const target = confirmPayload.stock?.targetStatus ?? 'active'
@@ -293,8 +301,23 @@ export default function StocksPage() {
                   </td>
 
                   <td>
-                    <div className="row-inner" style={{ fontFamily: 'monospace' }}>
-                      {s.password ? '••••••' : '—'}
+                    <div className="row-inner" style={{ fontFamily: 'monospace', gap: 8 }}>
+                      {/* Plaintext password display with optional toggle */}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {s.password ?? '—'}
+                      </span>
+
+                      {/* Optional per-row visibility toggle (uncomment if you prefer a hide/show control)
+                          <button
+                            type="button"
+                            className="btn-action"
+                            onClick={() => togglePasswordVisibility(s.id)}
+                            title={visiblePasswords[s.id] ? 'Ocultar' : 'Mostrar'}
+                            style={{ padding: 6, minWidth: 36, height: 36 }}
+                          >
+                            {visiblePasswords[s.id] ? <FaEyeSlash /> : <FaEye />}
+                          </button>
+                      */}
                     </div>
                   </td>
 

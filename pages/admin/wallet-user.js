@@ -154,6 +154,29 @@ export default function WalletUserPending() {
     return `${currency} ${display}`
   }
 
+  // Translate backend types to Spanish labels
+  const translateType = (type) => {
+    if (!type || typeof type !== 'string') return ''
+    const t = type.toLowerCase()
+    switch (t) {
+      case 'recharge':
+        return 'Recarga'
+      case 'withdrawal':
+        return 'Retiro'
+      case 'adjustment':
+        return 'Ajuste'
+      case 'publish':
+        return 'Publicación'
+      case 'purchase':
+        return 'Compra'
+      case 'sale':
+        return 'Venta'
+      default:
+        // fallback: capitalize first letter
+        return type.charAt(0).toUpperCase() + type.slice(1)
+    }
+  }
+
   return (
     <>
       <Head>
@@ -199,8 +222,8 @@ export default function WalletUserPending() {
                   <div className="card-left">
                     {/* usuario */}
                     <div className="user">{item.user ?? item.userName ?? item.userId ?? 'Usuario'}</div>
-                    {/* Mostrar el campo type (si viene), si no existe cae a method */}
-                    <div className="meta">{(item.type ?? item.method ?? 'Tipo').toString()}</div>
+                    {/* Mostrar el campo type traducido (si viene), si no existe cae a method */}
+                    <div className="meta">{translateType(item.type ?? item.method ?? 'Tipo')}</div>
                     <div className="date">{new Date(item.createdAt ?? Date.now()).toLocaleString()}</div>
                   </div>
 
@@ -289,7 +312,7 @@ export default function WalletUserPending() {
 
         .card-left { display:flex; flex-direction:column; gap:6px; }
         .user { font-weight:800; color:#fff; }
-        .meta { color:#bdbdbd; font-size:0.9rem; text-transform: capitalize; }
+        .meta { color:#bdbdbd; font-size:0.9rem; text-transform: none; }
         .date { color:#9aa0a6; font-size:0.8rem; }
 
         .card-right { display:flex; align-items:center; gap:12px; }

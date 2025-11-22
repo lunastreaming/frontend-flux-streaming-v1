@@ -1,186 +1,225 @@
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/router';
-import NavBarSupplier from '../../components/NavBarSupplier';
-import Footer from '../../components/Footer';
-import AddBalanceModal from '../../components/AddBalanceModalSupplier';
-import ConfirmModal from '../../components/ConfirmModal';
-import LiquidarModal from '../../components/LiquidarModal';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
+// pages/supplier/billetera-supplier.js
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/router'
+import NavBarSupplier from '../../components/NavBarSupplier'
+import Footer from '../../components/Footer'
+import AddBalanceModal from '../../components/AddBalanceModalSupplier'
+import ConfirmModal from '../../components/ConfirmModal'
+import LiquidarModal from '../../components/LiquidarModal'
+import TransferToUserModal from '../../components/TransferToUserModal'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faExchangeAlt } from '@fortawesome/free-solid-svg-icons'
 
 export default function BilleteraSupplier() {
-  const router = useRouter();
-  const [balance, setBalance] = useState(0);
-  const [movimientos, setMovimientos] = useState([]);
-  const [pending, setPending] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [liquidarOpen, setLiquidarOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTargetId, setConfirmTargetId] = useState(null);
-  const [confirmLoading, setConfirmLoading] = useState(false);
-  const hasFetched = useRef(false);
+  const router = useRouter()
+  const [balance, setBalance] = useState(0)
+  const [movimientos, setMovimientos] = useState([])
+  const [pending, setPending] = useState([])
+  const [modalOpen, setModalOpen] = useState(false)
+  const [liquidarOpen, setLiquidarOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTargetId, setConfirmTargetId] = useState(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const hasFetched = useRef(false)
+
+  // Transfer modal state
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferSource, setTransferSource] = useState(null)
 
   // BASE desde variable de entorno (SSR-safe)
-  const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
-  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '';
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL
+  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : ''
 
-  // Aviso sólo en cliente para evitar diferencias SSR/CSR
   useEffect(() => {
     if (!rawApiBase) {
-      console.warn('NEXT_PUBLIC_API_URL no está definida. Usando rutas relativas.');
+      console.warn('NEXT_PUBLIC_API_URL no está definida. Usando rutas relativas.')
     }
-  }, [rawApiBase]);
+  }, [rawApiBase])
 
   // util: construir endpoint sin duplicar slashes
-  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
+  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`
 
   useEffect(() => {
-    if (!router.isReady || hasFetched.current) return;
+    if (!router.isReady || hasFetched.current) return
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
     if (!token) {
-      router.push('/supplier/loginSupplier');
-      return;
+      router.push('/supplier/loginSupplier')
+      return
     }
 
-    hasFetched.current = true;
-    (async () => {
+    hasFetched.current = true
+    ;(async () => {
       try {
-        await fetchMeAndPopulate(token);
-        await fetchPendingRequests(token);
-        await fetchUserTransactions(token);
+        await fetchMeAndPopulate(token)
+        await fetchPendingRequests(token)
+        await fetchUserTransactions(token)
       } catch (err) {
-        console.error('Error inicial:', err);
-        router.push('/supplier/loginSupplier');
+        console.error('Error inicial:', err)
+        router.push('/supplier/loginSupplier')
       }
-    })();
-  }, [router.isReady]);
+    })()
+  }, [router.isReady])
 
   async function fetchMeAndPopulate(token) {
     const res = await fetch(buildUrl('/api/users/me'), {
       headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error('Token inválido');
-    const data = await res.json();
-    setBalance(parseFloat(data.balance) || 0);
-    if (Array.isArray(data.movements)) setMovimientos(data.movements);
+    })
+    if (!res.ok) throw new Error('Token inválido')
+    const data = await res.json()
+    setBalance(parseFloat(data.balance) || 0)
+    if (Array.isArray(data.movements)) setMovimientos(data.movements)
   }
 
   async function fetchUserTransactions(token) {
     const res = await fetch(buildUrl('/api/wallet/user/transactions?status=complete'), {
       headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (Array.isArray(data)) setMovimientos(data);
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    if (Array.isArray(data)) setMovimientos(data)
   }
 
   async function fetchPendingRequests(token) {
     const res = await fetch(buildUrl('/api/wallet/user/pending'), {
       headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    // backend puede devolver array o objeto { pending: [...] }
-    const list = Array.isArray(data) ? data : Array.isArray(data.pending) ? data.pending : [];
-    setPending(list);
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    const list = Array.isArray(data) ? data : Array.isArray(data.pending) ? data.pending : []
+    setPending(list)
   }
 
-  const handleAddClick = () => setModalOpen(true);
-  const handleTransferClick = () => router.push('/supplier/transferencia');
-  // antes navegábamos a otra página; ahora abrimos el modal de liquidar
+  const handleAddClick = () => setModalOpen(true)
+
+  // open transfer modal instead of navigating away
+  const handleTransferClick = () => {
+    // set a source snapshot if you want (null here) and open modal
+    setTransferSource(null)
+    setTransferOpen(true)
+  }
+
   const handleLiquidarClick = () => {
-    setModalOpen(false); // opcional: cerrar add-balance si estaba abierto
-    setLiquidarOpen(true);
-  };
+    setModalOpen(false)
+    setLiquidarOpen(true)
+  }
 
   const handleAdd = async ({ amount, currency }) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
     const res = await fetch(buildUrl('/api/wallet/recharge'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ amount, isSoles: currency === 'PEN' }),
-    });
-    if (!res.ok) return;
-    await fetchMeAndPopulate(token);
-    await fetchPendingRequests(token);
-    await fetchUserTransactions(token);
-  };
+    })
+    if (!res.ok) return
+    await fetchMeAndPopulate(token)
+    await fetchPendingRequests(token)
+    await fetchUserTransactions(token)
+  }
 
-  // cancelar pending (ejemplo simple que abre modal de confirmación)
+  // cancelar pending
   const openCancelConfirm = (id) => {
-    setConfirmTargetId(id);
-    setConfirmOpen(true);
-  };
+    setConfirmTargetId(id)
+    setConfirmOpen(true)
+  }
 
   const onConfirmCancel = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token || !confirmTargetId) return;
-    setConfirmLoading(true);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+    if (!token || !confirmTargetId) return
+    setConfirmLoading(true)
     try {
       const res = await fetch(buildUrl(`/api/wallet/cancel/pending/${confirmTargetId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        // puedes parsear y mostrar mensaje aquí
-        throw new Error('Error al cancelar');
-      }
-      // refrescar datos
-      await fetchMeAndPopulate(token);
-      await fetchPendingRequests(token);
-      await fetchUserTransactions(token);
-      setConfirmOpen(false);
-      setConfirmTargetId(null);
+      })
+      if (!res.ok) throw new Error('Error al cancelar')
+      await fetchMeAndPopulate(token)
+      await fetchPendingRequests(token)
+      await fetchUserTransactions(token)
+      setConfirmOpen(false)
+      setConfirmTargetId(null)
     } catch (err) {
-      console.error(err);
+      console.error(err)
     } finally {
-      setConfirmLoading(false);
+      setConfirmLoading(false)
     }
-  };
+  }
 
-  // Helper: normaliza un valor (number|string) a unidades (ej. 930.25)
+  // Helper: normaliza un valor a unidades
   const parseAmountToUnits = (value, { maybeIsCents = false } = {}) => {
-    if (value === null || value === undefined) return null;
+    if (value === null || value === undefined) return null
     if (typeof value === 'number') {
-      if (maybeIsCents && Number.isInteger(value) && Math.abs(value) > 1000) return value / 100;
-      return value;
+      if (maybeIsCents && Number.isInteger(value) && Math.abs(value) > 1000) return value / 100
+      return value
     }
     if (typeof value === 'string') {
-      const trimmed = value.trim();
+      const trimmed = value.trim()
       if (trimmed.includes('.')) {
-        const n = parseFloat(trimmed);
-        return Number.isNaN(n) ? null : n;
+        const n = parseFloat(trimmed)
+        return Number.isNaN(n) ? null : n
       }
-      const asInt = parseInt(trimmed, 10);
-      if (Number.isNaN(asInt)) return null;
-      if (maybeIsCents && Math.abs(asInt) > 1000) return asInt / 100;
-      return asInt;
+      const asInt = parseInt(trimmed, 10)
+      if (Number.isNaN(asInt)) return null
+      if (maybeIsCents && Math.abs(asInt) > 1000) return asInt / 100
+      return asInt
     }
-    return null;
-  };
+    return null
+  }
 
-  // Helper: formatea monto y aplica signo negativo antes del monto (no antes de la moneda)
+  // Helper: formatea monto; para withdrawals usa realAmount si existe
   const formatPendingAmount = (p) => {
-    const currency = p.currency || 'PEN';
-    const isWithdrawal = p.type && p.type.toLowerCase() === 'withdrawal';
-
-    // prefer realAmount for withdrawals, fall back to amount
+    const currency = p.currency || 'PEN'
+    const isWithdrawal = p.type && p.type.toLowerCase() === 'withdrawal'
     const raw = isWithdrawal
       ? (p.realAmount !== undefined && p.realAmount !== null ? p.realAmount : p.amount)
-      : p.amount;
+      : p.amount
+    const units = parseAmountToUnits(raw, { maybeIsCents: false })
+    const value = units === null ? 0 : units
+    const absVal = Math.abs(value).toFixed(2)
+    const sign = isWithdrawal ? '-' : ''
+    return `${currency} ${sign}${absVal}`
+  }
 
-    // ajusta maybeIsCents = true si el backend envía centavos (BIGINT)
-    const units = parseAmountToUnits(raw, { maybeIsCents: false });
-    const value = units === null ? 0 : units;
+  // Traduce estados del backend a etiquetas legibles en frontend
+  const translateStatus = (status) => {
+    if (!status) return ''
+    const s = status.toString().toLowerCase()
+    switch (s) {
+      case 'approved':
+        return 'Completado'
+      case 'complete':
+        return 'Completado'
+      case 'pending':
+        return 'Pendiente'
+      case 'rejected':
+      case 'rejected_by_user':
+      case 'failed':
+        return 'Rechazado'
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1)
+    }
+  }
 
-    // si es withdrawal, visualmente lo mostramos negativo (anteponer '-' al monto)
-    const absVal = Math.abs(value).toFixed(2);
-    const sign = isWithdrawal ? '-' : '';
+  // getAuthToken helper for TransferToUserModal (keeps parity with other components)
+  const getAuthToken = async () => {
+    try {
+      // you may have a different auth flow; this mirrors previous components
+      const t = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+      return t
+    } catch {
+      return null
+    }
+  }
 
-    // resultado: "PEN -930.00" o "PEN 930.00"
-    return `${currency} ${sign}${absVal}`;
-  };
+  // Called after successful transfer from modal
+  const onTransferSuccess = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+    if (token) {
+      await fetchMeAndPopulate(token)
+      await fetchPendingRequests(token)
+      await fetchUserTransactions(token)
+    }
+  }
 
   return (
     <>
@@ -189,15 +228,26 @@ export default function BilleteraSupplier() {
         <section className="balance-card">
           <div className="balance-header">
             <h2>Saldo disponible</h2>
-            <button className="btn-transfer" onClick={handleTransferClick} aria-label="Transferir">
+            <button
+              type="button"
+              className="btn-transfer"
+              onClick={handleTransferClick}
+              aria-label="Transferir"
+            >
               <FontAwesomeIcon icon={faExchangeAlt} />
             </button>
           </div>
+
           <div className="balance-row">
             <div className="balance-amount">${balance.toFixed(2)}</div>
+
             <div className="balance-actions">
-              <button className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
-              <button className="btn-liquidar" onClick={handleLiquidarClick}>Liquidar</button>
+              <button type="button" className="btn-add" onClick={handleAddClick}>
+                Agregar saldo
+              </button>
+              <button type="button" className="btn-liquidar" onClick={handleLiquidarClick}>
+                Liquidar
+              </button>
             </div>
           </div>
         </section>
@@ -216,7 +266,12 @@ export default function BilleteraSupplier() {
                     </div>
                   </div>
                   <div className="pending-actions">
-                    <button className="btn-cancel" onClick={() => openCancelConfirm(p.id || p.requestId)}>Eliminar</button>
+                    <button type="button" className="btn-cancel" onClick={() => openCancelConfirm(p.id || p.requestId)}>
+                      Eliminar
+                    </button>
+                    <span className={`tx-badge ${p.status === 'approved' || p.status === 'complete' ? 'approved' : p.status === 'pending' ? 'pending' : 'rejected'}`} style={{ marginLeft: 8 }}>
+                      {translateStatus(p.status)}
+                    </span>
                   </div>
                 </li>
               ))}
@@ -239,7 +294,7 @@ export default function BilleteraSupplier() {
                 </div>
                 <div className="pending-actions">
                   <span className={`tx-badge ${m.status === 'approved' || m.status === 'complete' ? 'approved' : m.status === 'pending' ? 'pending' : 'rejected'}`}>
-                    {m.status}
+                    {translateStatus(m.status)}
                   </span>
                 </div>
               </li>
@@ -249,19 +304,34 @@ export default function BilleteraSupplier() {
       </main>
 
       <Footer />
+
       <AddBalanceModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAdd} />
+
       <LiquidarModal
         open={liquidarOpen}
         onClose={() => setLiquidarOpen(false)}
-        onDone={() => {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        onDone={async () => {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
           if (token) {
-            fetchMeAndPopulate(token);
-            fetchPendingRequests(token);
-            fetchUserTransactions(token);
+            await fetchMeAndPopulate(token)
+            await fetchPendingRequests(token)
+            await fetchUserTransactions(token)
           }
         }}
       />
+
+      <TransferToUserModal
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        sourceItem={transferSource}
+        getAuthToken={getAuthToken}
+        baseUrl={apiBase}
+        settingsPath="/api/settings"
+        searchEndpoint="/api/users/search-by-phone"
+        transferEndpoint="/api/wallet/admin/transfer-to-user"
+        onSuccess={onTransferSuccess}
+      />
+
       <ConfirmModal
         open={confirmOpen}
         loading={confirmLoading}
@@ -461,5 +531,5 @@ export default function BilleteraSupplier() {
         }
       `}</style>
     </>
-  );
+  )
 }
