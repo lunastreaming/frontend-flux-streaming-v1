@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
+import AdminPasswordModal from '../../components/AdminPasswordModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
   FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan
@@ -10,7 +11,8 @@ import {
 
 export default function AdminSuppliersPage() {
   const { ensureValidAccess } = useAuth()
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE_RAW = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE = API_BASE_RAW.replace(/\/+$/, '')
   const PROVIDERS_ENDPOINT = `${API_BASE}/api/users/providers`
 
   const [suppliers, setSuppliers] = useState([])
@@ -29,7 +31,10 @@ export default function AdminSuppliersPage() {
     loading: false
   })
 
-  useEffect(() => { fetchSuppliers() }, [])
+  // Estado para el modal de cambio de contraseña
+  const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
+
+  useEffect(() => { fetchSuppliers() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getAuthToken = async () => {
     try {
@@ -98,10 +103,8 @@ export default function AdminSuppliersPage() {
     if (requireAuth && token) opts.credentials = opts.credentials ?? 'omit'
     else opts.credentials = opts.credentials ?? 'include'
 
-    try { console.debug('callEndpoint', { url, method: opts.method || 'GET', hasToken: Boolean(token) }) } catch (_) {}
     const res = await fetch(url, opts)
     const text = await res.text().catch(() => null)
-    try { console.debug('callEndpoint response', { url, status: res.status, bodyPreview: text ? (text.length > 200 ? text.slice(0, 200) + '...' : text) : null }) } catch (_) {}
     if (!res.ok) {
       const msg = text && text.length ? text : `Error ${res.status}`
       throw new Error(msg)
@@ -115,18 +118,30 @@ export default function AdminSuppliersPage() {
     return <span className="status inactive">Inactivo</span>
   }
 
+  // Abre modal de confirmación para acciones que no sean password
   const requestConfirmAction = (userId, username, currentStatus, actionOverride = null) => {
     const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
-    const message = action === 'verify'
-      ? `Vas a activar al proveedor ${username}. ¿Deseas continuar?`
-      : action === 'disable'
-        ? `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
-        : `Confirmar acción ${action} para proveedor ${username}.`
+    // Si la acción es 'password' no usamos este modal; abrimos el modal de password
+    if (action === 'password') {
+      openPasswordModal(userId, username)
+      return
+    }
+
+    let message = ''
+    if (action === 'verify') {
+      message = `Vas a activar al proveedor ${username}. ¿Deseas continuar?`
+    } else if (action === 'disable') {
+      message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
+    } else if (action === 'delete') {
+      message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`
+    } else {
+      message = `Confirmar acción ${action} para proveedor ${username}.`
+    }
     setConfirmData({ open: true, userId, username, action, message, loading: false })
   }
 
   const handleConfirm = async () => {
-    const { userId, username, action } = confirmData
+    const { userId, action } = confirmData
     if (!userId || !action) {
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
       return
@@ -138,22 +153,24 @@ export default function AdminSuppliersPage() {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchSuppliers()
-        alert(`Proveedor ${username} activado correctamente`)
       } else if (action === 'disable') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchSuppliers()
-        alert(`Proveedor ${username} inhabilitado correctamente`)
+      } else if (action === 'delete') {
+        const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
+        await callEndpoint(url, { method: 'DELETE' }, true)
+        await fetchSuppliers()
       } else {
+        // otras acciones administrativas si las tuvieras
         const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
         await fetchSuppliers()
-        alert(`Acción ${action} ejecutada correctamente para ${username}`)
       }
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
     } catch (err) {
       console.error(`handleConfirm error for ${action} ${userId}:`, err)
-      alert(err.message || 'Ocurrió un error en la acción')
+      setError(err.message || 'Ocurrió un error en la acción')
       setConfirmData(prev => ({ ...prev, loading: false }))
     } finally {
       setLoading(false)
@@ -164,7 +181,14 @@ export default function AdminSuppliersPage() {
     setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
   }
 
-  return (
+  // Abrir / cerrar modal de contraseña
+  const openPasswordModal = (userId, username) => {
+    setPwdModal({ open: true, userId, username })
+  }
+  const closePasswordModal = () => {
+    setPwdModal({ open: false, userId: null, username: null })
+  }
+    return (
     <>
       <Head><title>Proveedores | Admin</title></Head>
 
@@ -242,7 +266,7 @@ export default function AdminSuppliersPage() {
 
                                 <button
                                   title="Password"
-                                  onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'password')}
+                                  onClick={() => openPasswordModal(u.id, u.username ?? u.phone ?? String(u.id))}
                                   aria-label={`Reset password ${u.id}`}
                                 >
                                   <FaKey />
@@ -292,13 +316,37 @@ export default function AdminSuppliersPage() {
 
       <ConfirmModal
         open={confirmData.open}
-        title={confirmData.action === 'verify' ? 'Confirmar activación' : (confirmData.action === 'disable' ? 'Confirmar inhabilitación' : 'Confirmar acción')}
+        title={
+          confirmData.action === 'verify'
+            ? 'Confirmar activación'
+            : confirmData.action === 'disable'
+            ? 'Confirmar inhabilitación'
+            : confirmData.action === 'delete'
+            ? 'Confirmar eliminación'
+            : 'Confirmar acción'
+        }
         message={confirmData.message}
-        confirmText={confirmData.action === 'verify' ? 'Activar' : (confirmData.action === 'disable' ? 'Inhabilitar' : 'Confirmar')}
+        confirmText={
+          confirmData.action === 'verify'
+            ? 'Activar'
+            : confirmData.action === 'disable'
+            ? 'Inhabilitar'
+            : confirmData.action === 'delete'
+            ? 'Eliminar'
+            : 'Confirmar'
+        }
         cancelText="Cancelar"
         onConfirm={handleConfirm}
         onCancel={handleCancelConfirm}
         loading={confirmData.loading}
+      />
+
+      <AdminPasswordModal
+        open={pwdModal.open}
+        userId={pwdModal.userId}
+        username={pwdModal.username}
+        onClose={closePasswordModal}
+        onSuccess={() => { closePasswordModal(); fetchSuppliers(); }}
       />
 
       <style jsx>{`

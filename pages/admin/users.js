@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
+import AdminPasswordModal from '../../components/AdminPasswordModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
   FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash
@@ -11,7 +12,6 @@ import {
 export default function AdminUsersPage() {
   const { ensureValidAccess } = useAuth()
 
-  // Normalize NEXT_PUBLIC_API_URL from envs (remove trailing slash). If not set use empty string (relative paths).
   const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
   const API_BASE = rawApiBase.replace(/\/+$/, '')
   const USERS_ENDPOINT = `${API_BASE}/api/users/sellers`
@@ -31,6 +31,9 @@ export default function AdminUsersPage() {
     message: '',
     loading: false
   })
+
+  // Estado para el modal de cambio de contraseña
+  const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
 
   useEffect(() => { fetchUsers() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -101,10 +104,8 @@ export default function AdminUsersPage() {
     if (requireAuth && token) opts.credentials = opts.credentials ?? 'omit'
     else opts.credentials = opts.credentials ?? 'include'
 
-    try { console.debug('callEndpoint', { url, method: opts.method || 'GET', hasToken: Boolean(token) }) } catch (_) {}
     const res = await fetch(url, opts)
     const text = await res.text().catch(() => null)
-    try { console.debug('callEndpoint response', { url, status: res.status, bodyPreview: text ? (text.length > 200 ? text.slice(0, 200) + '...' : text) : null }) } catch (_) {}
     if (!res.ok) {
       const msg = text && text.length ? text : `Error ${res.status}`
       throw new Error(msg)
@@ -118,18 +119,31 @@ export default function AdminUsersPage() {
     return <span className="status inactive">Inactivo</span>
   }
 
+  // Abre modal de confirmación para acciones que no sean password
   const requestConfirmAction = (userId, username, currentStatus, actionOverride = null) => {
     const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
-    const message = action === 'verify'
-      ? `Vas a activar al usuario ${username}. ¿Deseas continuar?`
-      : action === 'disable'
-        ? `Vas a inhabilitar al usuario ${username}. ¿Deseas continuar?`
-        : `Confirmar acción ${action} para usuario ${username}.`
+
+    // Si la acción es 'password' abrimos el modal de password
+    if (action === 'password') {
+      openPasswordModal(userId, username)
+      return
+    }
+
+    let message = ''
+    if (action === 'verify') {
+      message = `Vas a activar al usuario ${username}. ¿Deseas continuar?`
+    } else if (action === 'disable') {
+      message = `Vas a inhabilitar al usuario ${username}. ¿Deseas continuar?`
+    } else if (action === 'delete') {
+      message = `¿Seguro que quieres eliminar al usuario ${username}? Esta acción es irreversible.`
+    } else {
+      message = `Confirmar acción ${action} para usuario ${username}.`
+    }
     setConfirmData({ open: true, userId, username, action, message, loading: false })
   }
 
   const handleConfirm = async () => {
-    const { userId, username, action } = confirmData
+    const { userId, action } = confirmData
     if (!userId || !action) {
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
       return
@@ -138,26 +152,22 @@ export default function AdminUsersPage() {
     setLoading(true)
     try {
       if (action === 'verify') {
-        // Use API_BASE (from env) instead of hardcoded localhost
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchUsers()
-        alert(`Usuario ${username} activado correctamente`)
       } else if (action === 'disable') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
         await callEndpoint(url, { method: 'PATCH' }, true)
         await fetchUsers()
-        alert(`Usuario ${username} inhabilitado correctamente`)
-      } else {
-        const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
-        await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
+      } else if (action === 'delete') {
+        const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
+        await callEndpoint(url, { method: 'DELETE' }, true)
         await fetchUsers()
-        alert(`Acción ${action} ejecutada correctamente para ${username}`)
       }
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
     } catch (err) {
       console.error(`handleConfirm error for ${action} ${userId}:`, err)
-      alert(err.message || 'Ocurrió un error en la acción')
+      setError(err.message || 'Ocurrió un error en la acción')
       setConfirmData(prev => ({ ...prev, loading: false }))
     } finally {
       setLoading(false)
@@ -168,7 +178,14 @@ export default function AdminUsersPage() {
     setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
   }
 
-  return (
+  // Abrir / cerrar modal de contraseña
+  const openPasswordModal = (userId, username) => {
+    setPwdModal({ open: true, userId, username })
+  }
+  const closePasswordModal = () => {
+    setPwdModal({ open: false, userId: null, username: null })
+  }
+    return (
     <>
       <Head><title>Usuarios | Admin</title></Head>
 
@@ -231,37 +248,86 @@ export default function AdminUsersPage() {
                             <td>{u.username ?? '-'}</td>
                             <td>{u.phone ?? u.celular ?? '-'}</td>
                             <td>{u.role ?? '-'}</td>
-                            <td className="mono">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '-')}</td>
+                            <td className="mono">
+                              {typeof u.balance === 'number'
+                                ? u.balance.toFixed(2)
+                                : (u.balance ?? '-')}
+                            </td>
                             <td className="mono">{u.salesCount ?? 0}</td>
                             <td>{statusBadge(currentStatus)}</td>
                             <td>
                               <div className="actions">
                                 <button
                                   title={actionLabel}
-                                  onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus)}
+                                  onClick={() => requestConfirmAction(
+                                    u.id,
+                                    u.username ?? u.phone ?? String(u.id),
+                                    currentStatus
+                                  )}
                                   aria-label={`${actionLabel} usuario ${u.id}`}
                                   className={currentStatus === 'active' ? 'disable-btn' : 'verify-btn'}
                                 >
                                   <FaCheck />
                                 </button>
 
-                                <button title="Password" onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'password')} aria-label={`Reset password ${u.id}`}>
+                                <button
+                                  title="Password"
+                                  onClick={() => openPasswordModal(u.id, u.username ?? u.phone ?? String(u.id))}
+                                  aria-label={`Reset password ${u.id}`}
+                                >
                                   <FaKey />
                                 </button>
 
-                                <button title="Descuento" onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'discount')} aria-label={`Aplicar descuento ${u.id}`}>
+                                <button
+                                  title="Descuento"
+                                  onClick={() => requestConfirmAction(
+                                    u.id,
+                                    u.username ?? u.phone ?? String(u.id),
+                                    currentStatus,
+                                    'discount'
+                                  )}
+                                  aria-label={`Aplicar descuento ${u.id}`}
+                                >
                                   <FaTag />
                                 </button>
 
-                                <button title="Incentivo" onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'incentive')} aria-label={`Incentivo ${u.id}`}>
+                                <button
+                                  title="Incentivo"
+                                  onClick={() => requestConfirmAction(
+                                    u.id,
+                                    u.username ?? u.phone ?? String(u.id),
+                                    currentStatus,
+                                    'incentive'
+                                  )}
+                                  aria-label={`Incentivo ${u.id}`}
+                                >
                                   <FaGift />
                                 </button>
 
-                                <button title="Referidos" onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'referrals')} aria-label={`Referidos ${u.id}`}>
+                                <button
+                                  title="Referidos"
+                                  onClick={() => requestConfirmAction(
+                                    u.id,
+                                    u.username ?? u.phone ?? String(u.id),
+                                    currentStatus,
+                                    'referrals'
+                                  )}
+                                  aria-label={`Referidos ${u.id}`}
+                                >
                                   <FaUserFriends />
                                 </button>
 
-                                <button title="Eliminar" onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'delete')} className="danger" aria-label={`Eliminar ${u.id}`}>
+                                <button
+                                  title="Eliminar"
+                                  onClick={() => requestConfirmAction(
+                                    u.id,
+                                    u.username ?? u.phone ?? String(u.id),
+                                    currentStatus,
+                                    'delete'
+                                  )}
+                                  className="danger"
+                                  aria-label={`Eliminar ${u.id}`}
+                                >
                                   <FaTrash />
                                 </button>
                               </div>
@@ -270,18 +336,26 @@ export default function AdminUsersPage() {
                         )
                       })}
                       {pageItems.length === 0 && (
-                        <tr><td colSpan="8" className="empty">No se encontraron usuarios</td></tr>
+                        <tr>
+                          <td colSpan="8" className="empty">No se encontraron usuarios</td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
 
                 <div className="pager-container">
-                  <div className="pager-info">Mostrando {Math.min(filtered.length, page * pageSize)} de {filtered.length} usuarios</div>
+                  <div className="pager-info">
+                    Mostrando {Math.min(filtered.length, page * pageSize)} de {filtered.length} usuarios
+                  </div>
                   <div className="pager-controls" role="navigation" aria-label="Paginación">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</button>
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                      Anterior
+                    </button>
                     <span className="pager-page"> {page} / {totalPages} </span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Siguiente</button>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                      Siguiente
+                    </button>
                   </div>
                 </div>
               </>
@@ -292,13 +366,37 @@ export default function AdminUsersPage() {
 
       <ConfirmModal
         open={confirmData.open}
-        title={confirmData.action === 'verify' ? 'Confirmar activación' : (confirmData.action === 'disable' ? 'Confirmar inhabilitación' : 'Confirmar acción')}
+        title={
+          confirmData.action === 'verify'
+            ? 'Confirmar activación'
+            : confirmData.action === 'disable'
+            ? 'Confirmar inhabilitación'
+            : confirmData.action === 'delete'
+            ? 'Confirmar eliminación'
+            : 'Confirmar acción'
+        }
         message={confirmData.message}
-        confirmText={confirmData.action === 'verify' ? 'Activar' : (confirmData.action === 'disable' ? 'Inhabilitar' : 'Confirmar')}
+        confirmText={
+          confirmData.action === 'verify'
+            ? 'Activar'
+            : confirmData.action === 'disable'
+            ? 'Inhabilitar'
+            : confirmData.action === 'delete'
+            ? 'Eliminar'
+            : 'Confirmar'
+        }
         cancelText="Cancelar"
         onConfirm={handleConfirm}
         onCancel={handleCancelConfirm}
         loading={confirmData.loading}
+      />
+
+      <AdminPasswordModal
+        open={pwdModal.open}
+        userId={pwdModal.userId}
+        username={pwdModal.username}
+        onClose={closePasswordModal}
+        onSuccess={() => { closePasswordModal(); fetchUsers(); }}
       />
 
       <style jsx>{`
@@ -347,12 +445,12 @@ export default function AdminUsersPage() {
         thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; }
 
         /* Reduced width for "Nº Ventas" (col 6) and increased width for "Acciones" (col 8) */
-        thead th:nth-child(6), tbody td:nth-child(6) { width: 6%; }   /* Nº Ventas reducido */
+        thead th:nth-child(6), tbody td:nth-child(6) { width: 6%; }
         thead th:nth-child(7), tbody td:nth-child(7) { width: 10%; }
 
         thead th:nth-child(8), tbody td:nth-child(8) {
-          width: 24%;              /* aumentado para acciones */
-          max-width: 360px;       /* mayor max para más espacio a botones */
+          width: 24%;
+          max-width: 360px;
           vertical-align: top;
           padding-right: 8px;
           overflow: hidden;
@@ -423,7 +521,7 @@ export default function AdminUsersPage() {
           table.users-table { min-width: 760px; }
           .search-box input { width: 100%; }
           thead th:nth-child(8), tbody td:nth-child(8) { max-width: 300px; width: 26%; }
-          thead th:nth-child(6), tbody td:nth-child(6) { width: 8%; } /* small adjustment on small screens */
+          thead th:nth-child(6), tbody td:nth-child(6) { width: 8%; }
         }
       `}</style>
     </>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import NavbarSupplier from '../../components/NavBarSupplier'
 import StockModal from '../../components/StockModal'
 import ConfirmModal from '../../components/ConfirmModal'
-import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt } from 'react-icons/fa'
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([])
@@ -13,9 +13,6 @@ export default function StocksPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmPayload, setConfirmPayload] = useState({ id: null, name: '', action: '', stock: null })
   const [confirmLoading, setConfirmLoading] = useState(false)
-
-  // toggle state to show/hide passwords per stock id
-  const [visiblePasswords, setVisiblePasswords] = useState({})
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -204,10 +201,6 @@ export default function StocksPage() {
     setEditingStock(null)
   }
 
-  const togglePasswordVisibility = (id) => {
-    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }))
-  }
-
   const confirmMessage = () => {
     if (!confirmPayload) return ''
     if (confirmPayload.action === 'toggleStatus') {
@@ -227,6 +220,16 @@ export default function StocksPage() {
     }
     if (confirmPayload.action === 'remove') return 'Eliminar'
     return 'Confirmar'
+  }
+
+  // Helper: short display for long urls (returns empty string for falsy)
+  const displayUrl = (rawUrl, max = 48) => {
+    if (!rawUrl) return ''
+    const s = String(rawUrl)
+    if (s.length <= max) return s
+    const start = s.slice(0, Math.floor(max * 0.6))
+    const end = s.slice(-Math.floor(max * 0.4))
+    return `${start}…${end}`
   }
 
   return (
@@ -293,46 +296,40 @@ export default function StocksPage() {
                   </td>
 
                   <td>
-                    <div className="row-inner td-name">{s.productName ?? s.name ?? '—'}</div>
+                    <div className="row-inner td-name">{s.productName ?? s.name ?? ''}</div>
                   </td>
 
                   <td>
-                    <div className="row-inner">{s.username ?? '—'}</div>
+                    <div className="row-inner">{s.username ?? ''}</div>
                   </td>
 
                   <td>
                     <div className="row-inner" style={{ fontFamily: 'monospace', gap: 8 }}>
-                      {/* Plaintext password display with optional toggle */}
                       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {s.password ?? '—'}
+                        {s.password ?? ''}
                       </span>
-
-                      {/* Optional per-row visibility toggle (uncomment if you prefer a hide/show control)
-                          <button
-                            type="button"
-                            className="btn-action"
-                            onClick={() => togglePasswordVisibility(s.id)}
-                            title={visiblePasswords[s.id] ? 'Ocultar' : 'Mostrar'}
-                            style={{ padding: 6, minWidth: 36, height: 36 }}
-                          >
-                            {visiblePasswords[s.id] ? <FaEyeSlash /> : <FaEye />}
-                          </button>
-                      */}
                     </div>
                   </td>
 
                   <td>
-                    <div className="row-inner" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.url ?? '—'}
+                    <div className="row-inner url-cell">
+                      {/* Show URL as plain text. If empty, render an empty element (no dash). */}
+                      {s.url ? (
+                        <span className="url-text" title={s.url}>
+                          {displayUrl(s.url, 48)}
+                        </span>
+                      ) : (
+                        <span className="url-empty" aria-hidden="true"></span>
+                      )}
                     </div>
                   </td>
 
                   <td>
-                    <div className="row-inner">{s.profileNumber ?? '—'}</div>
+                    <div className="row-inner">{s.profileNumber ?? ''}</div>
                   </td>
 
                   <td>
-                    <div className="row-inner">{s.pin ?? '—'}</div>
+                    <div className="row-inner">{s.pin ?? ''}</div>
                   </td>
 
                   <td>
@@ -514,6 +511,19 @@ export default function StocksPage() {
         .btn-action { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: #0d0d0d; }
         .btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: #0d0d0d; }
         .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); color: #fff; }
+
+        /* URL cell styles: plain text, empty when missing.
+           Use the same color as other table values by inheriting the container color. */
+        .url-cell { min-width: 0; } /* allow truncation */
+        .url-text {
+          color: inherit; /* match other table values */
+          display: inline-block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .url-empty { display: inline-block; width: 0; height: 0; } /* visually empty */
 
         @media (max-width: 980px) {
           col:nth-child(3) { width: 120px; }
