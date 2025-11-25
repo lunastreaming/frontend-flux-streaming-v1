@@ -16,6 +16,9 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  // Estado para modal de términos
+  const [termsOpen, setTermsOpen] = useState(false)
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   const validateFields = () => {
@@ -56,7 +59,6 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         })
       })
 
-      // Manejo de errores del backend (incluye el 400 por contraseña incorrecta)
       if (!res.ok) {
         const contentType = res.headers.get('content-type') || ''
         let serverMsg = ''
@@ -91,6 +93,9 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
 
   if (!product) return null
 
+  // Si el "product" viene envuelto en { product: {...} } lo normalizamos
+  const resolvedProduct = product.product ? product.product : product
+
   const formatMoney = (v) => {
     if (v == null) return '—'
     const n = Number(v)
@@ -98,8 +103,15 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   }
 
-  const price = product?.salePrice ?? product?.price ?? null
+  const price = resolvedProduct?.salePrice ?? resolvedProduct?.price ?? null
   const insufficient = price != null && balance != null && Number(balance) < Number(price)
+
+  // Extraer campos de términos
+  const termsText = resolvedProduct?.terms ?? ''
+  const productDetail = resolvedProduct?.productDetail ?? ''
+  const requestDetail = resolvedProduct?.requestDetail ?? ''
+
+  const hasAnyTerms = Boolean((termsText && termsText.trim()) || (productDetail && productDetail.trim()) || (requestDetail && requestDetail.trim()))
 
   return (
     <div style={backdrop}>
@@ -108,7 +120,7 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
 
         <div style={content}>
           <div style={header}>
-            <h2 style={title}>{product?.name ?? 'Comprar producto'}</h2>
+            <h2 style={title}>{resolvedProduct?.name ?? 'Comprar producto'}</h2>
             <p style={subtitle}>Resumen de compra</p>
           </div>
 
@@ -174,7 +186,11 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
             </div>
           </div>
 
-          <div style={actions}>
+          <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center', marginTop: 6 }}>
+            <button onClick={() => setTermsOpen(true)} style={termsBtn} type="button">
+              Términos y condiciones
+            </button>
+
             <button onClick={onClose} style={secondaryBtn} disabled={loading}>Cerrar</button>
             <button
               onClick={handleConfirm}
@@ -186,11 +202,61 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
           </div>
         </div>
       </div>
+
+      {/* Modal de Términos */}
+      {termsOpen && (
+        <div style={termsBackdrop} role="dialog" aria-modal="true" aria-labelledby="terms-title">
+          <div style={termsCard}>
+            <header style={termsHeader}>
+              <h3 id="terms-title" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Términos y condiciones</h3>
+              <button onClick={() => setTermsOpen(false)} aria-label="Cerrar términos" style={termsClose}>✕</button>
+            </header>
+
+            <div style={termsContent}>
+              {!hasAnyTerms ? (
+                <p style={{ color: '#9FB4C8' }}>No hay términos o detalles disponibles para este producto.</p>
+              ) : (
+                <>
+                  {termsText && termsText.trim() && (
+                    <section style={termsSection}>
+                      <h4 style={termsSectionTitle}>Términos</h4>
+                      <p style={termsParagraph}>{termsText}</p>
+                    </section>
+                  )}
+
+                  {productDetail && productDetail.trim() && (
+                    <section style={termsSection}>
+                      <h4 style={termsSectionTitle}>Detalle del producto</h4>
+                      <p style={termsParagraph}>{productDetail}</p>
+                    </section>
+                  )}
+
+                  {requestDetail && requestDetail.trim() && (
+                    <section style={termsSection}>
+                      <h4 style={termsSectionTitle}>Detalle de solicitud</h4>
+                      <p style={termsParagraph}>{requestDetail}</p>
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '12px 18px' }}>
+              <button onClick={() => setTermsOpen(false)} style={termsCloseBtn}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        /* pequeño ajuste para que el modal de términos tenga prioridad visual en SSR/Next */
+        /* no hay reglas CSS complejas aquí porque usamos estilos en línea para consistencia */
+      `}</style>
     </div>
   )
 }
 
-/* ===== estilos ===== */
+/* ===== estilos (inline objects) ===== */
 
 const backdrop = {
   position: 'fixed',
@@ -364,5 +430,97 @@ const confirmBtn = (disabled) => ({
   cursor: disabled ? 'not-allowed' : 'pointer',
   minWidth: 220
 })
+
+const termsBtn = {
+  padding: '10px 14px',
+  borderRadius: 10,
+  background: 'transparent',
+  color: '#93C5FD',
+  border: '1px solid rgba(147,197,253,0.12)',
+  cursor: 'pointer',
+  fontWeight: 700
+}
+
+/* ===== estilos modal términos ===== */
+
+const termsBackdrop = {
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(2,6,23,0.6)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 10000,
+  padding: '20px'
+}
+
+const termsCard = {
+  width: '100%',
+  maxWidth: 720,
+  background: '#071026',
+  color: '#E6EEF7',
+  borderRadius: 12,
+  boxShadow: '0 18px 48px rgba(2,6,23,0.75)',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column'
+}
+
+const termsHeader = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '14px 18px',
+  borderBottom: '1px solid rgba(255,255,255,0.04)'
+}
+
+const termsClose = {
+  background: 'transparent',
+  border: 'none',
+  color: '#9CA3AF',
+  fontSize: 18,
+  cursor: 'pointer'
+}
+
+const termsContent = {
+  padding: '16px 18px',
+  maxHeight: '56vh',
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12
+}
+
+const termsSection = {
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
+  borderRadius: 10,
+  padding: 12,
+  border: '1px solid rgba(255,255,255,0.04)'
+}
+
+const termsSectionTitle = {
+  margin: 0,
+  fontSize: 13,
+  color: '#9FB4C8',
+  fontWeight: 800,
+  textTransform: 'uppercase'
+}
+
+const termsParagraph = {
+  margin: '8px 0 0 0',
+  color: '#DDEBF6',
+  lineHeight: 1.45,
+  whiteSpace: 'pre-wrap'
+}
+
+const termsCloseBtn = {
+  padding: '10px 14px',
+  borderRadius: 8,
+  background: '#E6EEF7',
+  color: '#071026',
+  fontWeight: 800,
+  border: 'none',
+  cursor: 'pointer'
+}
 
 const errorText = { color: '#FCA5A5', textAlign: 'center', fontWeight: 700 }
