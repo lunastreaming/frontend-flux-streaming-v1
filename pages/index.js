@@ -163,7 +163,7 @@ export default function Home() {
       }
 
       // Normalizar respuesta nueva/antigua:
-      // - Nueva: { product: {...}, availableStockCount: 5 }
+      // - Nueva: { product: {...}, availableStockCount: N }
       // - Antigua: { product: {...}, stockResponses: [...] } o product + stockResponses en product
       const normalized = raw.map((item) => {
         // si viene la forma { product: {...}, availableStockCount: N }
@@ -195,7 +195,9 @@ export default function Home() {
           // conservamos stockResponses por compatibilidad si existieran
           stockResponses: inlineStockResponses,
           // stock ahora proviene de availableStockCount cuando esté presente
-          stock: stockCount
+          stock: stockCount,
+          // <-- guardamos el objeto product completo para usar en el modal
+          fullProduct: productWrapper
         }
       })
 
@@ -222,11 +224,14 @@ export default function Home() {
     return moneyFormatter.format(num)
   }
 
-  const handleBuyClick = async (product) => {
+  const handleBuyClick = async (p) => {
     try {
       const token = await ensureValidAccess()
       if (!token) { window.location.href = '/login'; return }
-      setSelectedProduct(product)
+      // p es el objeto normalizado; preferimos abrir modal con el objeto completo
+      const productToOpen = p?.fullProduct ?? p
+      // console.debug('Abrir modal con productToOpen:', productToOpen) // descomenta para depurar
+      setSelectedProduct(productToOpen)
     } catch { window.location.href = '/login' }
   }
 

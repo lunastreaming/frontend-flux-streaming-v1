@@ -21,6 +21,74 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
+  /* ===== resolveProduct robusto =====
+     - Acepta: product directo, wrapper { product: {...} }, o page { content: [ { product: {...} } ] }
+     - Limpia valores "null" o "undefined" en strings
+  */
+  const normalizeString = (v) => {
+    if (v === null || v === undefined) return ''
+    if (typeof v !== 'string') return v
+    const t = v.trim()
+    if (t === '' || t.toLowerCase() === 'null' || t.toLowerCase() === 'undefined') return ''
+    return t
+  }
+
+  const resolveProduct = (p) => {
+    if (!p) return null
+
+    // 1) Si ya es el objeto product (tiene id o name o salePrice)
+    if (p.id || p.name || p.salePrice || p.terms || p.productDetail || p.requestDetail) {
+      return {
+        ...p,
+        terms: normalizeString(p.terms),
+        productDetail: normalizeString(p.productDetail),
+        requestDetail: normalizeString(p.requestDetail),
+        name: normalizeString(p.name)
+      }
+    }
+
+    // 2) Si viene envuelto: { product: { ... } }
+    if (p.product && (p.product.id || p.product.name || p.product.salePrice)) {
+      const pr = p.product
+      return {
+        ...pr,
+        terms: normalizeString(pr.terms),
+        productDetail: normalizeString(pr.productDetail),
+        requestDetail: normalizeString(pr.requestDetail),
+        name: normalizeString(pr.name)
+      }
+    }
+
+    // 3) Si viene como página: { content: [ { product: {...} }, ... ] } -> tomar el primero válido
+    if (Array.isArray(p.content) && p.content.length > 0) {
+      const found = p.content.find(c => c && c.product && (c.product.id || c.product.name))
+      if (found && found.product) {
+        const pr = found.product
+        return {
+          ...pr,
+          terms: normalizeString(pr.terms),
+          productDetail: normalizeString(pr.productDetail),
+          requestDetail: normalizeString(pr.requestDetail),
+          name: normalizeString(pr.name)
+        }
+      }
+    }
+
+    // 4) Fallback: intentar limpiar campos si existen
+    return {
+      ...p,
+      terms: normalizeString(p.terms),
+      productDetail: normalizeString(p.productDetail),
+      requestDetail: normalizeString(p.requestDetail),
+      name: normalizeString(p.name)
+    }
+  }
+
+  const resolvedProduct = resolveProduct(product)
+
+  // console.log('PurchaseModal prop product:', product) // descomenta para depurar
+  // console.log('PurchaseModal resolvedProduct:', resolvedProduct) // descomenta para depurar
+
   const validateFields = () => {
     if (!customerName.trim()) return 'Ingresa el nombre del cliente'
     if (!customerPhone.trim()) return 'Ingresa el celular'
@@ -31,7 +99,10 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
   }
 
   const handleConfirm = async () => {
-    if (!product) return
+    if (!resolvedProduct) {
+      setError('Producto inválido')
+      return
+    }
     setFieldError(null)
     setError(null)
 
@@ -49,7 +120,7 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         return
       }
 
-      const res = await fetch(`${BASE_URL}/api/stocks/products/${product.id}/purchase`, {
+      const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/purchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -91,10 +162,7 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
     }
   }
 
-  if (!product) return null
-
-  // Si el "product" viene envuelto en { product: {...} } lo normalizamos
-  const resolvedProduct = product.product ? product.product : product
+  if (!resolvedProduct) return null
 
   const formatMoney = (v) => {
     if (v == null) return '—'
@@ -111,7 +179,11 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
   const productDetail = resolvedProduct?.productDetail ?? ''
   const requestDetail = resolvedProduct?.requestDetail ?? ''
 
-  const hasAnyTerms = Boolean((termsText && termsText.trim()) || (productDetail && productDetail.trim()) || (requestDetail && requestDetail.trim()))
+  const hasAnyTerms = Boolean(
+    (termsText && termsText.trim()) ||
+    (productDetail && productDetail.trim()) ||
+    (requestDetail && requestDetail.trim())
+  )
 
   return (
     <div style={backdrop}>
@@ -248,14 +320,9 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         </div>
       )}
 
-      <style jsx>{`
-        /* pequeño ajuste para que el modal de términos tenga prioridad visual en SSR/Next */
-        /* no hay reglas CSS complejas aquí porque usamos estilos en línea para consistencia */
-      `}</style>
     </div>
   )
 }
-
 /* ===== estilos (inline objects) ===== */
 
 const backdrop = {
