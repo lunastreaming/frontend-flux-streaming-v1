@@ -7,8 +7,11 @@ export default function ConfirmModal({
   open,
   title,
   message,
-  confirmText = 'Eliminar',
+  description,
+  confirmText = 'DESEMBOLSAR',
+  confirmLabel,
   cancelText = 'Cancelar',
+  cancelLabel,
   onConfirm,
   onCancel,
   loading = false,
@@ -19,9 +22,14 @@ export default function ConfirmModal({
     setMounted(true)
   }, [])
 
+  // compatibilidad: preferimos explicit `open`, luego `visible`
   const isVisible = typeof open !== 'undefined' ? open : !!visible
-
   if (!mounted || !isVisible) return null
+
+  // compatibilidad con nombres alternativos
+  const bodyText = description ?? message ?? ''
+  const confirmBtnText = confirmLabel ?? confirmText
+  const cancelBtnText = cancelLabel ?? cancelText
 
   return ReactDOM.createPortal(
     <div style={backdrop} data-confirm-modal>
@@ -31,23 +39,25 @@ export default function ConfirmModal({
         </button>
 
         {title && <h2 style={titleStyle}>{title}</h2>}
-        <p style={messageStyle}>{message}</p>
+        <p style={messageStyle}>{bodyText}</p>
 
         <div style={actions}>
           <button
             onClick={onCancel}
             disabled={loading}
             style={secondaryBtn}
+            aria-label={cancelBtnText}
           >
-            {cancelText}
+            {cancelBtnText}
           </button>
 
           <button
             onClick={onConfirm}
             disabled={loading}
             style={confirmBtn(loading)}
+            aria-label={confirmBtnText}
           >
-            {loading ? 'Procesando...' : confirmText}
+            {loading ? 'Procesando...' : confirmBtnText}
           </button>
         </div>
       </div>
