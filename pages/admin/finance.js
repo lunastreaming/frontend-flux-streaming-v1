@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react'
 import AdminNavBar from '../../components/AdminNavBar'
 import Footer from '../../components/Footer'
+import ConfirmModal from '../../components/ConfirmModal'
 import { FaSearch, FaRedoAlt, FaUndo } from 'react-icons/fa'
 
 export default function AdminTransactionsPage() {
@@ -16,7 +17,9 @@ export default function AdminTransactionsPage() {
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [banner, setBanner] = useState(null)
-  const [processingReturn, setProcessingReturn] = useState(false)
+  const [processingExtorno, setProcessingExtorno] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [selectedRow, setSelectedRow] = useState(null)
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   useEffect(() => {
@@ -68,11 +71,12 @@ export default function AdminTransactionsPage() {
   const formatDate = (v) => v ? new Date(v).toLocaleString() : '—'
   const formatAmount = (v, curr = 'USD') => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
 
-  // Mapea type a etiqueta legible
+  // Mapea type a etiqueta legible (incluye chargeback -> Extorno)
   const typeLabel = (t) => {
     const tt = String(t ?? '').toLowerCase()
     if (tt === 'recharge') return 'Recarga'
     if (tt === 'withdrawal') return 'Retiro'
+    if (tt === 'chargeback' || tt === 'rechargeback' || tt === 'extorno') return 'Extorno'
     return t ?? '—'
   }
 
@@ -97,19 +101,29 @@ export default function AdminTransactionsPage() {
     return 'tx-badge neutral'
   }
 
-  // Acción de "RETORNO" para transacciones (icono)
-  // Ahora se mostrará solo cuando type === 'recharge' y status === 'approved'
-  const handleReturn = async (row) => {
-    if (!row || !row.id) return
-    if (!confirm(`Confirmar RETORNO para la transacción ${row.id}?`)) return
+  // Open confirm modal for extorno
+  const openConfirmExtorno = (row) => {
+    setSelectedRow(row)
+    setConfirmOpen(true)
+  }
 
-    setProcessingReturn(true)
+  // Cancel modal
+  const cancelExtorno = () => {
+    setConfirmOpen(false)
+    setSelectedRow(null)
+  }
+
+  // Execute extorno: calls POST /api/wallet/admin/extorno/{txId}
+  const executeExtorno = async () => {
+    if (!selectedRow || !selectedRow.id) return
+    setProcessingExtorno(true)
     setBanner(null)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
       if (!token) throw new Error('No token')
 
-      const url = `${BASE_URL}/api/admin/transactions/${encodeURIComponent(row.id)}/return`
+      const txId = selectedRow.id
+      const url = `${BASE_URL}/api/wallet/admin/extorno/${encodeURIComponent(txId)}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -121,13 +135,20 @@ export default function AdminTransactionsPage() {
         throw new Error(`Error ${res.status} ${txt}`)
       }
 
-      await res.json().catch(() => null)
-      setBanner({ type: 'success', message: `RETORNO aplicado. Id: ${row.id}.` })
-      setPage(p => p) // trigger refresh
+      const payload = await res.json().catch(() => null)
+      // backend may return amount or extornoAmount
+      const extornoAmount = payload?.amount ?? payload?.extornoAmount ?? payload?.refundAmount ?? selectedRow.amount ?? null
+      const amountText = extornoAmount != null ? Number(extornoAmount).toFixed(2) : '—'
+
+      setBanner({ type: 'success', message: `Extorno aplicado. Usuario: ${selectedRow.userName ?? '—'}. Monto: ${amountText} ${selectedRow.currency ?? 'USD'}.` })
+      // refresh
+      setPage(p => p)
     } catch (err) {
-      setBanner({ type: 'error', message: 'No se pudo ejecutar el RETORNO: ' + (err.message || err) })
+      setBanner({ type: 'error', message: 'No se pudo ejecutar el extorno: ' + (err.message || err) })
     } finally {
-      setProcessingReturn(false)
+      setProcessingExtorno(false)
+      setConfirmOpen(false)
+      setSelectedRow(null)
     }
   }
 
@@ -221,11 +242,11 @@ export default function AdminTransactionsPage() {
                           <div className="row-inner">
                             {String(r.type ?? '').toLowerCase() === 'recharge' && String(r.status ?? '').toLowerCase() === 'approved' ? (
                               <button
-                                className="btn-return-icon"
-                                onClick={() => handleReturn(r)}
-                                disabled={processingReturn}
-                                title="RETORNO"
-                                aria-label="RETORNO"
+                                className="btn-extorno-icon"
+                                onClick={() => openConfirmExtorno(r)}
+                                disabled={processingExtorno}
+                                title="Extorno"
+                                aria-label="Extorno"
                               >
                                 <FaUndo />
                               </button>
@@ -254,6 +275,22 @@ export default function AdminTransactionsPage() {
       </main>
 
       <Footer />
+
+      {/* ConfirmModal para extorno */}
+      <ConfirmModal
+        open={confirmOpen}
+        title="Confirmar extorno"
+        description={
+          selectedRow
+            ? `¿Estás seguro de aplicar el extorno al usuario ${selectedRow.userName ?? '—'} por un monto de ${selectedRow.amount != null ? formatAmount(selectedRow.amount, selectedRow.currency ?? 'USD') : '—'}?`
+            : '¿Deseas continuar?'
+        }
+        confirmLabel="APLICAR EXTORNO"
+        cancelLabel="Cancelar"
+        onConfirm={executeExtorno}
+        onCancel={cancelExtorno}
+        loading={processingExtorno}
+      />
 
       <style jsx>{`
         .page-bg { background: radial-gradient(circle at top, #0b1220, #05060a); min-height:100vh; }
@@ -285,7 +322,7 @@ export default function AdminTransactionsPage() {
         .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
         .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-        .btn-return-icon {
+        .btn-extorno-icon {
           display:inline-grid;
           place-items:center;
           width:36px;
@@ -297,8 +334,8 @@ export default function AdminTransactionsPage() {
           cursor:pointer;
           transition: transform .12s ease, box-shadow .12s ease;
         }
-        .btn-return-icon:disabled { opacity:0.6; cursor:not-allowed; }
-        .btn-return-icon svg { width:16px; height:16px; }
+        .btn-extorno-icon:disabled { opacity:0.6; cursor:not-allowed; }
+        .btn-extorno-icon svg { width:16px; height:16px; }
 
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
         .pager-info { color:#cbd5e1; }
