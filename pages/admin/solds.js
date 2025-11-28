@@ -310,13 +310,13 @@ export default function AdminSoldsPage() {
                               <button
                                 className="btn-disburse"
                                 onClick={() => openConfirmForRow(r)}
-                                aria-label={refundEnabled ? "Desembolsar" : "Reembolso no disponible"}
-                                title={refundEnabled ? "Desembolsar" : "Reembolso no disponible"}
+                                aria-label={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
+                                title={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
                                 disabled={!refundEnabled || processingRefund}
                                 style={{ opacity: (!refundEnabled || processingRefund) ? 0.45 : 1, cursor: (!refundEnabled || processingRefund) ? 'not-allowed' : 'pointer' }}
                               >
                                 <FaMoneyBillWave />
-                                <span className="sr-only">Desembolsar</span>
+                                <span className="sr-only">Reembolsar</span>
                               </button>
 
                               {/* Reembolso completo (icono) */}
@@ -362,11 +362,11 @@ export default function AdminSoldsPage() {
             ? (
               refundType === 'full'
                 ? `El backend indica que el monto a reembolsar será ${selectedRow.amount != null ? formatAmount(selectedRow.amount) : (selectedRow.salePrice != null ? formatAmount(selectedRow.salePrice) : (selectedRow.refund != null ? formatAmount(selectedRow.refund) : '—'))}. ¿Deseas continuar?`
-                : `Vas a desembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} PEN para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
+                : `Vas a reembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} PEN para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
             )
             : '¿Deseas continuar?'
         }
-        confirmLabel={refundType === 'full' ? "DESEMBOLSAR COMPLETO" : "DESEMBOLSAR"}
+        confirmLabel={refundType === 'full' ? "REEMBOLSAR COMPLETO" : "REEMBOLSAR"}
         cancelLabel="Cancelar"
         onConfirm={executeRefund}
         onCancel={cancelRefund}

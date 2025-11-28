@@ -16,12 +16,17 @@ export default function AdminUsersPage() {
   const API_BASE = rawApiBase.replace(/\/+$/, '')
   const USERS_ENDPOINT = `${API_BASE}/api/users/sellers`
 
-  const [users, setUsers] = useState([])
+  // server-side data
+  const [users, setUsers] = useState([]) // content for current page
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // search + server pagination state
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
-  const pageSize = 20
+  const [page, setPage] = useState(1) // UI 1-based
+  const pageSize = 30                 // 30 por página (server-side)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
 
   const [confirmData, setConfirmData] = useState({
     open: false,
@@ -32,10 +37,12 @@ export default function AdminUsersPage() {
     loading: false
   })
 
-  // Estado para el modal de cambio de contraseña
   const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
 
-  useEffect(() => { fetchUsers() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchUsers(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getAuthToken = async () => {
     try {
@@ -48,7 +55,8 @@ export default function AdminUsersPage() {
     return null
   }
 
-  const fetchUsers = async () => {
+  // Fetch page from backend (server-side pagination)
+  const fetchUsers = async (uiPage = 1) => {
     setLoading(true)
     setError(null)
     try {
@@ -56,7 +64,10 @@ export default function AdminUsersPage() {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const res = await fetch(USERS_ENDPOINT, {
+      // backend expects 0-based page
+      const zeroPage = Math.max(0, (uiPage ?? 1) - 1)
+      const url = `${USERS_ENDPOINT}?page=${zeroPage}&size=${pageSize}`
+      const res = await fetch(url, {
         method: 'GET',
         headers,
         credentials: token ? 'omit' : 'include'
@@ -66,17 +77,26 @@ export default function AdminUsersPage() {
         const msg = text && text.length ? text : `Error ${res.status}`
         throw new Error(msg)
       }
-      const data = text ? JSON.parse(text) : []
-      setUsers(Array.isArray(data) ? data : [])
+      const payload = text ? JSON.parse(text) : null
+      const content = Array.isArray(payload?.content) ? payload.content : []
+      setUsers(content)
+      setTotalElements(Number(payload?.totalElements ?? content.length))
+      setTotalPages(Number(payload?.totalPages ?? 1))
+      const respNumber = Number(payload?.number ?? zeroPage)
+      setPage(respNumber + 1)
     } catch (err) {
       console.error('Error fetching users:', err)
       setError('No se pudo cargar la lista de usuarios')
       setUsers([])
+      setTotalElements(0)
+      setTotalPages(1)
+      setPage(1)
     } finally {
       setLoading(false)
     }
   }
 
+  // Client-side filtering only over current page content
   const filtered = useMemo(() => {
     if (!query) return users
     const q = query.trim().toLowerCase()
@@ -87,12 +107,6 @@ export default function AdminUsersPage() {
       (u.role || '').toLowerCase().includes(q)
     )
   }, [users, query])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize)
-  const startIndex = (page - 1) * pageSize
-
-  useEffect(() => { if (page > totalPages) setPage(1) }, [totalPages, page])
 
   const callEndpoint = async (url, opts = {}, requireAuth = true) => {
     opts.headers = opts.headers || { 'Content-Type': 'application/json' }
@@ -119,11 +133,10 @@ export default function AdminUsersPage() {
     return <span className="status inactive">Inactivo</span>
   }
 
-  // Abre modal de confirmación para acciones que no sean password
+  // Confirm modal flow
   const requestConfirmAction = (userId, username, currentStatus, actionOverride = null) => {
     const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
 
-    // Si la acción es 'password' abrimos el modal de password
     if (action === 'password') {
       openPasswordModal(userId, username)
       return
@@ -154,16 +167,18 @@ export default function AdminUsersPage() {
       if (action === 'verify') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
         await callEndpoint(url, { method: 'PATCH' }, true)
-        await fetchUsers()
       } else if (action === 'disable') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
         await callEndpoint(url, { method: 'PATCH' }, true)
-        await fetchUsers()
       } else if (action === 'delete') {
         const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'DELETE' }, true)
-        await fetchUsers()
+      } else {
+        const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
+        await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
       }
+      // refresh current page from backend
+      await fetchUsers(page)
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
     } catch (err) {
       console.error(`handleConfirm error for ${action} ${userId}:`, err)
@@ -178,14 +193,26 @@ export default function AdminUsersPage() {
     setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
   }
 
-  // Abrir / cerrar modal de contraseña
+  // Password modal
   const openPasswordModal = (userId, username) => {
     setPwdModal({ open: true, userId, username })
   }
   const closePasswordModal = () => {
     setPwdModal({ open: false, userId: null, username: null })
   }
-    return (
+
+  // Pagination controls (server-side)
+  const goPrev = () => {
+    const next = Math.max(1, page - 1)
+    if (next !== page) fetchUsers(next)
+  }
+  const goNext = () => {
+    const next = Math.min(totalPages, page + 1)
+    if (next !== page) fetchUsers(next)
+  }
+  const refresh = () => fetchUsers(page)
+
+  return (
     <>
       <Head><title>Usuarios | Admin</title></Head>
 
@@ -199,7 +226,7 @@ export default function AdminUsersPage() {
               <p className="text-sm text-gray-400">Lista de vendedores y acciones administrativas</p>
             </div>
             <div className="header-actions">
-              <button className="btn-refresh" onClick={fetchUsers} aria-label="Refrescar">
+              <button className="btn-refresh" onClick={refresh} aria-label="Refrescar">
                 <FaSyncAlt />
               </button>
             </div>
@@ -211,7 +238,7 @@ export default function AdminUsersPage() {
               <input
                 placeholder="Buscar por nro, username, celular o rol..."
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+                onChange={(e) => { setQuery(e.target.value) }}
                 aria-label="Buscar usuarios"
               />
             </div>
@@ -239,12 +266,13 @@ export default function AdminUsersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pageItems.map((u, idx) => {
+                      {filtered.map((u, idx) => {
                         const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'))
                         const actionLabel = currentStatus === 'active' ? 'Inhabilitar' : 'Verificar'
+                        const isDeletable = String(currentStatus).toLowerCase() === 'inactive'
                         return (
                           <tr key={u.id ?? idx}>
-                            <td className="mono">{startIndex + idx + 1}</td>
+                            <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                             <td>{u.username ?? '-'}</td>
                             <td>{u.phone ?? u.celular ?? '-'}</td>
                             <td>{u.role ?? '-'}</td>
@@ -317,16 +345,13 @@ export default function AdminUsersPage() {
                                   <FaUserFriends />
                                 </button>
 
+                                {/* Delete button: enabled only when status === 'inactive' */}
                                 <button
-                                  title="Eliminar"
-                                  onClick={() => requestConfirmAction(
-                                    u.id,
-                                    u.username ?? u.phone ?? String(u.id),
-                                    currentStatus,
-                                    'delete'
-                                  )}
-                                  className="danger"
+                                  title={isDeletable ? 'Eliminar' : 'No disponible (usuario activo)'}
+                                  onClick={() => { if (isDeletable) requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'delete') }}
+                                  className={isDeletable ? 'danger' : 'danger disabled'}
                                   aria-label={`Eliminar ${u.id}`}
+                                  disabled={!isDeletable}
                                 >
                                   <FaTrash />
                                 </button>
@@ -335,7 +360,7 @@ export default function AdminUsersPage() {
                           </tr>
                         )
                       })}
-                      {pageItems.length === 0 && (
+                      {filtered.length === 0 && (
                         <tr>
                           <td colSpan="8" className="empty">No se encontraron usuarios</td>
                         </tr>
@@ -346,16 +371,12 @@ export default function AdminUsersPage() {
 
                 <div className="pager-container">
                   <div className="pager-info">
-                    Mostrando {Math.min(filtered.length, page * pageSize)} de {filtered.length} usuarios
+                    Página {page} de {totalPages} • Mostrando {filtered.length} registros (de {totalElements} totales)
                   </div>
                   <div className="pager-controls" role="navigation" aria-label="Paginación">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                      Anterior
-                    </button>
+                    <button onClick={goPrev} disabled={page === 1}>Anterior</button>
                     <span className="pager-page"> {page} / {totalPages} </span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                      Siguiente
-                    </button>
+                    <button onClick={goNext} disabled={page === totalPages}>Siguiente</button>
                   </div>
                 </div>
               </>
@@ -396,7 +417,7 @@ export default function AdminUsersPage() {
         userId={pwdModal.userId}
         username={pwdModal.username}
         onClose={closePasswordModal}
-        onSuccess={() => { closePasswordModal(); fetchUsers(); }}
+        onSuccess={() => { closePasswordModal(); fetchUsers(page); }}
       />
 
       <style jsx>{`
@@ -444,7 +465,6 @@ export default function AdminUsersPage() {
         thead th:nth-child(4), tbody td:nth-child(4) { width: 12%; }
         thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; }
 
-        /* Reduced width for "Nº Ventas" (col 6) and increased width for "Acciones" (col 8) */
         thead th:nth-child(6), tbody td:nth-child(6) { width: 6%; }
         thead th:nth-child(7), tbody td:nth-child(7) { width: 10%; }
 
@@ -458,7 +478,6 @@ export default function AdminUsersPage() {
 
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
 
-        /* Keep buttons in a single row; allow horizontal scroll inside the cell if needed */
         .actions {
           display: flex;
           flex-wrap: nowrap;
@@ -488,6 +507,15 @@ export default function AdminUsersPage() {
         }
         .actions button:hover { transform: translateY(-2px); background: rgba(255,255,255,0.04); }
         .actions button.danger { background: linear-gradient(90deg,#ef4444,#f97316); color: #fff; }
+
+        /* Disabled variant for delete button */
+        .actions button.danger.disabled {
+          background: linear-gradient(90deg, rgba(239,68,68,0.18), rgba(249,115,22,0.12));
+          color: rgba(255,255,255,0.6);
+          cursor: not-allowed;
+          transform: none;
+          opacity: 0.6;
+        }
 
         .verify-btn { background: linear-gradient(90deg,#06b6d4,#10b981); color:#07101a; }
         .disable-btn { background: linear-gradient(90deg,#f97316,#ef4444); color:#fff; }

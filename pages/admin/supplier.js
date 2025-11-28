@@ -18,9 +18,13 @@ export default function AdminSuppliersPage() {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // Búsqueda y paginación (server-side)
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
-  const pageSize = 20
+  const [page, setPage] = useState(1)            // UI 1-based
+  const pageSize = 30                             // 30 por página (server-side)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
 
   const [confirmData, setConfirmData] = useState({
     open: false,
@@ -34,7 +38,7 @@ export default function AdminSuppliersPage() {
   // Estado para el modal de cambio de contraseña
   const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
 
-  useEffect(() => { fetchSuppliers() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchSuppliers(page) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getAuthToken = async () => {
     try {
@@ -47,7 +51,8 @@ export default function AdminSuppliersPage() {
     return null
   }
 
-  const fetchSuppliers = async () => {
+  // Server-side pagination: trae proveedores del backend ya ordenados y paginados
+  const fetchSuppliers = async (uiPage = 1) => {
     setLoading(true)
     setError(null)
     try {
@@ -55,7 +60,10 @@ export default function AdminSuppliersPage() {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const res = await fetch(PROVIDERS_ENDPOINT, {
+      // Backend usa 0-based; UI usa 1-based
+      const zeroPage = Math.max(0, (uiPage ?? 1) - 1)
+      const url = `${PROVIDERS_ENDPOINT}?page=${zeroPage}&size=${pageSize}`
+      const res = await fetch(url, {
         method: 'GET',
         headers,
         credentials: token ? 'omit' : 'include'
@@ -65,17 +73,28 @@ export default function AdminSuppliersPage() {
         const msg = text && text.length ? text : `Error ${res.status}`
         throw new Error(msg)
       }
-      const data = text ? JSON.parse(text) : []
-      setSuppliers(Array.isArray(data) ? data : [])
+      const payload = text ? JSON.parse(text) : null
+      // Esperamos Page<UserSummary> { content, totalElements, totalPages, number, size }
+      const content = Array.isArray(payload?.content) ? payload.content : []
+      setSuppliers(content)
+      setTotalElements(Number(payload?.totalElements ?? content.length))
+      setTotalPages(Number(payload?.totalPages ?? 1))
+      // Ajustar la UI page según respuesta .number (0-based)
+      const respNumber = Number(payload?.number ?? zeroPage)
+      setPage(respNumber + 1)
     } catch (err) {
       console.error('Error fetching suppliers:', err)
       setError('No se pudo cargar la lista de proveedores')
       setSuppliers([])
+      setTotalElements(0)
+      setTotalPages(1)
+      setPage(1)
     } finally {
       setLoading(false)
     }
   }
 
+  // Filtrado en el cliente sobre la página actual (no altera paginación del backend)
   const filtered = useMemo(() => {
     if (!query) return suppliers
     const q = query.trim().toLowerCase()
@@ -86,31 +105,6 @@ export default function AdminSuppliersPage() {
       (u.phone || '').toLowerCase().includes(q)
     )
   }, [suppliers, query])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize)
-  const startIndex = (page - 1) * pageSize
-
-  useEffect(() => { if (page > totalPages) setPage(1) }, [totalPages, page])
-
-  const callEndpoint = async (url, opts = {}, requireAuth = true) => {
-    opts.headers = opts.headers || { 'Content-Type': 'application/json' }
-    const token = await getAuthToken()
-    if (requireAuth) {
-      if (token) opts.headers['Authorization'] = `Bearer ${token}`
-      else console.warn('callEndpoint: no token found, request will use cookies')
-    }
-    if (requireAuth && token) opts.credentials = opts.credentials ?? 'omit'
-    else opts.credentials = opts.credentials ?? 'include'
-
-    const res = await fetch(url, opts)
-    const text = await res.text().catch(() => null)
-    if (!res.ok) {
-      const msg = text && text.length ? text : `Error ${res.status}`
-      throw new Error(msg)
-    }
-    try { return text ? JSON.parse(text) : null } catch (_) { return text }
-  }
 
   const statusBadge = (status) => {
     if (!status) return <span className="status unknown">-</span>
@@ -140,6 +134,25 @@ export default function AdminSuppliersPage() {
     setConfirmData({ open: true, userId, username, action, message, loading: false })
   }
 
+  const callEndpoint = async (url, opts = {}, requireAuth = true) => {
+    opts.headers = opts.headers || { 'Content-Type': 'application/json' }
+    const token = await getAuthToken()
+    if (requireAuth) {
+      if (token) opts.headers['Authorization'] = `Bearer ${token}`
+      else console.warn('callEndpoint: no token found, request will use cookies')
+    }
+    if (requireAuth && token) opts.credentials = opts.credentials ?? 'omit'
+    else opts.credentials = opts.credentials ?? 'include'
+
+    const res = await fetch(url, opts)
+    const text = await res.text().catch(() => null)
+    if (!res.ok) {
+      const msg = text && text.length ? text : `Error ${res.status}`
+      throw new Error(msg)
+    }
+    try { return text ? JSON.parse(text) : null } catch (_) { return text }
+  }
+
   const handleConfirm = async () => {
     const { userId, action } = confirmData
     if (!userId || !action) {
@@ -152,21 +165,18 @@ export default function AdminSuppliersPage() {
       if (action === 'verify') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
         await callEndpoint(url, { method: 'PATCH' }, true)
-        await fetchSuppliers()
       } else if (action === 'disable') {
         const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
         await callEndpoint(url, { method: 'PATCH' }, true)
-        await fetchSuppliers()
       } else if (action === 'delete') {
         const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'DELETE' }, true)
-        await fetchSuppliers()
       } else {
-        // otras acciones administrativas si las tuvieras
         const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
-        await fetchSuppliers()
       }
+      // Refrescar la página actual desde el backend
+      await fetchSuppliers(page)
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
     } catch (err) {
       console.error(`handleConfirm error for ${action} ${userId}:`, err)
@@ -188,7 +198,19 @@ export default function AdminSuppliersPage() {
   const closePasswordModal = () => {
     setPwdModal({ open: false, userId: null, username: null })
   }
-    return (
+
+  // Navegación de paginación (server-side)
+  const goPrev = () => {
+    const next = Math.max(1, page - 1)
+    if (next !== page) fetchSuppliers(next)
+  }
+  const goNext = () => {
+    const next = Math.min(totalPages, page + 1)
+    if (next !== page) fetchSuppliers(next)
+  }
+  const refresh = () => fetchSuppliers(page)
+
+  return (
     <>
       <Head><title>Proveedores | Admin</title></Head>
 
@@ -202,7 +224,7 @@ export default function AdminSuppliersPage() {
               <p className="text-sm text-gray-400">Lista de proveedores y acciones administrativas</p>
             </div>
             <div className="header-actions">
-              <button className="btn-refresh" onClick={fetchSuppliers} aria-label="Refrescar">
+              <button className="btn-refresh" onClick={refresh} aria-label="Refrescar">
                 <FaSyncAlt />
               </button>
             </div>
@@ -214,7 +236,7 @@ export default function AdminSuppliersPage() {
               <input
                 placeholder="Buscar por id, name, username o celular..."
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+                onChange={(e) => { setQuery(e.target.value) }}
                 aria-label="Buscar proveedores"
               />
             </div>
@@ -241,13 +263,15 @@ export default function AdminSuppliersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pageItems.map((u, idx) => {
+                      {filtered.map((u, idx) => {
                         const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'))
                         const actionLabel = currentStatus === 'active' ? 'Inhabilitar' : 'Verificar'
                         const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer)
+                        const isDeletable = String(currentStatus).toLowerCase() === 'inactive'
                         return (
                           <tr key={u.id ?? idx}>
-                            <td className="mono">{startIndex + idx + 1}</td>
+                            {/* correlativo: basado en page/pageSize + idx */}
+                            <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                             <td>{u.name ?? u.username ?? '-'}</td>
                             <td>{u.username ?? '-'}</td>
                             <td>{u.phone ?? u.celular ?? '-'}</td>
@@ -280,11 +304,13 @@ export default function AdminSuppliersPage() {
                                   {canTransfer ? <FaExchangeAlt /> : <FaBan />}
                                 </button>
 
+                                {/* Delete button: enabled only when status === 'inactive' */}
                                 <button
-                                  title="Eliminar"
-                                  onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'delete')}
-                                  className="danger"
+                                  title={isDeletable ? 'Eliminar' : 'No disponible (usuario activo)'}
+                                  onClick={() => { if (isDeletable) requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'delete') }}
+                                  className={isDeletable ? 'danger' : 'danger disabled'}
                                   aria-label={`Eliminar ${u.id}`}
+                                  disabled={!isDeletable}
                                 >
                                   <FaTrash />
                                 </button>
@@ -293,7 +319,7 @@ export default function AdminSuppliersPage() {
                           </tr>
                         )
                       })}
-                      {pageItems.length === 0 && (
+                      {filtered.length === 0 && (
                         <tr><td colSpan="7" className="empty">No se encontraron proveedores</td></tr>
                       )}
                     </tbody>
@@ -301,11 +327,13 @@ export default function AdminSuppliersPage() {
                 </div>
 
                 <div className="pager-container">
-                  <div className="pager-info">Mostrando {Math.min(filtered.length, page * pageSize)} de {filtered.length} proveedores</div>
+                  <div className="pager-info">
+                    Página {page} de {totalPages} • Mostrando {filtered.length} registros (de {totalElements} totales)
+                  </div>
                   <div className="pager-controls" role="navigation" aria-label="Paginación">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</button>
+                    <button onClick={goPrev} disabled={page === 1}>Anterior</button>
                     <span className="pager-page"> {page} / {totalPages} </span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Siguiente</button>
+                    <button onClick={goNext} disabled={page === totalPages}>Siguiente</button>
                   </div>
                 </div>
               </>
@@ -346,7 +374,7 @@ export default function AdminSuppliersPage() {
         userId={pwdModal.userId}
         username={pwdModal.username}
         onClose={closePasswordModal}
-        onSuccess={() => { closePasswordModal(); fetchSuppliers(); }}
+        onSuccess={() => { closePasswordModal(); fetchSuppliers(page); }}
       />
 
       <style jsx>{`
@@ -427,6 +455,15 @@ export default function AdminSuppliersPage() {
         }
         .actions button:hover { transform: translateY(-2px); background: rgba(255,255,255,0.04); }
         .actions button.danger { background: linear-gradient(90deg,#ef4444,#f97316); color: #fff; }
+
+        /* Disabled variant for delete button */
+        .actions button.danger.disabled {
+          background: linear-gradient(90deg, rgba(239,68,68,0.18), rgba(249,115,22,0.12));
+          color: rgba(255,255,255,0.6);
+          cursor: not-allowed;
+          transform: none;
+          opacity: 0.6;
+        }
 
         .verify-btn { background: linear-gradient(90deg,#06b6d4,#10b981); color:#07101a; }
         .disable-btn { background: linear-gradient(90deg,#f97316,#ef4444); color:#fff; }
