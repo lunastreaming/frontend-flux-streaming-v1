@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { FaEye, FaEyeSlash, FaSearch, FaRedoAlt } from 'react-icons/fa'
+import { FaEye, FaEyeSlash, FaSearch } from 'react-icons/fa'
 
 export default function ComprasPage() {
   const router = useRouter()
@@ -34,7 +34,6 @@ export default function ComprasPage() {
   const [size] = useState(20)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  const [refreshToggle, setRefreshToggle] = useState(false)
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
   const hasFetched = useRef(false)
 
@@ -68,9 +67,6 @@ export default function ComprasPage() {
   }
 
   const fetchPurchases = useCallback(async () => {
-    if (hasFetched.current && page === 0 && !refreshToggle) {
-      // allow manual refresh via refreshToggle
-    }
     setLoading(true); setError(null)
     try {
       const tokenVal = token
@@ -137,7 +133,7 @@ export default function ComprasPage() {
     } finally {
       setLoading(false)
     }
-  }, [BASE_URL, page, size, refreshToggle, router, token])
+  }, [BASE_URL, page, size, router, token])
 
   useEffect(() => { fetchPurchases() }, [fetchPurchases])
 
@@ -152,7 +148,6 @@ export default function ComprasPage() {
 
   const displayed = items.filter(i => (i.productName ?? '').toLowerCase().includes(search.toLowerCase()))
 
-  const refresh = () => setRefreshToggle(t => !t)
   const goPrev = () => setPage(p => Math.max(0, p - 1))
   const goNext = () => setPage(p => Math.min(totalPages - 1, p + 1))
 
@@ -173,9 +168,7 @@ export default function ComprasPage() {
             />
           </div>
 
-          <div className="header-actions">
-            <button className="btn-action" onClick={refresh} title="Refrescar"><FaRedoAlt /></button>
-          </div>
+          {/* botón de refrescar eliminado intencionalmente */}
         </div>
 
         <div className="table-wrapper">
@@ -227,33 +220,41 @@ export default function ComprasPage() {
                 <tbody>
                   {displayed.map((row, idx) => {
                     const isVisible = visiblePasswords.has(row.id)
-                    const masked = row.password ? '••••••••' : '—'
+                    const masked = row.password ? '••••••••' : ''
                     return (
                       <tr key={row.id}>
                         <td><div className="row-inner index">{idx + 1}</div></td>
                         <td><div className="row-inner">{row.id}</div></td>
                         <td><div className="row-inner td-name" title={row.productName}>{row.productName}</div></td>
-                        <td><div className="row-inner">{row.username || '—'}</div></td>
+                        <td><div className="row-inner">{row.username || ''}</div></td>
                         <td>
                           <div className="row-inner password-cell">
-                            <div className="pw-text">{isVisible ? (row.password || '—') : masked}</div>
+                            <div className="pw-text">{isVisible ? (row.password || '') : masked}</div>
                             <button onClick={() => togglePasswordVisibility(row.id)} className="pw-btn" aria-label={isVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                               {isVisible ? <FaEyeSlash /> : <FaEye />}
                             </button>
                           </div>
                         </td>
-                        <td><div className="row-inner">{row.url ? <a href={row.url} target="_blank" rel="noreferrer" className="link">Link</a> : '—'}</div></td>
-                        <td><div className="row-inner">{row.numeroPerfil ?? '—'}</div></td>
-                        <td><div className="row-inner">{row.pin ?? '—'}</div></td>
+                        <td>
+                          <div className="row-inner">
+                            {row.url ? (
+                              <span className="url-text" title={row.url}>{row.url}</span>
+                            ) : (
+                              <span className="url-empty" aria-hidden="true"></span>
+                            )}
+                          </div>
+                        </td>
+                        <td><div className="row-inner">{row.numeroPerfil ?? ''}</div></td>
+                        <td><div className="row-inner">{row.pin ?? ''}</div></td>
                         <td><div className="row-inner no-wrap">{normalizeDateOnly(row.startAt)}</div></td>
                         <td><div className="row-inner no-wrap">{normalizeDateOnly(row.endAt)}</div></td>
                         <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
-                        <td><div className="row-inner">{row.clientName || '—'}</div></td>
-                        <td><div className="row-inner">{row.clientPhone || '—'}</div></td>
-                        <td><div className="row-inner">{row.providerName ?? '—'}</div></td>
+                        <td><div className="row-inner">{row.clientName || ''}</div></td>
+                        <td><div className="row-inner">{row.clientPhone || ''}</div></td>
+                        <td><div className="row-inner">{row.providerName ?? ''}</div></td>
                         <td>
                           <div className="row-inner">
-                            {row.settings ? <pre className="settings-pre">{typeof row.settings === 'object' ? JSON.stringify(row.settings) : String(row.settings)}</pre> : '—'}
+                            {row.settings ? <pre className="settings-pre">{typeof row.settings === 'object' ? JSON.stringify(row.settings) : String(row.settings)}</pre> : <span className="settings-empty" aria-hidden="true"></span>}
                           </div>
                         </td>
                       </tr>
@@ -307,9 +308,6 @@ export default function ComprasPage() {
         .search-icon-inline { color:#9fb4c8; margin-right:8px; }
         .search-input-inline { flex:1; background:transparent; border:none; color:#fff; outline:none; font-size:0.95rem; }
 
-        .header-actions { display:flex; gap:8px; align-items:center; }
-        .btn-action { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; font-weight:700; color:#0d0d0d; background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); cursor:pointer; }
-
         .table-wrapper {
           overflow:hidden;
           background: rgba(22,22,22,0.6);
@@ -358,11 +356,22 @@ export default function ComprasPage() {
         .password-cell { justify-content:space-between; align-items:center; }
         .pw-text { margin-right:8px; }
         .pw-btn { background:transparent; border:none; color:#9fb4c8; cursor:pointer; display:flex; align-items:center; }
-        .link { color:#22d3ee; text-decoration:underline; }
+
+        /* URL como texto plano, truncado visualmente y con tooltip completo */
+        .url-text {
+          color: inherit;
+          display: inline-block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .url-empty { display:inline-block; width:0; height:0; } /* vacío cuando no hay URL */
 
         .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
         .settings-pre { margin:0; white-space:pre-wrap; font-size:12px; color:#dbeafe; }
+        .settings-empty { display:inline-block; width:0; height:0; }
 
         .pager-row {
           display:flex;

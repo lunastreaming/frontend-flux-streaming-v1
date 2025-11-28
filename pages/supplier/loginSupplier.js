@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthProvider';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faLock } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import Cookies from 'js-cookie';
 
 export default function LoginSupplier() {
@@ -13,6 +13,7 @@ export default function LoginSupplier() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-supplier`;
 
@@ -48,7 +49,7 @@ export default function LoginSupplier() {
         return;
       }
 
-      // ✅ Guardar token en cookies para que el middleware lo lea
+      // Guardar token en cookies para que el middleware lo lea
       Cookies.set('accessToken', token, { path: '/', sameSite: 'Lax' });
 
       // También puedes guardar el refresh token si lo usas
@@ -79,12 +80,33 @@ export default function LoginSupplier() {
 
           <div className="group">
             <FontAwesomeIcon icon={faUser} />
-            <input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} />
+            <input
+              type="text"
+              placeholder="Usuario"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              aria-label="Usuario"
+            />
           </div>
 
-          <div className="group">
+          <div className="group password-group">
             <FontAwesomeIcon icon={faLock} />
-            <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Contraseña"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              aria-label="Contraseña"
+            />
+            <button
+              type="button"
+              className="eye-btn"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
           </div>
 
           <button type="submit" className="cta" disabled={loading}>
@@ -133,6 +155,7 @@ export default function LoginSupplier() {
           font-size: 0.9rem;
         }
         .group {
+          position: relative;
           display: flex;
           align-items: center;
           gap: 10px;
@@ -149,6 +172,26 @@ export default function LoginSupplier() {
           font-size: 1rem;
           outline: none;
         }
+
+        /* Password group: reserve space for eye button */
+        .password-group { padding-right: 44px; }
+
+        .eye-btn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+
         .cta {
           padding: 12px;
           background: linear-gradient(135deg, #8b5cf6, #22d3ee);
@@ -158,6 +201,8 @@ export default function LoginSupplier() {
           font-weight: 800;
           cursor: pointer;
         }
+        .cta:disabled { opacity: 0.7; cursor: not-allowed; }
+
         .back-login {
           text-align: center;
           font-size: 0.95rem;
@@ -168,6 +213,11 @@ export default function LoginSupplier() {
           font-weight: 600;
           text-decoration: underline;
           cursor: pointer;
+        }
+
+        @media (max-width: 560px) {
+          .card { padding: 20px; border-radius: 16px; }
+          .title { font-size: 1.6rem; }
         }
       `}</style>
     </>

@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import AdminNavBar from '../../components/AdminNavBar'
 import Footer from '../../components/Footer'
 import ConfirmModal from '../../components/ConfirmModal'
-import { FaSearch, FaMoneyBillWave } from 'react-icons/fa'
+import { FaSearch, FaMoneyBillWave, FaCoins } from 'react-icons/fa'
 
 export default function AdminSoldsPage() {
   const [items, setItems] = useState([])
@@ -20,6 +20,7 @@ export default function AdminSoldsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState(null)
   const [processingRefund, setProcessingRefund] = useState(false)
+  const [refundType, setRefundType] = useState('partial') // 'partial' | 'full'
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   // fetchPage definido con useCallback para poder invocarlo desde otros handlers
@@ -80,11 +81,13 @@ export default function AdminSoldsPage() {
       (String(it.numeroPerfil ?? '') ) + ' ' +
       (it.clientName ?? '') + ' ' +
       (it.buyerUsername ?? '') + ' ' +
+      (it.providerName ?? '') + ' ' +
       (String(it.startAt ?? '')) + ' ' +
       (String(it.endAt ?? '')) + ' ' +
       (String(it.daysRemaining ?? '')) + ' ' +
       (it.status ?? '') + ' ' +
-      (String(it.refund ?? ''))
+      (String(it.refund ?? '')) + ' ' +
+      (String(it.amount ?? ''))
     ).toLowerCase()
     return hay.includes(search.toLowerCase())
   })
@@ -120,13 +123,21 @@ export default function AdminSoldsPage() {
     return days > 0 && refundAmount > 0 && !alreadyRefunded
   }
 
-  // Abrir modal de confirmación para la fila seleccionada
+  // Abrir modal de confirmación para la fila seleccionada (partial)
   const openConfirmForRow = (row) => {
     setSelectedRow(row)
+    setRefundType('partial')
     setConfirmOpen(true)
   }
 
-  // Ejecuta el reembolso llamando al servicio backend
+  // Abrir modal de confirmación para reembolso completo (usa amount que ya viene en la fila)
+  const openFullRefundForRow = (row) => {
+    setSelectedRow(row)
+    setRefundType('full')
+    setConfirmOpen(true)
+  }
+
+  // Ejecuta el reembolso llamando al servicio backend (usa refundType para elegir endpoint)
   const executeRefund = async () => {
     if (!selectedRow) return
     setProcessingRefund(true)
@@ -137,10 +148,15 @@ export default function AdminSoldsPage() {
 
       const stockId = selectedRow.id
       const buyerId = selectedRow.buyerId ?? selectedRow.buyerIdString ?? selectedRow.buyerId ?? selectedRow.buyerId
-      const url = `${BASE_URL}/api/admin/users/stocks/${encodeURIComponent(stockId)}/refund`
+
+      // elegir endpoint según tipo
+      const endpoint = refundType === 'full'
+        ? `${BASE_URL}/api/admin/users/stocks/${encodeURIComponent(stockId)}/refund/full`
+        : `${BASE_URL}/api/admin/users/stocks/${encodeURIComponent(stockId)}/refund`
+
       const body = buyerId ? { buyerId } : {}
 
-      const res = await fetch(url, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: Object.keys(body).length ? JSON.stringify(body) : null
@@ -152,18 +168,15 @@ export default function AdminSoldsPage() {
       }
 
       const payload = await res.json().catch(() => null)
-      const refundedAmount = payload?.refundAmount ?? selectedRow.refund ?? null
+      // backend puede devolver refundAmount o amount
+      const refundedAmount = payload?.refundAmount ?? payload?.amount ?? selectedRow.refund ?? null
       const amountText = refundedAmount != null ? Number(refundedAmount).toFixed(2) : '—'
+      const typeText = refundType === 'full' ? 'completo' : 'parcial'
 
-      // Mostrar banner detallado
-      setBanner({ type: 'success', message: `Reembolso aplicado. Stock ID: ${stockId}. Monto: ${amountText} PEN.` })
+      setBanner({ type: 'success', message: `Reembolso ${typeText} aplicado. Stock ID: ${stockId}. Monto: ${amountText} PEN.` })
 
       // REFRESH: llamar directamente a fetchPage para actualizar la tabla inmediatamente
       await fetchPage(page)
-
-      // alternativa: si quieres una actualización optimista en lugar de refetch completo,
-      // puedes actualizar items localmente (descomentarlo si prefieres):
-      // setItems(prev => prev.map(it => it.id === stockId ? { ...it, status: 'REFUND', refund: refundedAmount } : it))
 
     } catch (err) {
       setBanner({ type: 'error', message: 'No se pudo ejecutar el reembolso: ' + (err.message || err) })
@@ -171,6 +184,7 @@ export default function AdminSoldsPage() {
       setProcessingRefund(false)
       setConfirmOpen(false)
       setSelectedRow(null)
+      setRefundType('partial')
     }
   }
 
@@ -178,6 +192,7 @@ export default function AdminSoldsPage() {
   const cancelRefund = () => {
     setConfirmOpen(false)
     setSelectedRow(null)
+    setRefundType('partial')
   }
 
   return (
@@ -197,7 +212,6 @@ export default function AdminSoldsPage() {
             />
           </div>
 
-          {/* El icono de refrescar fue removido según lo solicitado */}
           <div className="header-actions" aria-hidden="true" />
         </div>
 
@@ -220,8 +234,9 @@ export default function AdminSoldsPage() {
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '120px' }} />
-                    <col style={{ width: '180px' }} />
                     <col style={{ width: '160px' }} />
+                    <col style={{ width: '160px' }} /> {/* Comprador */}
+                    <col style={{ width: '160px' }} /> {/* Vendedor */}
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '120px' }} />
@@ -238,11 +253,12 @@ export default function AdminSoldsPage() {
                       <th>CONTRASEÑA</th>
                       <th>PERFIL</th>
                       <th>CLIENTE</th>
-                      <th>Comprador</th>
+                      <th>COMPRADOR</th>
+                      <th>VENDEDOR</th>
                       <th>Fecha inicio</th>
                       <th>Fecha fin</th>
                       <th>Días restantes</th>
-                      <th>Estado</th>
+                      <th>PRECIO ORIGINAL</th>
                       <th>Reembolso</th>
                       <th>Setting</th>
                     </tr>
@@ -251,6 +267,8 @@ export default function AdminSoldsPage() {
                   <tbody>
                     {displayed.map((r, i) => {
                       const refundEnabled = isRefundEnabled(r)
+                      // preferencia de campo para precio original: amount (backend) -> salePrice -> refund
+                      const originalPrice = r?.amount ?? r?.salePrice ?? r?.refund ?? null
                       return (
                         <tr key={r.id ?? i}>
                           <td><div className="row-inner index">{i + 1}</div></td>
@@ -267,21 +285,28 @@ export default function AdminSoldsPage() {
                           <td><div className="row-inner monospace">{r.password ?? '—'}</div></td>
                           <td><div className="row-inner">{r.numeroPerfil ?? '—'}</div></td>
                           <td><div className="row-inner">{r.clientName ?? r.clientPhone ?? '—'}</div></td>
+
                           <td><div className="row-inner">{r.buyerUsername ?? r.buyerId ?? '—'}</div></td>
+
+                          <td><div className="row-inner">{r.providerName ?? '—'}</div></td>
+
                           <td><div className="row-inner no-wrap">{formatDate(r.startAt)}</div></td>
                           <td><div className="row-inner no-wrap">{formatDate(r.endAt)}</div></td>
-                          <td><div className="row-inner">{r.daysRemaining ?? '—'}</div></td>
 
                           <td>
-                            <div className="row-inner">
-                              <span className={stateClass(r.status)}>{(r.status ?? '—').toString().toUpperCase()}</span>
-                            </div>
+                            <div className="row-inner center-inner">{r.daysRemaining ?? '—'}</div>
+                          </td>
+
+                          {/* PRECIO ORIGINAL */}
+                          <td>
+                            <div className="row-inner">{formatAmount(originalPrice)}</div>
                           </td>
 
                           <td><div className="row-inner">{r.refund == null ? '—' : Number(r.refund).toFixed(2)}</div></td>
 
                           <td>
-                            <div className="row-inner">
+                            <div className="row-inner setting-actions">
+                              {/* Reembolso parcial */}
                               <button
                                 className="btn-disburse"
                                 onClick={() => openConfirmForRow(r)}
@@ -292,6 +317,19 @@ export default function AdminSoldsPage() {
                               >
                                 <FaMoneyBillWave />
                                 <span className="sr-only">Desembolsar</span>
+                              </button>
+
+                              {/* Reembolso completo (icono) */}
+                              <button
+                                className="btn-full-refund"
+                                onClick={() => openFullRefundForRow(r)}
+                                aria-label="Reembolso completo"
+                                title="Reembolso completo"
+                                disabled={processingRefund}
+                                style={{ opacity: processingRefund ? 0.45 : 1, cursor: processingRefund ? 'not-allowed' : 'pointer' }}
+                              >
+                                <FaCoins />
+                                <span className="sr-only">Reembolso completo</span>
                               </button>
                             </div>
                           </td>
@@ -318,13 +356,17 @@ export default function AdminSoldsPage() {
       {/* ConfirmModal: se abre antes de ejecutar el reembolso */}
       <ConfirmModal
         open={confirmOpen}
-        title="Confirmar reembolso"
+        title={refundType === 'full' ? "Confirmar reembolso completo" : "Confirmar reembolso"}
         description={
           selectedRow
-            ? `Vas a desembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} PEN para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
+            ? (
+              refundType === 'full'
+                ? `El backend indica que el monto a reembolsar será ${selectedRow.amount != null ? formatAmount(selectedRow.amount) : (selectedRow.salePrice != null ? formatAmount(selectedRow.salePrice) : (selectedRow.refund != null ? formatAmount(selectedRow.refund) : '—'))}. ¿Deseas continuar?`
+                : `Vas a desembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} PEN para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
+            )
             : '¿Deseas continuar?'
         }
-        confirmLabel="DESEMBOLSAR"
+        confirmLabel={refundType === 'full' ? "DESEMBOLSAR COMPLETO" : "DESEMBOLSAR"}
         cancelLabel="Cancelar"
         onConfirm={executeRefund}
         onCancel={cancelRefund}
@@ -362,6 +404,9 @@ export default function AdminSoldsPage() {
         .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
 
+        /* Centered cell variant for daysRemaining */
+        .center-inner { justify-content:center; }
+
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
         .pager-info { color:#cbd5e1; }
         .pager-controls { display:flex; gap:8px; }
@@ -396,13 +441,39 @@ export default function AdminSoldsPage() {
           transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
           box-shadow: 0 6px 18px rgba(6,27,48,0.35);
           -webkit-tap-highlight-color: transparent;
+          margin-right: 8px;
         }
         .btn-disburse svg { width: 18px; height: 18px; display: block; pointer-events: none; color: inherit; }
         .btn-disburse:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(6,27,48,0.45); }
         .btn-disburse:active { transform: translateY(0); box-shadow: 0 6px 18px rgba(6,27,48,0.35); }
         .btn-disburse:focus { outline: 3px solid rgba(147,197,253,0.18); outline-offset: 3px; }
-        .btn-disburse:disabled, .btn-disburse[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-        .row-inner .btn-disburse { margin: 0; }
+        .btn-disburse:disabled, .btn-disburse[aria-disabled="true"] { opacity: 0.55; cursor:not-allowed; transform: none; box-shadow: none; }
+
+        /* Botón de reembolso completo (icono) */
+        .btn-full-refund {
+          display: inline-grid;
+          place-items: center;
+          width: 40px;
+          height: 40px;
+          padding: 0;
+          border-radius: 10px;
+          background: linear-gradient(90deg,#f97316,#ef4444);
+          color: #fff;
+          border: none;
+          cursor: pointer;
+          font-weight: 800;
+          font-size: 16px;
+          line-height: 1;
+          transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+          box-shadow: 0 6px 18px rgba(15,10,10,0.35);
+          -webkit-tap-highlight-color: transparent;
+        }
+        .btn-full-refund svg { width: 16px; height: 16px; display: block; pointer-events: none; color: inherit; }
+        .btn-full-refund:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(15,10,10,0.45); }
+        .btn-full-refund:active { transform: translateY(0); box-shadow: 0 6px 18px rgba(15,10,10,0.35); }
+        .btn-full-refund:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .setting-actions { display:flex; align-items:center; gap:6px; }
 
         .sr-only {
           position: absolute !important;

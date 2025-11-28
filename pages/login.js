@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 
 export default function Login() {
   const router = useRouter()
@@ -13,6 +13,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-seller`
 
@@ -113,15 +114,25 @@ export default function Login() {
             <span className="underline" />
           </div>
 
-          <div className="group">
+          <div className="group password-group">
             <div className="icon"><FontAwesomeIcon icon={faLock} /></div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              aria-label="Contraseña"
             />
+            <button
+              type="button"
+              className="eye-btn"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
             <span className="underline" />
           </div>
 
@@ -255,6 +266,24 @@ export default function Login() {
         .group input::placeholder { color: #8e8e8e; }
         .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8); transition: opacity 0.2s ease, transform 0.2s ease; }
         .group:focus-within .underline { opacity: 1; transform: scaleX(1); }
+
+        /* Password group specific: eye button on the right */
+        .password-group { padding-right: 44px; } /* leave space for eye button */
+        .eye-btn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
 
         .cta {
           padding: 12px 16px;

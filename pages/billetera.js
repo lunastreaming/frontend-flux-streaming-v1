@@ -1,82 +1,91 @@
 // pages/billetera.js
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/router';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import AddBalanceModal from '../components/AddBalanceModal';
-import ConfirmModal from '../components/ConfirmModal';
+'use client'
+
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/router'
+import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
+import AddBalanceModal from '../components/AddBalanceModal'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Billetera() {
-  const router = useRouter();
+  const router = useRouter()
 
   // ---- Hooks: siempre declarados en el mismo orden ----
-  const [hasMounted, setHasMounted] = useState(false);
-  const [token, setToken] = useState(null);
+  const [hasMounted, setHasMounted] = useState(false)
+  const [token, setToken] = useState(null)
 
-  // Estado y refs que antes causaban el problema al declararse después del early return
-  const [balance, setBalance] = useState(null); // null = loading, number = loaded
-  const [movimientos, setMovimientos] = useState([]); // store formatted items
-  const [pending, setPending] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  // Estado principal
+  const [balance, setBalance] = useState(null) // null = loading, number = loaded
+  const [movimientos, setMovimientos] = useState([]) // items mostrados en la lista (página actual)
+  const [pending, setPending] = useState([])
+  const [modalOpen, setModalOpen] = useState(false)
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTargetId, setConfirmTargetId] = useState(null);
-  const [confirmLoading, setConfirmLoading] = useState(false);
+  // confirm cancel
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTargetId, setConfirmTargetId] = useState(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
-  const hasFetched = useRef(false);
+  // paginación para movimientos (llamado al endpoint paginado)
+  const [movPage, setMovPage] = useState(0)
+  const [movSize, setMovSize] = useState(20) // por defecto 20 por página
+  const [movTotalElements, setMovTotalElements] = useState(0)
+  const [movTotalPages, setMovTotalPages] = useState(1)
+
+  // ref para evitar fetch inicial repetido (nombre único para evitar colisiones)
+  const hasFetchedRef = useRef(false)
 
   // BASE desde env (SSR-safe)
-  const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
-  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '';
-  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL
+  const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : ''
+  const buildUrl = (path) => `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`
 
-  // ---- Effects ----
-  useEffect(() => { setHasMounted(true); }, []);
+  useEffect(() => { setHasMounted(true) }, [])
 
   // leer token solo en cliente, después del montaje
   useEffect(() => {
-    if (!hasMounted) return;
+    if (!hasMounted) return
     try {
-      const t = localStorage.getItem('accessToken');
-      setToken(t);
-      if (!t) router.replace('/login');
+      const t = localStorage.getItem('accessToken')
+      setToken(t)
+      if (!t) router.replace('/login')
     } catch (e) {
-      setToken(null);
-      router.replace('/login');
+      setToken(null)
+      router.replace('/login')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMounted]);
+  }, [hasMounted])
 
   // Fetch inicial: solo cuando estamos montados, router.ready y token presente
   useEffect(() => {
-    if (!hasMounted || !router.isReady || hasFetched.current || !token) return;
-    hasFetched.current = true;
+    if (!hasMounted || !router.isReady || hasFetchedRef.current || !token) return
+    hasFetchedRef.current = true
 
-    (async () => {
+    ;(async () => {
       try {
-        await fetchMeAndPopulate(token);
-        await fetchPendingRequests(token);
-        await fetchUserTransactions(token);
+        await fetchMeAndPopulate(token)
+        await fetchPendingRequests(token)
+        await fetchUserTransactions(token, movPage, movSize)
       } catch (err) {
-        console.error('Error inicial:', err);
-        router.replace('/login');
+        console.error('Error inicial:', err)
+        router.replace('/login')
       }
-    })();
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMounted, router.isReady, token]);
+  }, [hasMounted, router.isReady, token])
 
   // ---- Fetchers (client-side) ----
   async function fetchMeAndPopulate(tokenVal) {
-    const apiUrl = buildUrl('/api/users/me');
+    const apiUrl = buildUrl('/api/users/me')
     const res = await fetch(apiUrl, {
-      headers: { Authorization: `Bearer ${tokenVal}` },
-    });
-    if (!res.ok) throw new Error('Token inválido o expirado');
-    const data = await res.json();
-    const monto = Number.parseFloat(data.balance) || 0;
-    setBalance(monto);
+      headers: { Authorization: `Bearer ${tokenVal}` }
+    })
+    if (!res.ok) throw new Error('Token inválido o expirado')
+    const data = await res.json()
+    const monto = Number.parseFloat(data.balance) || 0
+    setBalance(monto)
 
-    const rawMov = Array.isArray(data.movements) ? data.movements : [];
+    const rawMov = Array.isArray(data.movements) ? data.movements : []
     if (rawMov.length > 0) {
       const mapped = rawMov.map(m => ({
         id: m.id,
@@ -85,173 +94,202 @@ export default function Billetera() {
         amount: typeof m.amount === 'number' ? m.amount : Number.parseFloat(m.amount || 0),
         currency: m.currency || 'PEN',
         status: m.status || 'unknown',
-        approvedBy: m.approvedBy ? (m.approvedBy.username || m.approvedBy.id || m.approvedBy) : null,
-      }));
+        approvedBy: m.approvedBy ? (m.approvedBy.username || m.approvedBy.id || m.approvedBy) : null
+      }))
       const normalized = mapped.map(m => ({
         ...m,
-        date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : '',
-      }));
-      setMovimientos(normalized);
+        date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : ''
+      }))
+      setMovimientos(normalized)
     } else {
-      setMovimientos([]);
+      setMovimientos([])
     }
   }
 
-  async function fetchUserTransactions(tokenVal) {
-    const endpoint = buildUrl('/api/wallet/user/transactions?status=complete');
+  /**
+   * fetchUserTransactions ahora consume el endpoint paginado:
+   * GET /api/wallet/user/transactions?status=complete&page={page}&size={size}
+   * Respuesta esperada: Page<WalletResponse> con campos content, totalElements, totalPages, number, size
+   */
+  const fetchUserTransactions = useCallback(async (tokenVal, page = 0, size = 20) => {
+    if (!tokenVal) return
+    const endpoint = buildUrl(`/api/wallet/user/transactions?status=complete&page=${page}&size=${size}`)
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${tokenVal}`, Accept: 'application/json' },
-    });
+      headers: { Authorization: `Bearer ${tokenVal}`, Accept: 'application/json' }
+    })
 
     if (res.status === 401) {
-      router.replace('/login');
-      return;
+      router.replace('/login')
+      return
     }
 
     if (!res.ok) {
-      console.warn('No se pudieron obtener movimientos del servicio /user/transactions', res.status);
-      return;
+      console.warn('No se pudieron obtener movimientos del servicio /user/transactions', res.status)
+      return
     }
 
-    const data = await res.json();
-    if (!Array.isArray(data)) {
-      console.warn('/api/wallet/user/transactions devolvió formato inesperado', data);
-      return;
-    }
+    const data = await res.json()
 
-    const mapped = data.map(tx => ({
+    // Si viene un Page (objeto con content), lo usamos; si viene un array, lo tratamos como contenido directo
+    const content = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : []
+    const totalElements = typeof data?.totalElements === 'number' ? data.totalElements : (Array.isArray(data) ? data.length : (typeof data?.total === 'number' ? data.total : content.length))
+    const totalPages = typeof data?.totalPages === 'number' ? data.totalPages : Math.max(1, Math.ceil(totalElements / size))
+    const number = typeof data?.number === 'number' ? data.number : page
+
+    const mapped = content.map(tx => ({
       id: tx.id,
       dateRaw: tx.approvedAt || tx.createdAt || new Date().toISOString(),
       desc: tx.description || tx.type || 'Transacción',
       amount: typeof tx.amount === 'number' ? tx.amount : Number.parseFloat(tx.amount || 0),
       currency: tx.currency || 'PEN',
       status: tx.status || 'unknown',
-      approvedBy: tx.approvedBy ? (tx.approvedBy.username || tx.approvedBy.id || tx.approvedBy) : null,
-    }));
+      approvedBy: tx.approvedBy ? (tx.approvedBy.username || tx.approvedBy.id || tx.approvedBy) : null
+    }))
 
     const normalized = mapped.map(m => ({
       ...m,
-      date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : '',
-    }));
+      date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : ''
+    }))
 
-    setMovimientos(normalized);
-  }
+    setMovimientos(normalized)
+    setMovTotalElements(totalElements)
+    setMovTotalPages(totalPages)
+    setMovPage(number)
+    setMovSize(size)
+  }, [buildUrl, router])
 
   async function fetchPendingRequests(tokenVal) {
-    const endpoint = buildUrl('/api/wallet/user/pending');
+    const endpoint = buildUrl('/api/wallet/user/pending')
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${tokenVal}` },
-    });
+      headers: { Authorization: `Bearer ${tokenVal}` }
+    })
     if (!res.ok) {
       if (res.status === 401) {
-        router.replace('/login');
+        router.replace('/login')
       }
-      setPending([]);
-      return;
+      setPending([])
+      return
     }
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : Array.isArray(data.pending) ? data.pending : [];
+    const data = await res.json()
+    const list = Array.isArray(data) ? data : Array.isArray(data.pending) ? data.pending : []
     const normalized = list.map(p => ({
       ...p,
-      createdAtRaw: p.createdAt || p.created_at || null,
-    }));
+      createdAtRaw: p.createdAt || p.created_at || null
+    }))
     const presented = normalized.map(p => ({
       ...p,
-      createdAtFormatted: p.createdAtRaw ? new Date(p.createdAtRaw).toLocaleString() : '',
-    }));
-    setPending(presented);
+      createdAtFormatted: p.createdAtRaw ? new Date(p.createdAtRaw).toLocaleString() : ''
+    }))
+    setPending(presented)
   }
 
   // ---- Actions ----
-  const handleAddClick = () => setModalOpen(true);
+  const handleAddClick = () => setModalOpen(true)
 
   const handleAdd = async ({ amount, currency }) => {
-    const tokenVal = localStorage.getItem('accessToken');
-    if (!tokenVal) throw new Error('No autorizado');
+    const tokenVal = localStorage.getItem('accessToken')
+    if (!tokenVal) throw new Error('No autorizado')
 
-    const endpoint = buildUrl('/api/wallet/recharge');
-    const payload = { amount, isSoles: currency === 'PEN' };
+    const endpoint = buildUrl('/api/wallet/recharge')
+    const payload = { amount, isSoles: currency === 'PEN' }
 
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenVal}` },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(payload)
+    })
 
     if (res.status === 401) {
-      router.replace('/login');
-      throw new Error('No autorizado');
+      router.replace('/login')
+      throw new Error('No autorizado')
     }
     if (!res.ok) {
-      let msg = `Error ${res.status}`;
-      try { const body = await res.json(); msg = body?.message || JSON.stringify(body); } catch (e) {}
-      throw new Error(msg);
+      let msg = `Error ${res.status}`
+      try { const body = await res.json(); msg = body?.message || JSON.stringify(body) } catch (e) {}
+      throw new Error(msg)
     }
 
-    await fetchMeAndPopulate(tokenVal);
-    await fetchPendingRequests(tokenVal);
-    await fetchUserTransactions(tokenVal);
-  };
+    // refrescar datos: balance, pendientes y movimientos (mantener página actual)
+    await fetchMeAndPopulate(tokenVal)
+    await fetchPendingRequests(tokenVal)
+    await fetchUserTransactions(tokenVal, movPage, movSize)
+  }
 
   const openConfirmCancel = (id) => {
-    setConfirmTargetId(id);
-    setConfirmOpen(true);
-  };
+    setConfirmTargetId(id)
+    setConfirmOpen(true)
+  }
 
   const closeConfirm = () => {
-    setConfirmTargetId(null);
-    setConfirmOpen(false);
-  };
+    setConfirmTargetId(null)
+    setConfirmOpen(false)
+  }
 
   const confirmCancelPending = async () => {
-    if (!confirmTargetId) { closeConfirm(); return; }
+    if (!confirmTargetId) { closeConfirm(); return }
 
-    setConfirmLoading(true);
-    const tokenVal = localStorage.getItem('accessToken');
+    setConfirmLoading(true)
+    const tokenVal = localStorage.getItem('accessToken')
     if (!tokenVal) {
-      setConfirmLoading(false);
-      closeConfirm();
-      router.replace('/login');
-      return;
+      setConfirmLoading(false)
+      closeConfirm()
+      router.replace('/login')
+      return
     }
 
     try {
-      const endpoint = buildUrl(`/api/wallet/cancel/pending/${encodeURIComponent(confirmTargetId)}`);
+      const endpoint = buildUrl(`/api/wallet/cancel/pending/${encodeURIComponent(confirmTargetId)}`)
       const res = await fetch(endpoint, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${tokenVal}`, 'Content-Type': 'application/json' },
-      });
+        headers: { Authorization: `Bearer ${tokenVal}`, 'Content-Type': 'application/json' }
+      })
 
-      if (res.status === 401) { router.replace('/login'); return; }
+      if (res.status === 401) { router.replace('/login'); return }
       if (!res.ok) {
-        let msg = `Error ${res.status}`;
-        try { const body = await res.json(); msg = body?.message || JSON.stringify(body); } catch (e) {}
-        alert(`No se pudo cancelar la solicitud: ${msg}`);
-        return;
+        let msg = `Error ${res.status}`
+        try { const body = await res.json(); msg = body?.message || JSON.stringify(body) } catch (e) {}
+        alert(`No se pudo cancelar la solicitud: ${msg}`)
+        return
       }
 
-      await fetchPendingRequests(tokenVal);
-      await fetchMeAndPopulate(tokenVal);
-      await fetchUserTransactions(tokenVal);
+      await fetchPendingRequests(tokenVal)
+      await fetchMeAndPopulate(tokenVal)
+      await fetchUserTransactions(tokenVal, movPage, movSize)
     } catch (err) {
-      console.error('Error cancelando solicitud pendiente:', err);
-      alert('Error al cancelar la solicitud. Intenta nuevamente.');
+      console.error('Error cancelando solicitud pendiente:', err)
+      alert('Error al cancelar la solicitud. Intenta nuevamente.')
     } finally {
-      setConfirmLoading(false);
-      closeConfirm();
+      setConfirmLoading(false)
+      closeConfirm()
     }
-  };
+  }
 
   // helper: mostrar monto con dos decimales; balance null = loading
   const formatAmount = (v) => {
-    if (v === null) return 'Cargando…';
-    const n = Number(v);
-    if (Number.isNaN(n)) return '—';
-    return `$${n.toFixed(2)}`;
-  };
+    if (v === null) return 'Cargando…'
+    const n = Number(v)
+    if (Number.isNaN(n)) return '—'
+    return `$${n.toFixed(2)}`
+  }
+
+  // paginador UI handlers para movimientos
+  const movPrev = async () => {
+    if (movPage <= 0) return
+    const nextPage = Math.max(0, movPage - 1)
+    const tokenVal = localStorage.getItem('accessToken')
+    if (!tokenVal) { router.replace('/login'); return }
+    await fetchUserTransactions(tokenVal, nextPage, movSize)
+  }
+
+  const movNext = async () => {
+    if (movPage >= movTotalPages - 1) return
+    const nextPage = Math.min(movTotalPages - 1, movPage + 1)
+    const tokenVal = localStorage.getItem('accessToken')
+    if (!tokenVal) { router.replace('/login'); return }
+    await fetchUserTransactions(tokenVal, nextPage, movSize)
+  }
 
   // ---- Render ----
-  // Si aún no estamos montados devolvimos un placeholder idéntico en server y cliente
   if (!hasMounted) {
     return (
       <>
@@ -267,11 +305,10 @@ export default function Billetera() {
         </main>
         <Footer />
       </>
-    );
+    )
   }
 
-  // Si estamos montados pero token no existe, ya se solicitó redirección en useEffect; no renderizamos nada
-  if (!token) return null;
+  if (!token) return null
 
   return (
     <>
@@ -332,6 +369,15 @@ export default function Billetera() {
               </li>
             ))}
           </ul>
+
+          {/* Paginador de movimientos */}
+          <div className="mov-pager">
+            <div className="pager-info">Página {movPage + 1} de {movTotalPages} — {movTotalElements} movimientos</div>
+            <div className="pager-controls">
+              <button onClick={movPrev} disabled={movPage <= 0} className="pager-btn">Anterior</button>
+              <button onClick={movNext} disabled={movPage >= movTotalPages - 1} className="pager-btn">Siguiente</button>
+            </div>
+          </div>
         </section>
       </main>
 
@@ -369,8 +415,17 @@ export default function Billetera() {
         .tx-badge.approved { background: linear-gradient(90deg,#bbf7d0,#34d399); color:#04261a; }
         .tx-badge.pending { background: linear-gradient(90deg,#fef3c7,#f59e0b); color:#3a2700; }
         .tx-badge.rejected { background: linear-gradient(90deg,#fecaca,#fb7185); color:#2b0404; }
+
+        .mov-pager { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px; flex-wrap:wrap; }
+        .pager-info { color:#cbd5e1; font-size:0.9rem; }
+        .pager-controls { display:flex; gap:8px; }
+        .pager-btn { padding:8px 12px; border-radius:8px; border:none; background:rgba(255,255,255,0.03); color:#e1e1e1; cursor:pointer; }
+        .pager-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+        .empty { padding:12px; color:#9aa4b2; text-align:center; }
+
         @media (max-width:640px) { .balance-amount{font-size:1.8rem} .pending-amt{min-width:90px} }
       `}</style>
     </>
-  );
+  )
 }

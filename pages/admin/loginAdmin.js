@@ -3,7 +3,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 
 export default function LoginAdmin() {
   const router = useRouter()
@@ -12,6 +12,7 @@ export default function LoginAdmin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-admin`
 
@@ -69,7 +70,6 @@ export default function LoginAdmin() {
       }
 
       // Persistir en provider (normaliza nombres internamente)
-      // login puede ser sincrónico; envolver en Promise para await seguro
       await Promise.resolve(login({
         accessToken: token,
         refresh_token: data.refreshToken || data.refresh_token || null
@@ -80,7 +80,6 @@ export default function LoginAdmin() {
         document.cookie = `accessToken=${token}; path=/; SameSite=Lax`
       } catch (_) {}
 
-      // Pequeña espera para asegurar persistencia si es necesario
       await new Promise(resolve => setTimeout(resolve, 80))
 
       console.log('Login exitoso, redirigiendo a /admin')
@@ -104,7 +103,7 @@ export default function LoginAdmin() {
           <h1 className="title">Acceso Administrativo</h1>
           <p className="subtitle">Login administrativo</p>
 
-          {error && <div style={{ color: '#ffb4b4', textAlign: 'center' }}>{error}</div>}
+          {error && <div className="error">{error}</div>}
 
           <div className="group">
             <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
@@ -114,19 +113,30 @@ export default function LoginAdmin() {
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
+              aria-label="Usuario"
             />
             <span className="underline" />
           </div>
 
-          <div className="group">
+          <div className="group password-group">
             <div className="icon"><FontAwesomeIcon icon={faLock} /></div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              aria-label="Contraseña"
             />
+            <button
+              type="button"
+              className="eye-btn"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
             <span className="underline" />
           </div>
 
@@ -167,6 +177,8 @@ export default function LoginAdmin() {
         .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; letter-spacing: 0.2px; }
         .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px; }
 
+        .error { color: #ffb4b4; text-align: center; font-size: 0.95rem; }
+
         .group {
           position: relative;
           display: flex;
@@ -184,6 +196,25 @@ export default function LoginAdmin() {
         .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8); transition: opacity 0.2s ease, transform 0.2s ease; }
         .group:focus-within .underline { opacity: 1; transform: scaleX(1); }
 
+        /* Password group: reserve space for eye button */
+        .password-group { padding-right: 44px; }
+
+        .eye-btn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+
         .cta {
           padding: 12px 16px;
           background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
@@ -196,6 +227,12 @@ export default function LoginAdmin() {
           box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
         }
         .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22); }
+        .cta:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        @media (max-width: 640px) {
+          .card { padding: 20px; border-radius: 16px; }
+          .title { font-size: 1.6rem; }
+        }
       `}</style>
     </>
   )

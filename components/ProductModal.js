@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+// components/ProductModal.js
+import { useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
-import { FaTimes } from 'react-icons/fa'
+import { FaTimes, FaCloudUploadAlt } from 'react-icons/fa'
 
-// 🔧 Configura tus credenciales de Cloudinary
+// Cloudinary config (ajusta si hace falta)
 const CLOUDINARY_UPLOAD_PRESET = 'streamingluna_unsigned'
 const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dgzmzsgi8/image/upload'
 
@@ -26,6 +27,8 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
   const [form, setForm] = useState(initialForm)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+  const dropRef = useRef(null)
 
   useEffect(() => {
     setMounted(true)
@@ -35,10 +38,10 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
       .catch(() => setCategories([]))
   }, [])
 
-  // preload form when opening for edit
   useEffect(() => {
     if (!visible) {
       setForm(initialForm)
+      setError(null)
       return
     }
     if (initialData) {
@@ -49,7 +52,6 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
         productDetail: initialData.productDetail ?? '',
         requestDetail: initialData.requestDetail ?? '',
         days: initialData.days ?? '',
-        // precios vienen del backend como BigDecimal (decimales), se muestran tal cual
         salePrice: initialData.salePrice != null ? String(initialData.salePrice) : '',
         renewalPrice: initialData.renewalPrice != null ? String(initialData.renewalPrice) : '',
         isRenewable: !!initialData.isRenewable,
@@ -65,23 +67,35 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const handleDrop = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer?.files?.[0]
+    if (file) await handleImageUpload(file)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0]
+    if (file) handleImageUpload(file)
   }
 
   const handleImageUpload = async (file) => {
     setUploading(true)
+    setError(null)
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
 
     try {
-      const res = await fetch(CLOUDINARY_URL, {
-        method: 'POST',
-        body: formData
-      })
+      const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData })
       const data = await res.json()
       if (data.secure_url) {
         setForm(prev => ({ ...prev, imageUrl: data.secure_url }))
@@ -89,7 +103,7 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
         throw new Error('No secure_url returned from Cloudinary')
       }
     } catch (err) {
-      alert('Error subiendo imagen: ' + (err.message || err))
+      setError('Error subiendo imagen: ' + (err.message || err))
     } finally {
       setUploading(false)
     }
@@ -98,7 +112,7 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
   const toDecimal = (val) => {
     if (val === undefined || val === null || val === '') return null
     const f = parseFloat(String(val).replace(',', '.'))
-    return Number.isNaN(f) ? null : f
+    return Number.isNaN(f) ? null : Number(f.toFixed(2))
   }
 
   const toInteger = (val) => {
@@ -111,13 +125,13 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
 
   const handleSubmit = async () => {
     try {
+      setError(null)
       if (!form.name || !form.categoryId || !form.salePrice) {
-        alert('Nombre, categoría y precio de venta son obligatorios')
+        setError('Nombre, categoría y precio de venta son obligatorios')
         return
       }
-
       if (uploading) {
-        alert('Espera a que la imagen termine de subirse')
+        setError('Espera a que la imagen termine de subirse')
         return
       }
 
@@ -130,7 +144,6 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
         productDetail: form.productDetail?.trim() || null,
         requestDetail: form.requestDetail?.trim() || null,
         days: toInteger(form.days),
-        // ahora se envían decimales directamente (BigDecimal en backend)
         salePrice: toDecimal(form.salePrice),
         renewalPrice: toDecimal(form.renewalPrice),
         isRenewable: !!form.isRenewable,
@@ -147,44 +160,34 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
       if (initialData && initialData.id) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${initialData.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(filteredPayload)
         })
-
         if (!res.ok) {
           const text = await res.text().catch(() => '')
           throw new Error(`Error ${res.status} ${text}`)
         }
-
         const updated = await res.json()
-        onSuccess(updated)
+        if (onSuccess) onSuccess(updated)
         resetForm()
         onClose()
       } else {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(filteredPayload)
         })
-
         if (!res.ok) {
           const text = await res.text().catch(() => '')
           throw new Error(`Error ${res.status} ${text}`)
         }
-
         const created = await res.json()
-        onSuccess(created)
+        if (onSuccess) onSuccess(created)
         resetForm()
         onClose()
       }
     } catch (err) {
-      alert('Error al guardar producto: ' + (err.message || err))
+      setError('Error al guardar producto: ' + (err.message || err))
     } finally {
       setSubmitting(false)
     }
@@ -195,97 +198,314 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
     onClose()
   }
 
-  const title = initialData && initialData.id ? '✏️ Editar producto' : '🛒 Nuevo producto'
-  const submitLabel = initialData && initialData.id ? (submitting ? 'Guardando...' : 'Guardar cambios') : (submitting ? 'Creando...' : 'Guardar')
+  const title = initialData && initialData.id ? 'Editar producto' : 'Nuevo producto'
+  const submitLabel = initialData && initialData.id ? (submitting ? 'Guardando...' : 'Guardar cambios') : (submitting ? 'Creando...' : 'Crear producto')
 
   return ReactDOM.createPortal(
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      zIndex: 2147483647,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 0 20px rgba(0,0,0,0.3)',
-        width: '90%',
-        maxWidth: '500px',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        padding: '1.5rem',
-        position: 'relative'
-      }}>
-        <button onClick={handleClose} style={{
-          position: 'absolute',
-          top: '0.5rem',
-          right: '0.5rem',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1.25rem'
-        }}>
-          <FaTimes />
-        </button>
+    <div style={styles.backdrop} role="dialog" aria-modal="true" aria-label={title}>
+      <div style={styles.modalCard}>
+        <header style={styles.header}>
+          <h3 style={styles.title}>{title}</h3>
+          <button onClick={handleClose} aria-label="Cerrar" style={styles.closeBtn}><FaTimes /></button>
+        </header>
 
-        <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>
-          {title}
-        </h2>
+        {/* Contenido con scroll independiente y altura limitada */}
+        <div style={styles.contentWrap}>
+          <div style={styles.contentGrid}>
+            {/* Left: formulario (orden restaurado) */}
+            <form style={styles.form} onSubmit={(e) => { e.preventDefault(); handleSubmit() }}>
+              <div style={styles.row}>
+                <label style={styles.label}>Nombre</label>
+                <input name="name" value={form.name} onChange={handleChange} style={styles.input} placeholder="Nombre del producto" />
+              </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <input name="name" placeholder="Nombre" value={form.name} onChange={handleChange} />
-          <select name="categoryId" value={form.categoryId} onChange={handleChange}>
-            <option value="">Selecciona categoría</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-          <textarea name="terms" placeholder="Condiciones de uso" value={form.terms} onChange={handleChange} />
-          <textarea name="productDetail" placeholder="Detalle del producto" value={form.productDetail} onChange={handleChange} />
-          <textarea name="requestDetail" placeholder="Detalle de la solicitud" value={form.requestDetail} onChange={handleChange} />
-          <input type="number" name="days" placeholder="Días" value={form.days} onChange={handleChange} />
-          <input type="text" name="salePrice" placeholder="Precio de venta (ej. 4.09)" value={form.salePrice} onChange={handleChange} />
-          <input type="text" name="renewalPrice" placeholder="Precio de renovación (ej. 6.09)" value={form.renewalPrice} onChange={handleChange} />
-          <label><input type="checkbox" name="isRenewable" checked={form.isRenewable} onChange={handleChange} /> Renovable</label>
-          <label><input type="checkbox" name="isOnRequest" checked={form.isOnRequest} onChange={handleChange} /> A solicitud</label>
+              <div style={styles.row}>
+                <label style={styles.label}>Categoría</label>
+                <select
+                  name="categoryId"
+                  value={form.categoryId}
+                  onChange={handleChange}
+                  style={styles.select}
+                >
+                  <option value="" disabled style={styles.optionDisabled}>Selecciona categoría</option>
+                  {categories.map(cat => (
+                    <option
+                      key={cat.id}
+                      value={cat.id}
+                      style={styles.option}
+                    >
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <input type="file" accept="image/*" onChange={(e) => {
-            const file = e.target.files[0]
-            if (file) handleImageUpload(file)
-          }} />
-          {uploading && <div style={{ fontSize: '0.9rem', color: '#555' }}>Subiendo imagen…</div>}
-          {form.imageUrl && (
-            <img
-              src={form.imageUrl}
-              alt="Preview"
-              style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '6px' }}
-            />
-          )}
+              <div style={styles.row}>
+                <label style={styles.label}>Condiciones (terms)</label>
+                <textarea name="terms" value={form.terms} onChange={handleChange} style={styles.textarea} placeholder="Condiciones de uso"></textarea>
+              </div>
+
+              <div style={styles.row}>
+                <label style={styles.label}>Detalle del producto</label>
+                <textarea name="productDetail" value={form.productDetail} onChange={handleChange} style={styles.textarea} placeholder="Descripción breve"></textarea>
+              </div>
+
+              <div style={styles.row}>
+                <label style={styles.label}>Detalle de la solicitud</label>
+                <textarea name="requestDetail" value={form.requestDetail} onChange={handleChange} style={styles.textarea} placeholder="Instrucciones para el proveedor"></textarea>
+              </div>
+
+              <div style={styles.grid2}>
+                <div>
+                  <label style={styles.label}>Días</label>
+                  <input type="number" name="days" value={form.days} onChange={handleChange} style={styles.input} placeholder="Ej. 30" />
+                </div>
+                <div>
+                  <label style={styles.label}>Precio venta (ej. 4.23)</label>
+                  <input name="salePrice" value={form.salePrice} onChange={handleChange} style={styles.input} placeholder="4.23" inputMode="decimal" />
+                </div>
+              </div>
+
+              <div style={styles.grid2}>
+                <div>
+                  <label style={styles.label}>Precio renovación</label>
+                  <input name="renewalPrice" value={form.renewalPrice} onChange={handleChange} style={styles.input} placeholder="6.00" inputMode="decimal" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label style={styles.label}>Opciones</label>
+                  <div style={styles.checkboxRow}>
+                    <label style={styles.checkboxLabel}><input type="checkbox" name="isRenewable" checked={form.isRenewable} onChange={handleChange} /> Renovable</label>
+                    <label style={styles.checkboxLabel}><input type="checkbox" name="isOnRequest" checked={form.isOnRequest} onChange={handleChange} /> A solicitud</label>
+                  </div>
+                </div>
+              </div>
+
+              {error && <div style={styles.error}>{error}</div>}
+            </form>
+
+            {/* Right: upload + preview */}
+            <aside style={styles.preview}>
+              <div
+                ref={dropRef}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                style={styles.dropzone}
+                aria-label="Área para subir imagen"
+              >
+                <div style={styles.dropInner}>
+                  <FaCloudUploadAlt size={36} color="#6b7280" />
+                  <div style={{ marginTop: 8, color: '#6b7280' }}>{uploading ? 'Subiendo imagen…' : 'Arrastra o selecciona una imagen'}</div>
+                  <input type="file" accept="image/*" onChange={handleFileInput} style={styles.fileInput} />
+                </div>
+              </div>
+
+              {form.imageUrl ? (
+                <div style={styles.previewBox}>
+                  <img src={form.imageUrl} alt="Preview" style={styles.previewImg} />
+                  <div style={styles.previewActions}>
+                    <button type="button" onClick={() => setForm(prev => ({ ...prev, imageUrl: '' }))} style={styles.removeBtn}>Eliminar imagen</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={styles.placeholder}>
+                  <div style={{ color: '#9CA3AF' }}>Sin imagen</div>
+                </div>
+              )}
+
+              <div style={styles.hint}>
+                <strong>Consejo:</strong> usa imágenes cuadradas para mejor visualización (mín. 800×800).
+              </div>
+            </aside>
+          </div>
         </div>
 
-        <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>
-          <button onClick={handleClose} style={{
-            marginRight: '0.5rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#e2e8f0',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}>Cancelar</button>
-          <button onClick={handleSubmit} disabled={uploading || submitting} style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: (uploading || submitting) ? '#a0aec0' : '#3182ce',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: (uploading || submitting) ? 'not-allowed' : 'pointer'
-          }}>{submitLabel}</button>
-        </div>
+        {/* Footer fijo con botones siempre visibles */}
+        <footer style={styles.footer}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', width: '100%' }}>
+            <button onClick={handleClose} style={styles.cancelBtn} disabled={submitting || uploading}>Cancelar</button>
+            <button onClick={handleSubmit} style={styles.submitBtn(submitting || uploading)} disabled={submitting || uploading}>
+              {submitting ? 'Procesando...' : submitLabel}
+            </button>
+          </div>
+        </footer>
+
+        {/* Estilos globales para opciones (mejora visibilidad en navegadores que respetan) */}
+        <style>{`
+          /* Forzar color de options en navegadores que lo permiten */
+          select option { background: #071026 !important; color: #EDF2F7 !important; }
+          select option[disabled] { color: #9CA3AF !important; }
+        `}</style>
       </div>
     </div>,
     document.body
   )
+}
+
+/* ===== estilos (basados en PurchaseModal) ===== */
+const styles = {
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(2,6,23,0.6)',
+    zIndex: 2147483647,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 1100,
+    background: 'linear-gradient(180deg, #071026 0%, #081426 100%)',
+    color: '#EDF2F7',
+    borderRadius: 12,
+    boxShadow: '0 20px 60px rgba(2,6,23,0.7)',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '90vh' // limita altura total del modal
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '14px 18px',
+    borderBottom: '1px solid rgba(255,255,255,0.04)'
+  },
+  title: { margin: 0, fontSize: 18, fontWeight: 700 },
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#9CA3AF',
+    fontSize: 18,
+    cursor: 'pointer'
+  },
+  // contenido con scroll independiente
+  contentWrap: {
+    overflowY: 'auto',
+    padding: 18,
+    flex: '1 1 auto' // ocupa el espacio disponible entre header y footer
+  },
+  contentGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 380px',
+    gap: 20
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12
+  },
+  row: { display: 'flex', flexDirection: 'column', gap: 8 },
+  label: { fontSize: 13, color: '#9FB4C8', fontWeight: 700 },
+  input: {
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.02)',
+    color: '#E6EEF7',
+    outline: 'none'
+  },
+  // select con fondo y color forzados para tema oscuro y flecha personalizada
+  select: {
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.06)',
+    background: '#071026',
+    color: '#E6EEF7',
+    outline: 'none',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: 'linear-gradient(45deg, transparent 50%, #9fb4c8 50%), linear-gradient(135deg, #9fb4c8 50%, transparent 50%)',
+    backgroundPosition: 'calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px)',
+    backgroundSize: '6px 6px, 6px 6px',
+    backgroundRepeat: 'no-repeat',
+    cursor: 'pointer'
+  },
+  option: {
+    background: '#071026',
+    color: '#EDF2F7'
+  },
+  optionDisabled: {
+    color: '#9CA3AF'
+  },
+  textarea: {
+    minHeight: 80,
+    padding: 10,
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.02)',
+    color: '#E6EEF7',
+    resize: 'vertical'
+  },
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  checkboxRow: { display: 'flex', gap: 12, alignItems: 'center' },
+  checkboxLabel: { display: 'flex', gap: 8, alignItems: 'center', color: '#E6EEF7' },
+
+  preview: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'stretch'
+  },
+  dropzone: {
+    borderRadius: 10,
+    border: '1px dashed rgba(255,255,255,0.06)',
+    padding: 18,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00))',
+    position: 'relative',
+    minHeight: 120
+  },
+  dropInner: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#9CA3AF' },
+  fileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' },
+  previewBox: { borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.04)' },
+  previewImg: { width: '100%', height: 260, objectFit: 'cover', display: 'block' },
+  previewActions: { display: 'flex', justifyContent: 'flex-end', padding: 8, gap: 8 },
+  removeBtn: { padding: '8px 10px', borderRadius: 8, background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer' },
+  placeholder: { height: 260, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.04)', color: '#9CA3AF' },
+  hint: { fontSize: 12, color: '#9CA3AF', marginTop: 6 },
+  error: { color: '#fecaca', background: 'rgba(239,68,68,0.06)', padding: 10, borderRadius: 8 },
+
+  // footer fijo
+  footer: {
+    borderTop: '1px solid rgba(255,255,255,0.04)',
+    padding: '12px 18px',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00))',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 10,
+    flexShrink: 0
+  },
+  cancelBtn: {
+    padding: '10px 14px',
+    borderRadius: 8,
+    background: '#e6eef7',
+    color: '#081426',
+    border: 'none',
+    cursor: 'pointer'
+  },
+  submitBtn: (disabled) => ({
+    padding: '10px 14px',
+    borderRadius: 8,
+    background: disabled ? 'linear-gradient(90deg,#94A3B8,#6B7280)' : 'linear-gradient(90deg,#06B6D4,#10B981)',
+    color: disabled ? '#E6EEF7' : '#021018',
+    border: 'none',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontWeight: 700
+  })
+}
+
+/* Responsive tweak */
+try {
+  const mq = window?.matchMedia?.('(max-width: 900px)')
+  if (mq && mq.matches) {
+    styles.contentGrid.gridTemplateColumns = '1fr'
+    styles.preview.previewImg = { ...styles.previewImg, height: 200 }
+  }
+} catch (e) {
+  // ignore in SSR
 }

@@ -1,9 +1,10 @@
+// pages/admin/transactions.js
 'use client'
 
 import React, { useEffect, useState } from 'react'
 import AdminNavBar from '../../components/AdminNavBar'
 import Footer from '../../components/Footer'
-import { FaSearch, FaRedoAlt } from 'react-icons/fa'
+import { FaSearch, FaRedoAlt, FaUndo } from 'react-icons/fa'
 
 export default function AdminTransactionsPage() {
   const [items, setItems] = useState([])
@@ -14,6 +15,8 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [banner, setBanner] = useState(null)
+  const [processingReturn, setProcessingReturn] = useState(false)
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   useEffect(() => {
@@ -57,21 +60,75 @@ export default function AdminTransactionsPage() {
     return () => { mounted = false }
   }, [page, BASE_URL, size])
 
-  // Filtered list for display (search across productName, productCode, userName)
+  // Filtered list for display (search across userName, description)
   const displayed = items.filter(it =>
-    ((it.productName ?? '') + ' ' + (it.productCode ?? '') + ' ' + (it.userName ?? '')).toLowerCase().includes(search.toLowerCase())
+    ((it.userName ?? '') + ' ' + (it.description ?? '')).toLowerCase().includes(search.toLowerCase())
   )
 
   const formatDate = (v) => v ? new Date(v).toLocaleString() : '—'
   const formatAmount = (v, curr = 'USD') => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
 
-  // map state/status to badge class and label
+  // Mapea type a etiqueta legible
+  const typeLabel = (t) => {
+    const tt = String(t ?? '').toLowerCase()
+    if (tt === 'recharge') return 'Recarga'
+    if (tt === 'withdrawal') return 'Retiro'
+    return t ?? '—'
+  }
+
+  // Muestra monto; si es withdrawal y backend no trae signo, lo mostramos con prefijo '-'
+  const displayAmount = (row) => {
+    const amt = row?.amount
+    const curr = row?.currency ?? 'USD'
+    if (amt == null) return '—'
+    const numeric = Number(amt)
+    if (String(row?.type ?? '').toLowerCase() === 'withdrawal') {
+      if (numeric < 0) return formatAmount(Math.abs(numeric), curr).replace(/^/, '-')
+      return '-' + formatAmount(numeric, curr)
+    }
+    return formatAmount(numeric, curr)
+  }
+
   const stateClass = (s) => {
     const st = String(s ?? '').toLowerCase()
     if (st === 'approved' || st === 'complete' || st === 'success') return 'tx-badge approved'
     if (st === 'pending' || st === 'waiting') return 'tx-badge pending'
     if (st === 'rejected' || st === 'failed' || st === 'cancelled') return 'tx-badge rejected'
     return 'tx-badge neutral'
+  }
+
+  // Acción de "RETORNO" para transacciones (icono)
+  // Ahora se mostrará solo cuando type === 'recharge' y status === 'approved'
+  const handleReturn = async (row) => {
+    if (!row || !row.id) return
+    if (!confirm(`Confirmar RETORNO para la transacción ${row.id}?`)) return
+
+    setProcessingReturn(true)
+    setBanner(null)
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+      if (!token) throw new Error('No token')
+
+      const url = `${BASE_URL}/api/admin/transactions/${encodeURIComponent(row.id)}/return`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: null
+      })
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Error ${res.status} ${txt}`)
+      }
+
+      await res.json().catch(() => null)
+      setBanner({ type: 'success', message: `RETORNO aplicado. Id: ${row.id}.` })
+      setPage(p => p) // trigger refresh
+    } catch (err) {
+      setBanner({ type: 'error', message: 'No se pudo ejecutar el RETORNO: ' + (err.message || err) })
+    } finally {
+      setProcessingReturn(false)
+    }
   }
 
   return (
@@ -86,20 +143,27 @@ export default function AdminTransactionsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="search-input-inline"
-              placeholder="Buscar producto, código o username..."
+              placeholder="Buscar por usuario o descripción..."
             />
           </div>
 
           <div className="header-actions">
             <button
               className="btn-action"
-              onClick={() => setPage(p => p)} // re-fetch triggered by effect; keep simple
+              onClick={() => setPage(p => p)}
               title="Refrescar"
             >
               <FaRedoAlt />
             </button>
           </div>
         </div>
+
+        {banner && (
+          <div className={`inline-banner ${banner.type}`}>
+            <span className="inline-banner-text">{banner.message}</span>
+            <button className="inline-banner-close" onClick={() => setBanner(null)} aria-label="Cerrar aviso">✕</button>
+          </div>
+        )}
 
         <div className="table-wrapper">
           {loading ? <div className="info">Cargando transacciones…</div> :
@@ -109,11 +173,11 @@ export default function AdminTransactionsPage() {
                   <colgroup>
                     <col style={{ width: '40px' }} />
                     <col style={{ width: '220px' }} />
-                    <col style={{ width: '300px' }} />
+                    <col style={{ width: '140px' }} />
+                    <col style={{ width: '140px' }} />
                     <col style={{ width: '180px' }} />
                     <col style={{ width: '160px' }} />
-                    <col style={{ width: '140px' }} />
-                    <col style={{ width: '120px' }} />
+                    <col style={{ width: '260px' }} />
                     <col style={{ width: '120px' }} />
                     <col />
                   </colgroup>
@@ -121,14 +185,14 @@ export default function AdminTransactionsPage() {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Id</th>
-                      <th>Name Product</th>
-                      <th>Product Code</th>
-                      <th>Username</th>
-                      <th>Date</th>
-                      <th>Quantity</th>
-                      <th>State</th>
-                      <th>Setting</th>
+                      <th>USUARIO</th>
+                      <th>TIPO</th>
+                      <th>MONTO</th>
+                      <th>FECHA</th>
+                      <th>ESTADO</th>
+                      <th>DESCRIPCION</th>
+                      <th>CONFIGURACIONES</th>
+                      <th />
                     </tr>
                   </thead>
 
@@ -136,18 +200,42 @@ export default function AdminTransactionsPage() {
                     {displayed.map((r, i) => (
                       <tr key={r.id ?? i}>
                         <td><div className="row-inner index">{i + 1}</div></td>
-                        <td><div className="row-inner">{r.id ?? '—'}</div></td>
-                        <td><div className="row-inner td-name" title={r.productName ?? ''}>{r.productName ?? '—'}</div></td>
-                        <td><div className="row-inner">{r.productCode ?? '—'}</div></td>
+
                         <td><div className="row-inner">{r.userName ?? '—'}</div></td>
+
+                        <td><div className="row-inner">{typeLabel(r.type)}</div></td>
+
+                        <td><div className="row-inner">{displayAmount(r)}</div></td>
+
                         <td><div className="row-inner no-wrap">{formatDate(r.date)}</div></td>
-                        <td><div className="row-inner">{formatAmount(r.amount, r.currency ?? 'USD')}</div></td>
+
                         <td>
                           <div className="row-inner">
                             <span className={stateClass(r.status)}>{(r.status ?? '—').toString().toUpperCase()}</span>
                           </div>
                         </td>
-                        <td><div className="row-inner">{r.settings ?? '—'}</div></td>
+
+                        <td><div className="row-inner" title={r.description ?? ''}>{r.description ?? '—'}</div></td>
+
+                        <td>
+                          <div className="row-inner">
+                            {String(r.type ?? '').toLowerCase() === 'recharge' && String(r.status ?? '').toLowerCase() === 'approved' ? (
+                              <button
+                                className="btn-return-icon"
+                                onClick={() => handleReturn(r)}
+                                disabled={processingReturn}
+                                title="RETORNO"
+                                aria-label="RETORNO"
+                              >
+                                <FaUndo />
+                              </button>
+                            ) : (
+                              <div style={{ minWidth: 40 }} />
+                            )}
+                          </div>
+                        </td>
+
+                        <td />
                       </tr>
                     ))}
                   </tbody>
@@ -178,11 +266,16 @@ export default function AdminTransactionsPage() {
         .header-actions { display:flex; gap:8px; align-items:center; }
         .btn-action { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; font-weight:700; color:#0d0d0d; background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); cursor:pointer; }
 
-        .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
+        .inline-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:10px; margin: 12px 0; border:1px solid rgba(255,255,255,0.06); }
+        .inline-banner.success { background: linear-gradient(90deg, rgba(34,197,94,0.08), rgba(34,197,94,0.06)); color:#86efac; }
+        .inline-banner.error { background: linear-gradient(90deg, rgba(239,68,68,0.08), rgba(239,68,68,0.06)); color:#fca5a5; }
+        .inline-banner-text { font-weight:700; }
+        .inline-banner-close { background:transparent; border:none; color:#9fb4c8; cursor:pointer; font-size:16px; }
 
+        .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
         .table-scroll { overflow:auto; border-radius:8px; }
 
-        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1100px; }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1000px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
         thead th { padding:10px; text-align:left; font-weight:700; vertical-align:middle; white-space:nowrap; }
 
@@ -190,8 +283,22 @@ export default function AdminTransactionsPage() {
         .row-inner { display:flex; align-items:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
         .row-inner.index { justify-content:center; width:36px; height:36px; padding:0; }
         .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
-
         .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        .btn-return-icon {
+          display:inline-grid;
+          place-items:center;
+          width:36px;
+          height:36px;
+          border-radius:8px;
+          background: linear-gradient(90deg,#f97316,#ef4444);
+          color:#fff;
+          border:none;
+          cursor:pointer;
+          transition: transform .12s ease, box-shadow .12s ease;
+        }
+        .btn-return-icon:disabled { opacity:0.6; cursor:not-allowed; }
+        .btn-return-icon svg { width:16px; height:16px; }
 
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
         .pager-info { color:#cbd5e1; }
@@ -202,14 +309,12 @@ export default function AdminTransactionsPage() {
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
 
-        /* State badges */
         .tx-badge { padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.72rem; text-transform:uppercase; color:#07101a; }
         .tx-badge.approved { background: linear-gradient(90deg,#bbf7d0,#34d399); color:#04261a; }
         .tx-badge.pending { background: linear-gradient(90deg,#fef3c7,#f59e0b); color:#3a2700; }
         .tx-badge.rejected { background: linear-gradient(90deg,#fecaca,#fb7185); color:#2b0404; }
         .tx-badge.neutral { background: rgba(255,255,255,0.04); color:#cfcfcf; }
 
-        /* Horizontal scrollbar themed */
         .table-scroll::-webkit-scrollbar { height:10px; }
         .table-scroll::-webkit-scrollbar-track { background: transparent; }
         .table-scroll::-webkit-scrollbar-thumb {
