@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from 'react'
 
-export default function PublishModal({ open, onClose, product, onPublished }) {
+export default function PublishModal({
+  open,
+  onClose,
+  product,
+  onPublished,      // callback que recibe el producto actualizado
+  mode = 'publish'  // 'publish' | 'renew'
+}) {
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(false)
   const [balance, setBalance] = useState(null)
@@ -17,7 +23,7 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
     setPrice(null)
     fetchInfo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, product])
+  }, [open, product, mode])
 
   async function fetchInfo() {
     setChecking(true)
@@ -63,24 +69,35 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
     setError(null)
     try {
       const token = localStorage.getItem('accessToken')
-      const res = await fetch(`${BASE_URL}/api/products/${product.id}/publish`, {
+
+      // elegir endpoint según mode
+      const endpoint =
+        mode === 'renew'
+          ? `${BASE_URL}/api/products/${encodeURIComponent(product.id)}/publish/renew`
+          : `${BASE_URL}/api/products/${encodeURIComponent(product.id)}/publish`
+
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ active: true })
+        // para publish mantenemos body { active: true } por compatibilidad; renew no necesita body
+        body: mode === 'publish' ? JSON.stringify({ active: true }) : undefined
       })
 
+      const text = await res.text().catch(() => null)
       if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        throw new Error(`Error ${res.status} ${txt}`)
+        const msg = text && text.length ? text : `Error ${res.status}`
+        throw new Error(msg)
       }
 
-      const updated = await res.json()
-      setBalance(updated.providerBalance ?? updated.userBalance ?? updated.balance ?? balance)
+      const updated = text ? JSON.parse(text) : null
 
-      if (onPublished) onPublished(updated)
+      // actualizar balance si backend lo devuelve
+      setBalance(updated?.providerBalance ?? updated?.userBalance ?? updated?.balance ?? balance)
+
+      if (typeof onPublished === 'function') onPublished(updated ?? product)
       onClose()
     } catch (err) {
-      console.error('Error al publicar producto:', err)
+      console.error('Error en PublishModal:', err)
       setError(err.message || String(err))
     } finally {
       setLoading(false)
@@ -97,6 +114,21 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
   }
 
   const insufficient = price != null && balance != null && Number(balance) < Number(price)
+
+  const title =
+    mode === 'renew'
+      ? (product?.isExpired ? 'Reactivar producto' : 'Renovar producto')
+      : 'Publicar producto'
+
+  const subtitle =
+    mode === 'renew'
+      ? (product?.isExpired ? 'Este producto está vencido. Confirma para reactivarlo por 30 días.' : 'Este producto está activo. Confirma para sumar 30 días al periodo actual.')
+      : 'Resumen de publicación'
+
+  const confirmLabel =
+    mode === 'renew'
+      ? (loading ? 'Procesando renovación...' : (product?.isExpired ? 'Confirmar reactivación' : 'Confirmar renovación'))
+      : (loading ? 'Procesando publicación...' : 'Confirmar publicación')
 
   return (
     <div style={backdrop}>
@@ -117,11 +149,10 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
         ) : (
           <div style={content}>
             <div style={header}>
-              <h2 style={title}>{product?.name ?? 'Publicar producto'}</h2>
-              <p style={subtitle}>Resumen de publicación</p>
+              <h2 style={titleStyle}>{product?.name ?? title}</h2>
+              <p style={subtitleStyle}>{subtitle}</p>
             </div>
 
-            {/* Reemplazo total de las cajas de fecha por valores grandes y centrados */}
             <div style={bigValuesRow}>
               <div style={bigValueCard}>
                 <div style={bigLabel}>Saldo disponible</div>
@@ -135,12 +166,14 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
             </div>
 
             {price != null && balance != null && Number(balance) < Number(price) && (
-              <div style={insufficientBanner}>Saldo insuficiente para publicar</div>
+              <div style={insufficientBanner}>Saldo insuficiente para {mode === 'renew' ? 'renovar' : 'publicar'}</div>
             )}
 
             <div style={infoBox}>
               <div style={{ fontSize: 13, color: '#9FB4C8', textAlign: 'center' }}>
-                Confirma la publicación solo si estás de acuerdo con el cargo de publicación.
+                {mode === 'renew'
+                  ? 'Confirma la renovación solo si estás de acuerdo con el cargo de renovación.'
+                  : 'Confirma la publicación solo si estás de acuerdo con el cargo de publicación.'}
               </div>
             </div>
 
@@ -151,7 +184,7 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
                 style={confirmBtn(insufficient || loading)}
                 disabled={loading || insufficient}
               >
-                {loading ? 'Procesando...' : 'Confirmar publicación'}
+                {confirmLabel}
               </button>
             </div>
           </div>
@@ -161,7 +194,7 @@ export default function PublishModal({ open, onClose, product, onPublished }) {
   )
 }
 
-/* ===== estilos actualizados para dar peso y tamaño a los nuevos valores ===== */
+/* ===== estilos (ligeramente renombrados para evitar colisiones) ===== */
 
 const backdrop = {
   position: 'fixed',
@@ -198,10 +231,9 @@ const closeBtn = {
 }
 
 const content = { display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center', textAlign: 'center' }
-
 const header = { marginBottom: 2 }
-const title = { margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }
-const subtitle = { margin: 0, marginTop: 6, fontSize: 13, color: '#BBD2E6' }
+const titleStyle = { margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }
+const subtitleStyle = { margin: 0, marginTop: 6, fontSize: 13, color: '#BBD2E6' }
 
 /* Big values row */
 const bigValuesRow = {

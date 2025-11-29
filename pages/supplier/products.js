@@ -23,6 +23,7 @@ export default function ProductsPage() {
   // publish modal state
   const [publishOpen, setPublishOpen] = useState(false)
   const [publishProduct, setPublishProduct] = useState(null)
+  const [publishMode, setPublishMode] = useState('publish') // 'publish' | 'renew'
 
   // confirm modal state
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -41,7 +42,6 @@ export default function ProductsPage() {
   // helper: return headers object or null if no token
   function getAuthHeaders() {
     const token = localStorage.getItem('accessToken')
-    console.debug('[ProductsPage] accessToken present?', !!token)
     if (!token) return null
     return { Authorization: `Bearer ${token}` }
   }
@@ -55,28 +55,37 @@ export default function ProductsPage() {
       }
 
       const url = `${BASE_URL}/api/products/provider/me`
-      console.debug('[fetchProducts] GET', url, headers)
-
-      const res = await fetch(url, {
-        headers
-      })
-
+      const res = await fetch(url, { headers })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
-        console.error('[fetchProducts] failed', res.status, txt)
         throw new Error(`Error ${res.status} ${txt}`)
       }
 
       const text = await res.text()
       const raw = text ? JSON.parse(text) : []
 
+      const now = new Date()
+
       const normalized = raw.map(item => {
         const prod = item?.product ?? item
         const p = prod ?? {}
 
-        const publishStart = p.publishStart ?? p.publish_start ?? null
-        const publishEnd = p.publishEnd ?? p.publish_end ?? null
+        const publishStartRaw = p.publishStart ?? p.publish_start ?? null
+        const publishEndRaw = p.publishEnd ?? p.publish_end ?? null
         const daysRemaining = p.daysRemaining ?? p.days_remaining ?? p.daysRemaining ?? null
+
+        let publishEndDate = null
+        try {
+          if (publishEndRaw) {
+            publishEndDate = (publishEndRaw instanceof Date) ? publishEndRaw : new Date(publishEndRaw)
+            if (Number.isNaN(publishEndDate.getTime())) publishEndDate = null
+          }
+        } catch {
+          publishEndDate = null
+        }
+
+        const isExpired = publishEndDate ? (publishEndDate < now) : false
+        const isActiveNow = Boolean(p.active) && (publishEndDate ? (publishEndDate > now) : Boolean(p.active))
 
         const stockResponses = item?.stockResponses ?? []
 
@@ -97,8 +106,11 @@ export default function ProductsPage() {
           createdAt: p.createdAt ?? p.created_at ?? null,
           updatedAt: p.updatedAt ?? p.updated_at ?? null,
           imageUrl: p.imageUrl ?? p.image ?? p.thumbnail ?? null,
-          publishStart,
-          publishEnd,
+          publishStart: publishStartRaw,
+          publishEnd: publishEndRaw,
+          publishEndDate: publishEndDate ? publishEndDate.toISOString() : null,
+          isExpired,
+          isActiveNow,
           daysRemaining,
           stockResponses,
           stock: Array.isArray(stockResponses) ? stockResponses.length : 0
@@ -111,20 +123,12 @@ export default function ProductsPage() {
     }
   }
 
-  const moneyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-
-const formatPrice = (value) => {
-  if (value === null || value === undefined) return '—'
-  const num = Number(value)
-  if (Number.isNaN(num)) return '—'
-  return moneyFormatter.format(num)
-}
-
+  const formatPrice = (value) => {
+    if (value === null || value === undefined) return '—'
+    const num = Number(value)
+    if (Number.isNaN(num)) return '—'
+    return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  }
 
   const normalizeDateOnly = (value) => {
     if (!value) return null
@@ -140,45 +144,22 @@ const formatPrice = (value) => {
     }
   }
 
-  const getDaysPublished = (p) => {
-    const val = p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? p.days_published ?? null
-    if (val == null) return '—'
-    return String(val)
-  }
-
   const filtered = products.filter(p =>
     (p.name ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleRenew = async (product) => {
-    try {
-      const headers = getAuthHeaders()
-      if (!headers) {
-        alert('No autorizado. Inicia sesión nuevamente.')
-        return
-      }
+  // Open publish modal in publish mode
+  const openPublishModal = (product) => {
+    setPublishProduct(product)
+    setPublishMode('publish')
+    setPublishOpen(true)
+  }
 
-      const url = `${BASE_URL}/api/products/${product.id}/renew`
-      console.debug('[handleRenew] PATCH', url, headers)
-
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        }
-      })
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        console.error('[handleRenew] failed', res.status, txt)
-        throw new Error(`Error ${res.status} ${txt}`)
-      }
-      const updated = await res.json()
-      setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))
-    } catch (err) {
-      console.error('Error al renovar producto:', err)
-      alert('No se pudo renovar el producto: ' + err.message)
-    }
+  // Open publish modal in renew mode (modal will call renew endpoint on confirm)
+  const openRenewModal = (product) => {
+    setPublishProduct(product)
+    setPublishMode('renew')
+    setPublishOpen(true)
   }
 
   const confirmDelete = (product) => {
@@ -207,17 +188,12 @@ const formatPrice = (value) => {
       }
 
       const url = `${BASE_URL}/api/products/${confirmPayload.id}`
-      console.debug('[handleConfirm] DELETE', url, headers)
-
       const res = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          ...headers
-        }
+        headers: { ...headers }
       })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
-        console.error('[handleConfirm] delete failed', res.status, txt)
         throw new Error(`Error ${res.status} ${txt}`)
       }
       setProducts(prev => prev.filter(p => p.id !== confirmPayload.id))
@@ -257,19 +233,36 @@ const formatPrice = (value) => {
     setEditingProduct(null)
   }
 
-  const handleOpenPublishModal = (product) => {
-    setPublishProduct(product)
-    setPublishOpen(true)
-  }
-
+  // Called by PublishModal after successful publish/renew
   const handleAfterPublish = (updatedProduct) => {
+    // minimal normalization to keep UI consistent
+    const publishEndRaw = updatedProduct.publishEnd ?? updatedProduct.publish_end ?? null
+    let publishEndDate = null
+    try {
+      if (publishEndRaw) {
+        publishEndDate = (publishEndRaw instanceof Date) ? publishEndRaw : new Date(publishEndRaw)
+        if (Number.isNaN(publishEndDate.getTime())) publishEndDate = null
+      }
+    } catch {
+      publishEndDate = null
+    }
+    const now = new Date()
+    const isExpired = publishEndDate ? (publishEndDate < now) : false
+    const isActiveNow = Boolean(updatedProduct.active) && (publishEndDate ? (publishEndDate > now) : Boolean(updatedProduct.active))
+
     const normalized = {
       ...updatedProduct,
-      publishStart: normalizeDateOnly(updatedProduct.publish_start ?? updatedProduct.publishStart),
-      publishEnd: normalizeDateOnly(updatedProduct.publish_end ?? updatedProduct.publishEnd),
-      daysPublished: updatedProduct.daysRemaining ?? updatedProduct.days_remaining ?? updatedProduct.daysPublished ?? updatedProduct.days_published ?? null
+      publishEndDate: publishEndDate ? publishEndDate.toISOString() : null,
+      isExpired,
+      isActiveNow,
+      stock: Array.isArray(updatedProduct.stockResponses) ? updatedProduct.stockResponses.length : (updatedProduct.stock ?? 0)
     }
-    setProducts(prev => prev.map(p => p.id === normalized.id ? normalized : p))
+
+    setProducts(prev => prev.map(p => p.id === normalized.id ? { ...p, ...normalized } : p))
+    // close modal handled by modal itself via onClose; ensure state cleaned
+    setPublishOpen(false)
+    setPublishProduct(null)
+    setPublishMode('publish')
   }
 
   const openInfoModal = (title, content) => {
@@ -360,6 +353,12 @@ const formatPrice = (value) => {
                 const stockCount = Number(p.stock ?? 0)
                 const stockLabel = stockCount > 1 ? 'stocks' : 'stock'
                 const hasStock = stockCount > 0
+
+                // Only allow delete when product is NOT active
+                const isDeletable = !Boolean(p.active)
+
+                // Show Renew when product is active now OR when it is expired (backend may set active=false)
+                const shouldShowRenew = Boolean(p.isActiveNow) || Boolean(p.isExpired)
 
                 return (
                   <tr key={p.id}>
@@ -464,13 +463,24 @@ const formatPrice = (value) => {
 
                     <td>
                       <div className="row-inner actions">
-                        {(!p.active) ? (
-                          <button className="btn-action" title="Publicar" onClick={() => handleOpenPublishModal(p)}><FaUpload /></button>
+                        {!shouldShowRenew ? (
+                          <button className="btn-action" title="Publicar" onClick={() => openPublishModal(p)}><FaUpload /></button>
                         ) : (
-                          <button className="btn-action" title="Renovar" onClick={() => handleRenew(p)}><FaRedoAlt /></button>
+                          <button className="btn-action" title={p.isExpired ? 'Reactivar / Renovar' : 'Renovar'} onClick={() => openRenewModal(p)}><FaRedoAlt /></button>
                         )}
                         <button className="btn-edit" title="Editar" onClick={() => handleEdit(p)}><FaEdit /></button>
-                        <button className="btn-delete" title="Eliminar" onClick={() => handleDelete(p)}><FaTrashAlt /></button>
+
+                        {/* Delete button: disabled when product is active */}
+                        <button
+                          className={isDeletable ? 'btn-delete' : 'btn-delete disabled'}
+                          title={isDeletable ? 'Eliminar' : 'No disponible (producto activo)'}
+                          onClick={() => { if (isDeletable) handleDelete(p) }}
+                          aria-label={`Eliminar ${p.id}`}
+                          disabled={!isDeletable}
+                          aria-disabled={!isDeletable}
+                        >
+                          <FaTrashAlt />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -493,8 +503,9 @@ const formatPrice = (value) => {
 
         <PublishModal
           open={publishOpen}
-          onClose={() => { setPublishOpen(false); setPublishProduct(null) }}
+          onClose={() => { setPublishOpen(false); setPublishProduct(null); setPublishMode('publish') }}
           product={publishProduct}
+          mode={publishMode}
           onPublished={handleAfterPublish}
         />
 
@@ -548,6 +559,15 @@ const formatPrice = (value) => {
           .status-badge.active { background: rgba(49,201,80,0.12); color: #31C950; } .status-badge.inactive { background: rgba(245,158,11,0.12); color:#f59e0b; }
           .actions { display:flex; gap:8px; justify-content:center; align-items:center; } .btn-action, .btn-edit, .btn-delete { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:none; font-weight:700; color:#0d0d0d; }
           .btn-action { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color:#0d0d0d; } .btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color:#0d0d0d; } .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); color:#fff; }
+
+          /* Disabled variant for delete button */
+          .btn-delete.disabled {
+            background: linear-gradient(90deg, rgba(239,68,68,0.18), rgba(249,115,22,0.12));
+            color: rgba(255,255,255,0.6);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+          }
 
           /* STOCK cell vertical layout */
           .stock-cell { flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; min-width: 64px; }
