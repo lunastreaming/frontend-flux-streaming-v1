@@ -31,7 +31,7 @@ export default function SupportPage() {
   const [resolveTarget, setResolveTarget] = useState(null)
   const [resolveLoading, setResolveLoading] = useState(false)
 
-  // ConfirmModal state (used for refunds)
+  // ConfirmModal state (refund)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [confirmAmount, setConfirmAmount] = useState('0.00')
@@ -44,9 +44,7 @@ export default function SupportPage() {
   }, [])
 
   useEffect(() => {
-    if (token === null) {
-      router.replace('/supplier/login')
-    }
+    if (token === null) router.replace('/supplier/login')
   }, [token, router])
 
   const formatDateSplit = (value) => {
@@ -224,7 +222,7 @@ export default function SupportPage() {
     setResolveOpen(true)
   }
 
-  const onResolveSuccess = async (updated) => {
+  const onResolveSuccess = async () => {
     await fetchSupportForProvider(page)
     setResolveOpen(false)
     setResolveTarget(null)
@@ -236,7 +234,7 @@ export default function SupportPage() {
     setResolveTarget(null)
   }
 
-  // ---------- Refund flow using ConfirmModal (unchanged behavior) ----------
+  // ---------- Refund flow using ConfirmModal (no full refund endpoint) ----------
   const openConfirmRefund = (row) => {
     setConfirmTarget(row)
     const initial = (row?.refund != null) ? Number(row.refund).toFixed(2) : '0.00'
@@ -244,17 +242,18 @@ export default function SupportPage() {
     setConfirmOpen(true)
   }
 
-  const performRefund = async (rowId, amount) => {
+  const performRefund = async (stockId) => {
     try {
       setConfirmLoading(true)
       const tokenVal = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
       if (!tokenVal) { router.replace('/supplier/login'); return { ok: false, msg: 'No autorizado' } }
 
-      const res = await fetch(`${BASE_URL}/api/support/${encodeURIComponent(rowId)}/refund`, {
+      // Endpoint de reembolso NO FULL
+      const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${encodeURIComponent(stockId)}/refund`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${tokenVal}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount) })
+        headers: { Authorization: `Bearer ${tokenVal}`, 'Content-Type': 'application/json' }
       })
+
       if (res.status === 401) { router.replace('/supplier/login'); return { ok: false, msg: 'No autorizado' } }
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
@@ -270,17 +269,14 @@ export default function SupportPage() {
 
   const onConfirmRefund = async () => {
     if (!confirmTarget) return
-    const rowId = confirmTarget.ticketId ?? confirmTarget.id
-    const amountNum = Number(String(confirmAmount).replace(',', '.'))
-    if (Number.isNaN(amountNum) || amountNum < 0) {
-      alert('Ingresa un monto válido para el reembolso.')
+    // Tomar stockId desde rawStock.id si existe, sino fallback a id
+    const stockId = confirmTarget.rawStock?.id ?? confirmTarget.id
+    if (!stockId) {
+      alert('No se encontró el stockId para el reembolso.')
       return
     }
 
-    setConfirmLoading(true)
-    const result = await performRefund(rowId, amountNum)
-    setConfirmLoading(false)
-
+    const result = await performRefund(stockId)
     if (!result.ok) {
       alert(result.msg || 'Error al procesar reembolso')
       return
@@ -288,8 +284,7 @@ export default function SupportPage() {
 
     setConfirmOpen(false)
     setConfirmTarget(null)
-    // refrescar lista
-    await fetchSupportForProvider(page)
+    await fetchSupportForProvider(page) // refrescar lista
     alert('Reembolso procesado correctamente.')
   }
 
@@ -300,7 +295,6 @@ export default function SupportPage() {
   }
 
   const handleEdit = (row) => {
-    // Edit should only open the resolve modal (not the confirm)
     openResolveModal(row)
   }
 
@@ -511,13 +505,13 @@ export default function SupportPage() {
         BASE_URL={BASE_URL}
       />
 
-      {/* ConfirmModal for refunds (keeps previous behavior) */}
+      {/* ConfirmModal for refunds (no full endpoint) */}
       <ConfirmModal
         open={confirmOpen}
         title="Confirmar reembolso"
         description={
           confirmTarget
-            ? `¿Estás seguro de procesar el reembolso para ${confirmTarget.productName ?? 'este producto'} (Ticket ${confirmTarget.ticketId ?? confirmTarget.id ?? '—'}) por un monto de ${confirmTarget.refund != null ? `$${Number(confirmTarget.refund).toFixed(2)}` : confirmAmount}?`
+            ? `¿Deseas reembolsar el monto ${confirmAmount} para el producto ${confirmTarget.productName ?? ''}?`
             : '¿Deseas continuar?'
         }
         confirmLabel="PROCESAR REEMBOLSO"

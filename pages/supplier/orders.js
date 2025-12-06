@@ -1,14 +1,15 @@
+// pages/supplier/orders.js
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import NavBarSupplier from '../../components/NavBarSupplier'
 import Footer from '../../components/Footer'
-import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit } from 'react-icons/fa'
+import { FaSearch, FaEye, FaEyeSlash, FaUndo, FaEdit, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
-import StockEditModal from '../../components/StockEditModal' // 👈 integración del modal de edición
+import RequestToSoldModal from '../../components/RequestToSoldModal'
 
-export default function ProviderSalesPage() {
+export default function OrdersPage() {
   const router = useRouter()
 
   // Estado principal
@@ -22,15 +23,17 @@ export default function ProviderSalesPage() {
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
-  const scrollRef = useRef(null)
 
-  // ConfirmModal (reembolso)
+  // Confirm modal (refund)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
 
-  // StockEditModal (edición)
+  // RequestToSoldModal (edit -> requested -> sold)
   const [editOpen, setEditOpen] = useState(false)
+  const [editStock, setEditStock] = useState(null)
+
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
+  const scrollRef = useRef(null)
 
   // Leer token
   useEffect(() => {
@@ -44,16 +47,19 @@ export default function ProviderSalesPage() {
     if (token === null) router.replace('/supplier/login')
   }, [token, router])
 
-  // Fetch de datos
-  const fetchPage = async (p = page) => {
+  // Fetch de página
+  const fetchPage = useCallback(async (p = page) => {
+    if (typeof window === 'undefined') return
     if (!token) return
+
     setLoading(true)
     setError(null)
     try {
-      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}`
+      const url = `${BASE_URL}/api/onrequest/support/provider/in-process?page=${p}&size=${size}`
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
       })
+
       if (res.status === 401) {
         router.replace('/supplier/login')
         return
@@ -62,6 +68,7 @@ export default function ProviderSalesPage() {
         const txt = await res.text().catch(() => '')
         throw new Error(`Error ${res.status} ${txt}`)
       }
+
       const payload = await res.json()
       const content = Array.isArray(payload?.content)
         ? payload.content
@@ -70,6 +77,7 @@ export default function ProviderSalesPage() {
       setItems(content)
       setPage(Number(payload?.number ?? p))
       setTotalElements(Number(payload?.totalElements ?? payload?.total ?? content.length))
+
       const totalPagesCalc = Math.ceil((payload?.totalElements ?? content.length) / size) || 1
       setTotalPages(Number(payload?.totalPages ?? totalPagesCalc))
     } catch (err) {
@@ -80,13 +88,12 @@ export default function ProviderSalesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [BASE_URL, page, size, token, router])
 
   useEffect(() => {
     if (token === undefined || token === null) return
     fetchPage(page)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, token])
+  }, [page, token, fetchPage])
 
   // Helpers UI
   const togglePasswordVisibility = (id) => {
@@ -98,17 +105,6 @@ export default function ProviderSalesPage() {
     })
   }
 
-  const formatDate = (v) => {
-    if (!v) return ''
-    try {
-      const d = new Date(v)
-      if (Number.isNaN(d.getTime())) return ''
-      return d.toLocaleString()
-    } catch {
-      return ''
-    }
-  }
-
   const formatAmount = (v) => {
     if (v == null) return ''
     try {
@@ -118,19 +114,69 @@ export default function ProviderSalesPage() {
     }
   }
 
-  const computeDaysRemaining = (endAt) => {
-    if (!endAt) return null
+  // WhatsApp cliente: ícono primero y número al costado
+  const openWhatsAppToClient = (clientPhone, clientName, productName) => {
+    const raw = String(clientPhone ?? '').replace(/[^\d+]/g, '')
+    const name = clientName ?? ''
+    const product = productName ?? ''
+    const message = `Hola *${name}* 👋🏻\n¿Has realizado una compra de *${product}*?`
+    const encoded = encodeURIComponent(message)
+    if (!raw) {
+      window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
+      return
+    }
+    const num = raw.startsWith('+') ? raw.slice(1) : raw
+    window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encoded}`, '_blank')
+  }
+
+  // Reembolso
+  const handleRefundClick = (stock) => {
+    setSelectedStock(stock)
+    setConfirmOpen(true)
+  }
+
+  const handleRefundConfirm = async () => {
+    if (!selectedStock) return
     try {
-      const now = new Date()
-      const end = new Date(endAt)
-      const diffMs = end.getTime() - now.getTime()
-      const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-      return days
-    } catch {
-      return null
+      const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund/full`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`refund_failed ${res.status} ${txt}`)
+      }
+      await res.json()
+      await fetchPage(page) // recargar tabla tras reembolso
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo procesar el reembolso')
+    } finally {
+      setConfirmOpen(false)
+      setSelectedStock(null)
     }
   }
 
+  // Editar (RequestToSoldModal)
+  const handleEditClick = (stock) => {
+    setEditStock({
+      id: stock.id,
+      productName: stock.productName,
+      username: stock.username,
+      password: stock.password,
+      url: stock.url,
+      tipo: stock.tipo ?? (stock.type ?? 'CUENTA'),
+      numeroPerfil: stock.numeroPerfil ?? stock.numberProfile ?? '',
+      pin: stock.pin,
+      note: stock.note
+    })
+    setEditOpen(true)
+  }
+
+  // Filtro de búsqueda
   const displayed = items.filter(it => {
     const q = search.trim().toLowerCase()
     if (!q) return true
@@ -143,43 +189,6 @@ export default function ProviderSalesPage() {
     )
   })
 
-  // Reembolso: abrir modal
-  const handleRefundClick = (stock) => {
-    setSelectedStock(stock)
-    setConfirmOpen(true)
-  }
-
-  // Reembolso: confirmar -> llamar endpoint no full
-  const handleRefundConfirm = async () => {
-    if (!selectedStock) return
-    try {
-      const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      const txt = await res.text().catch(() => '')
-      if (!res.ok) throw new Error(`refund_failed ${res.status} ${txt}`)
-
-      // Refrescar tabla tras reembolso
-      await fetchPage(page)
-    } catch (err) {
-      console.error(err)
-      alert('No se pudo procesar el reembolso: ' + (err.message || err))
-    } finally {
-      setConfirmOpen(false)
-      setSelectedStock(null)
-    }
-  }
-
-  // Editar stock activo: abrir StockEditModal con datos precargados
-  const handleEditClick = (row) => {
-    setSelectedStock(row)
-    setEditOpen(true)
-  }
-
   // Placeholder mientras token es undefined
   if (token === undefined) {
     return (
@@ -188,10 +197,9 @@ export default function ProviderSalesPage() {
         <main className="page-container">
           <div className="header-row">
             <div className="search-bar" style={{ height: 40, width: '100%', maxWidth: 520 }} />
-            <div style={{ width: 40 }} />
           </div>
           <div className="table-wrapper">
-            <div style={{ padding: 28, textAlign: 'center', color: '#cbd5e1' }}>Cargando…</div>
+            <div className="info">Cargando…</div>
           </div>
         </main>
         <Footer />
@@ -218,20 +226,16 @@ export default function ProviderSalesPage() {
               placeholder="Buscar id, producto, username, cliente..."
             />
           </div>
-
-          <div className="header-actions">
-            <button className="btn-action" onClick={() => setPage(p => p)} title="Refrescar"><FaRedoAlt /></button>
-          </div>
         </div>
 
         <div className="table-wrapper">
           {loading ? (
-            <div className="info">Cargando ventas del proveedor…</div>
+            <div className="info">Cargando órdenes bajo pedido…</div>
           ) : error ? (
             <div className="error">Error: {error}</div>
           ) : (
             <div className="table-scroll" ref={scrollRef}>
-              <table className="styled-table" role="table" aria-label="Ventas proveedor">
+              <table className="styled-table" role="table" aria-label="Órdenes bajo pedido">
                 <colgroup>
                   <col style={{ width: '40px' }} />
                   <col style={{ width: '160px' }} />
@@ -239,29 +243,30 @@ export default function ProviderSalesPage() {
                   <col style={{ width: '180px' }} />
                   <col style={{ width: '200px' }} />
                   <col style={{ width: '140px' }} />
+                  <col style={{ width: '180px' }} />
                   <col style={{ width: '160px' }} />
+                  <col style={{ width: '200px' }} />
                   <col style={{ width: '140px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col />
+                  <col style={{ width: '160px' }} />
+                  <col style={{ width: '160px' }} />
+                  <col style={{ width: '220px' }} />
                 </colgroup>
 
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Id</th>
-                    <th>Nombre producto</th>
+                    <th>Producto</th>
                     <th>Username</th>
                     <th>Password</th>
                     <th>URL</th>
                     <th>Nº Perfil</th>
-                    <th>Nombre cliente</th>
+                    <th>Cliente</th>
+                    <th>Celular cliente</th>
                     <th>Pin</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Desembolso</th>
-                    <th>Vendedor</th>
-                    <th>Días restantes</th>
+                    <th>Refund</th>
+                    <th>Proveedor</th>
+                    <th>Celular proveedor</th>
                     <th>Configuraciones</th>
                   </tr>
                 </thead>
@@ -270,10 +275,6 @@ export default function ProviderSalesPage() {
                   {displayed.map((r, i) => {
                     const isVisible = visiblePasswords.has(r.id)
                     const masked = r.password ? '••••••••' : ''
-                    const days =
-                      typeof r.daysRemaining === 'number' && Number.isFinite(r.daysRemaining)
-                        ? r.daysRemaining
-                        : computeDaysRemaining(r.endAt)
 
                     return (
                       <tr key={r.id ?? i}>
@@ -297,36 +298,44 @@ export default function ProviderSalesPage() {
                         </td>
                         {/* URL en texto plano */}
                         <td><div className="row-inner">{r.url ?? ''}</div></td>
-                        <td><div className="row-inner">{r.numberProfile ?? ''}</div></td>
+                        <td><div className="row-inner">{r.numeroPerfil ?? r.numberProfile ?? ''}</div></td>
                         <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
-                        <td><div className="row-inner">{r.pin ?? ''}</div></td>
-                        <td><div className="row-inner no-wrap">{formatDate(r.startAt)}</div></td>
-                        <td><div className="row-inner no-wrap">{formatDate(r.endAt)}</div></td>
-                        <td><div className="row-inner">{formatAmount(r.refund)}</div></td>
-                        {/* Se quitó la columna ESTADO */}
-                        <td><div className="row-inner">{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</div></td>
+
+                        {/* Celular cliente: ícono primero y número al costado */}
                         <td>
-                          <div className="row-inner">
-                            {days == null ? '' : (
-                              <span className={`days-pill ${days > 0 ? 'positive' : (days === 0 ? 'today' : 'expired')}`}>
-                                {days}d
-                              </span>
+                          <div className="row-inner phone-cell">
+                            {r.clientPhone && (
+                              <button
+                                className="wa-btn"
+                                title={`WhatsApp cliente ${r.clientPhone}`}
+                                onClick={() => openWhatsAppToClient(r.clientPhone, r.clientName ?? r.buyerUsername, r.productName)}
+                                aria-label={`WhatsApp cliente ${r.clientPhone}`}
+                              >
+                                <FaWhatsapp />
+                              </button>
                             )}
+                            <span className="client-phone">{r.clientPhone ?? ''}</span>
                           </div>
                         </td>
-                        {/* Configuraciones: Refund y Editar */}
+
+                        <td><div className="row-inner">{r.pin ?? ''}</div></td>
+                        {/* Refund: mostrar amount del backend */}
+                        <td><div className="row-inner">{formatAmount(r.amount)}</div></td>
+                        <td><div className="row-inner">{r.providerName ?? ''}</div></td>
+                        <td><div className="row-inner">{r.providerPhone ?? ''}</div></td>
+                        {/* Configuraciones */}
                         <td>
                           <div className="row-inner config-cell">
                             <button
                               className="config-btn refund"
-                              title="Reembolsar"
+                              title="Reembolso"
                               onClick={() => handleRefundClick(r)}
                             >
                               <FaUndo />
                             </button>
                             <button
                               className="config-btn edit"
-                              title="Editar"
+                              title="Editar (requested → sold)"
                               onClick={() => handleEditClick(r)}
                             >
                               <FaEdit />
@@ -345,34 +354,47 @@ export default function ProviderSalesPage() {
         <div className="pager-row">
           <div className="pager-info">Mostrando {displayed.length} de {totalElements}</div>
           <div className="pager-controls">
-            <button onClick={() => setPage(p => Math.max(0, p - 1))} className="pager-btn" disabled={page <= 0}>Anterior</button>
-            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="pager-btn" disabled={page >= totalPages - 1}>Siguiente</button>
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              className="pager-btn"
+              disabled={page <= 0}
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              className="pager-btn"
+              disabled={page >= totalPages - 1}
+            >
+              Siguiente
+            </button>
           </div>
         </div>
       </main>
 
       <Footer />
 
-      {/* ConfirmModal para reembolso */}
+      {/* ConfirmModal (refund) */}
       {confirmOpen && (
         <ConfirmModal
           open={confirmOpen}
-          onCancel={() => setConfirmOpen(false)}   // cierre correcto según tu ConfirmModal
+          onCancel={() => setConfirmOpen(false)}
           onConfirm={handleRefundConfirm}
           message={`¿Desea reembolsar el monto ${formatAmount(selectedStock?.refund)}?`}
         />
       )}
 
-      {/* StockEditModal para edición de stock activo */}
-      {editOpen && selectedStock && (
-        <StockEditModal
+      {/* RequestToSoldModal (edit -> requested -> sold) */}
+      {editOpen && (
+        <RequestToSoldModal
           visible={editOpen}
-          onClose={() => setEditOpen(false)}
+          onClose={() => { setEditOpen(false); setEditStock(null) }}
           onSuccess={() => {
             setEditOpen(false)
-            fetchPage(page) // refrescar tabla tras editar
+            setEditStock(null)
+            fetchPage(page) // refrescar tabla tras aprobar cambio
           }}
-          initialData={selectedStock}  // precargar los datos existentes
+          initialData={editStock}
           BASE_URL={BASE_URL}
         />
       )}
@@ -385,13 +407,10 @@ export default function ProviderSalesPage() {
         .search-icon-inline { color:#9fb4c8; margin-right:8px; }
         .search-input-inline { flex:1; background:transparent; border:none; color:#fff; outline:none; font-size:0.95rem; }
 
-        .header-actions { display:flex; gap:8px; align-items:center; }
-        .btn-action { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; font-weight:700; color:#0d0d0d; background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); cursor:pointer; }
-
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
         .table-scroll { overflow:auto; border-radius:8px; }
 
-        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1400px; }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1200px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
         thead th { padding:10px; text-align:left; font-weight:700; vertical-align:middle; white-space:nowrap; }
 
@@ -405,7 +424,8 @@ export default function ProviderSalesPage() {
         .pw-text { margin-right:8px; }
         .pw-btn { background:transparent; border:none; color:#9fb4c8; cursor:pointer; display:flex; align-items:center; }
 
-        .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .phone-cell { display:flex; align-items:center; gap:8px; }
+        .client-phone { color:#cbd5e1; font-size:0.95rem; }
 
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
         .pager-info { color:#cbd5e1; }
@@ -416,16 +436,22 @@ export default function ProviderSalesPage() {
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
 
-        /* days pill */
-        .days-pill { padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.85rem; color:#07101a; }
-        .days-pill.positive { background: linear-gradient(90deg,#bbf7d0,#34d399); color:#04261a; }
-        .days-pill.today { background: linear-gradient(90deg,#fef3c7,#f59e0b); color:#3a2700; }
-        .days-pill.expired { background: linear-gradient(90deg,#fecaca,#fb7185); color:#2b0404; }
-
         .config-cell { display:flex; gap:10px; }
         .config-btn { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; color:#0d0d0d; }
         .config-btn.refund { background: linear-gradient(135deg,#f87171 0%,#ef4444 100%); }
         .config-btn.edit { background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); }
+
+        .wa-btn {
+          width:36px;
+          height:36px;
+          display:inline-grid;
+          place-items:center;
+          border-radius:8px;
+          background: linear-gradient(90deg,#25D366,#128C7E);
+          color: #fff;
+          border: none;
+          cursor: pointer;
+        }
 
         /* modern horizontal scrollbar themed */
         .table-scroll::-webkit-scrollbar { height: 12px; }

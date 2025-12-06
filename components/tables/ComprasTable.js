@@ -99,7 +99,8 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
 
   if (loading) return <div className="info">Cargando…</div>
   if (error) return <div className="error">Error: {error}</div>
-    return (
+
+  return (
     <div className="table-wrapper">
       <div className="table-scroll">
         <table className="styled-table">
@@ -115,6 +116,7 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
               <th>Pin</th>
               <th>Inicio</th>
               <th>Fin</th>
+              <th>Días Restantes</th>
               <th>Refund</th>
               <th>Cliente</th>
               <th>Celular</th>
@@ -173,6 +175,7 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
                   <td><div className="row-inner">{row.pin || ''}</div></td>
                   <td><div className="row-inner">{formatDate(row.startAt)}</div></td>
                   <td><div className="row-inner">{formatDate(row.endAt)}</div></td>
+                  <td><div className="row-inner">{row.daysRemaining ?? ''}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>
                   <td>
@@ -212,7 +215,7 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
           open={showSupportModal}
           onClose={closeSupportModal}
           onAccept={(choice) => {
-            createSupport(choice) // crea soporte en /api/support y refresca
+            createSupport(choice) // crea soporte y refresca
             closeSupportModal()
           }}
         />
