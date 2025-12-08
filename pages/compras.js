@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import {
@@ -19,12 +19,32 @@ import ReembolsadoTable from '../components/tables/ReembolsadoTable'
 import PedidoTable from '../components/tables/PedidoTable'
 
 export default function ComprasPage() {
-  // Vista por defecto = 'compras'
   const [viewFilter, setViewFilter] = useState('compras')
   const [search, setSearch] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Handler genérico: cambia vista y fuerza remount
+  // 🚩 nuevo estado para el saldo del cliente
+  const [balance, setBalance] = useState(null)
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const token = localStorage.getItem('accessToken')
+        const res = await fetch(`${BASE_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) throw new Error(`Error ${res.status}`)
+        const data = await res.json()
+        setBalance(data.balance) // suponiendo que el backend retorna { balance: ... }
+      } catch (err) {
+        console.error('Error obteniendo saldo:', err)
+        setBalance(null)
+      }
+    }
+    fetchBalance()
+  }, [])
+
   const handleClick = (view) => {
     setViewFilter(view)
     setRefreshKey(prev => prev + 1)
@@ -98,11 +118,16 @@ export default function ComprasPage() {
 
         {/* Renderizado condicional de tablas con refreshKey */}
         {viewFilter === 'compras' && (
-          <ComprasTable key={refreshKey} search={search} endpoint="purchases" />
+          <ComprasTable
+            key={refreshKey}
+            search={search}
+            endpoint="purchases"
+            balance={balance} // 🚩 pasamos el saldo como prop
+          />
         )}
         {viewFilter === 'pedido' && (
-  <PedidoTable key={refreshKey} search={search} />
-)}
+          <PedidoTable key={refreshKey} search={search} />
+        )}
         {viewFilter === 'soporte' && (
           <SoporteTable key={refreshKey} search={search} />
         )}
@@ -110,8 +135,8 @@ export default function ComprasPage() {
           <ResueltoTable key={refreshKey} search={search} />
         )}
         {viewFilter === 'reembolsado' && (
-  <ReembolsadoTable key={refreshKey} search={search} />
-)}
+          <ReembolsadoTable key={refreshKey} search={search} />
+        )}
       </main>
       <Footer />
 

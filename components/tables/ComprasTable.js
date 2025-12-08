@@ -1,16 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FaEye, FaEyeSlash, FaWhatsapp, FaCog } from 'react-icons/fa'
-import SupportModal from '../SupportModal' // desde /components/tables → sube a /components
+import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo } from 'react-icons/fa'
+import SupportModal from '../SupportModal'
+import RenewModal from '../RenewModal' // ← import del modal de renovación
 
-export default function ComprasTable({ endpoint = 'purchases' }) {
+export default function ComprasTable({ endpoint = 'purchases', balance }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
   const [showSupportModal, setShowSupportModal] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
+
+  // ← estado para el modal de renovación
+  const [showRenewModal, setShowRenewModal] = useState(false)
+  const [renewProduct, setRenewProduct] = useState(null)
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -49,7 +54,6 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
     setShowSupportModal(false)
   }
 
-  // Reutilizable: carga de datos para la tabla
   const fetchData = async () => {
     setLoading(true); setError(null)
     try {
@@ -73,7 +77,6 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
     fetchData()
   }, [endpoint])
 
-  // Crea soporte y refresca la tabla
   const createSupport = async (choice) => {
     try {
       const token = localStorage.getItem('accessToken')
@@ -85,16 +88,26 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
         },
         body: JSON.stringify({
           stockId: selectedStock?.id,
-          issueType: choice // usando 'issueType' según tu ejemplo previo
+          issueType: choice
         })
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data = await res.json()
-      console.log('Soporte creado:', data)
-      await fetchData() // refresca la tabla
+      await fetchData()
     } catch (err) {
       console.error('Error creando soporte:', err)
     }
+  }
+
+  // ← abrir/cerrar RenewModal
+  const openRenewModal = (row) => {
+    // Si tu backend no trae el objeto product en row.product,
+    // puedes pasar row y resolver dentro del modal.
+    setRenewProduct(row.product ?? row)
+    setShowRenewModal(true)
+  }
+  const closeRenewModal = () => {
+    setRenewProduct(null)
+    setShowRenewModal(false)
   }
 
   if (loading) return <div className="info">Cargando…</div>
@@ -193,7 +206,7 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
                   <td><div className="row-inner">{row.providerPhone || ''}</div></td>
                   <td>
-                    <div className="row-inner">
+                    <div className="row-inner config-cell">
                       <button
                         className="config-btn"
                         onClick={() => openSupportModal(row)}
@@ -201,6 +214,16 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
                       >
                         <FaCog /> <span className="config-label">Soporte</span>
                       </button>
+
+                      {row.renewable && (
+                        <button
+                          className="config-btn renew-btn"
+                          onClick={() => openRenewModal(row)}
+                          aria-label="Renovar stock"
+                        >
+                          <FaRedo /> <span className="config-label">Renovar</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -215,8 +238,21 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
           open={showSupportModal}
           onClose={closeSupportModal}
           onAccept={(choice) => {
-            createSupport(choice) // crea soporte y refresca
+            createSupport(choice)
             closeSupportModal()
+          }}
+        />
+      )}
+
+      {/* Render RenewModal solo cuando está abierto */}
+      {showRenewModal && (
+        <RenewModal
+          product={renewProduct}
+          balance={balance}
+          onClose={closeRenewModal}
+          onSuccess={() => {
+            closeRenewModal()
+            fetchData()
           }}
         />
       )}
@@ -231,13 +267,20 @@ export default function ComprasTable({ endpoint = 'purchases' }) {
         .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
         .row-inner.index { justify-content:center; width:36px; height:36px; padding:0; }
         .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
         .password-cell { display:flex; align-items:center; gap:8px; }
         .pw-btn { background:none; border:none; color:#9fb4c8; cursor:pointer; }
+
+        .whatsapp-cell { display:flex; align-items:center; gap:8px; }
         .wa-btn { width:28px; height:28px; border-radius:50%; background:#25d366; color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-        .wa-number { font-size:12px; margin-top:4px; color:#cbd5e1; }
+        .wa-number { font-size:12px; color:#cbd5e1; }
+
+        .config-cell { display:flex; align-items:center; gap:8px; }
         .config-btn { display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e6eef7; padding:8px 12px; border-radius:8px; cursor:pointer; }
         .config-btn:hover { background: rgba(255,255,255,0.14); }
         .config-label { font-weight:700; font-size:12px; }
+        .renew-btn { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none; color:#fff; }
+
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
       `}</style>
