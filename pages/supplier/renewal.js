@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
-import NavBarSupplier from '../../components/NavBarSupplier'
 import Footer from '../../components/Footer'
 import { FaSearch, FaEye, FaEyeSlash, FaUndo, FaCheck } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -189,7 +188,6 @@ export default function RenewalPage() {
   // Render principal
   return (
     <div className="min-h-screen page-bg text-white font-inter">
-      <NavBarSupplier />
 
       <main className="page-container">
         <div className="header-row">

@@ -1,7 +1,6 @@
 // pages/supplier/billetera-supplier.js
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
-import NavBarSupplier from '../../components/NavBarSupplier'
 import Footer from '../../components/Footer'
 import AddBalanceModal from '../../components/AddBalanceModalSupplier'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -253,7 +252,6 @@ export default function BilleteraSupplier() {
 
   return (
     <>
-      <NavBarSupplier />
       <main className="wallet-container">
         <section className="balance-card">
           <div className="balance-header">

@@ -1,6 +1,5 @@
 // pages/supplier/products.js
 import { useState, useEffect } from 'react'
-import NavbarSupplier from '../../components/NavBarSupplier'
 import ProductModal from '../../components/ProductModal'
 import ConfirmModal from '../../components/ConfirmModal'
 import PublishModal from '../../components/PublishModal'
@@ -274,7 +273,6 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white font-inter">
-      <NavbarSupplier />
 
       <main className="px-6 py-10 max-w-7xl mx-auto">
         <div className="header-row">

@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
-import NavBarSupplier from '../../components/NavBarSupplier'
 import Footer from '../../components/Footer'
 import SupportResolveModal from '../../components/SupportResolveModal'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -300,7 +299,6 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen page-bg text-white font-inter">
-      <NavBarSupplier />
 
       <main className="page-container">
         <div className="header-row">

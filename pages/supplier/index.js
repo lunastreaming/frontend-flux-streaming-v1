@@ -1,19 +1,57 @@
 // pages/supplier/index.js
 import Head from 'next/head'
 import Link from 'next/link'
-import AdminNavBar from '../../components/NavBarSupplier' // usar el navbar existente
-import { FaBoxes, FaListAlt, FaChartLine, FaClipboardList, FaHeadset, FaRedo, FaHourglassEnd, FaWallet } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
+import NavBarSupplier from '../../components/NavBarSupplier'
+import {
+  FaBoxes, FaListAlt, FaChartLine, FaClipboardList,
+  FaHeadset, FaRedo, FaHourglassEnd, FaWallet
+} from 'react-icons/fa'
 
 export default function SupplierIndex() {
+  const [counts, setCounts] = useState({
+    orders: 0,
+    sales: 0,
+    support: 0,
+    renewed: 0,
+    expired: 0
+  })
+
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+
+  useEffect(() => {
+    if (!token) return
+    const headers = { Authorization: `Bearer ${token}` }
+
+    Promise.all([
+      fetch(`${BASE_URL}/api/onrequest/support/provider/in-process?page=0&size=20`, { headers }).then(r => r.json()),
+      fetch(`${BASE_URL}/api/stocks/provider/sales?page=0&size=20`, { headers }).then(r => r.json()),
+      fetch(`${BASE_URL}/api/support/provider/me?page=0&size=50`, { headers }).then(r => r.json()),
+      fetch(`${BASE_URL}/api/supplier/sales/provider/renewed?page=0&size=20`, { headers }).then(r => r.json()),
+      fetch(`${BASE_URL}/api/supplier/supplier/stocks/expired?page=0&size=30`, { headers }).then(r => r.json())
+    ])
+      .then(([orders, sales, support, renewed, expired]) => {
+        setCounts({
+          orders: orders.totalElements ?? 0,
+          sales: sales.totalElements ?? 0,
+          support: support.totalElements ?? 0,
+          renewed: renewed.totalElements ?? 0,
+          expired: expired.totalElements ?? 0
+        })
+      })
+      .catch(err => console.error('Error cargando conteos', err))
+  }, [token])
+
   const cards = [
-    { href: '/supplier/products', title: 'Productos', icon: <FaBoxes /> , desc: 'Gestiona tus catálogos y colecciones' },
-    { href: '/supplier/items', title: 'Items', icon: <FaListAlt /> , desc: 'Control de unidades y SKUs' },
-    { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine /> , desc: 'Resumen de ventas y métricas' },
-    { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList /> , desc: 'Revisión y fulfillment' },
-    { href: '/supplier/support', title: 'Soporte', icon: <FaHeadset /> , desc: 'Tickets y comunicación con clientes' },
-    { href: '/supplier/renewal', title: 'Renewal', icon: <FaRedo /> , desc: 'Renovaciones y suscripciones' },
-    { href: '/supplier/expired', title: 'Vencidas', icon: <FaHourglassEnd /> , desc: 'Items o suscripciones vencidas' },
-    { href: '/supplier/wallet', title: 'Billetera', icon: <FaWallet /> , desc: 'Balance, recargas y movimientos' },
+    { href: '/supplier/products', title: 'Productos', icon: <FaBoxes />, desc: 'Gestiona tus catálogos y colecciones' },
+    { href: '/supplier/items', title: 'Items', icon: <FaListAlt />, desc: 'Control de unidades y SKUs' },
+    { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine />, desc: 'Resumen de ventas y métricas' },
+    { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList />, desc: 'Revisión y fulfillment' },
+    { href: '/supplier/support', title: 'Soporte', icon: <FaHeadset />, desc: 'Tickets y comunicación con clientes' },
+    { href: '/supplier/renewal', title: 'Renewal', icon: <FaRedo />, desc: 'Renovaciones y suscripciones' },
+    { href: '/supplier/expired', title: 'Vencidas', icon: <FaHourglassEnd />, desc: 'Items o suscripciones vencidas' },
+    { href: '/supplier/wallet', title: 'Billetera', icon: <FaWallet />, desc: 'Balance, recargas y movimientos' },
   ]
 
   return (
@@ -23,7 +61,7 @@ export default function SupplierIndex() {
       </Head>
 
       <div className="page-bg">
-        <AdminNavBar />
+        {/* Pasamos counts al NavBarSupplier */}
 
         <main className="container">
           <header className="hero">

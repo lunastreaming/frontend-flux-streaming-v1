@@ -1,6 +1,5 @@
 // pages/supplier/stocks.js
 import { useState, useEffect } from 'react'
-import NavbarSupplier from '../../components/NavBarSupplier'
 import StockModal from '../../components/StockModal'
 import ConfirmModal from '../../components/ConfirmModal'
 import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt } from 'react-icons/fa'
@@ -234,7 +233,6 @@ export default function StocksPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white font-inter">
-      <NavbarSupplier />
       <main className="px-6 py-10 max-w-7xl mx-auto">
         <div className="header-row">
           <div className="search-bar">

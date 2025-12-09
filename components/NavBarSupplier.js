@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
 import {
-  FaBoxOpen,
   FaBoxes,
   FaListAlt,
   FaChartLine,
@@ -15,7 +14,7 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa'
 
-export default function NavBarSupplier() {
+export default function NavBarSupplier({ counts = {} }) {
   const router = useRouter()
   const { logout } = useAuth()
 
@@ -55,14 +54,61 @@ export default function NavBarSupplier() {
       </Link>
 
       <ul className="supplier-nav-items">
-        <li><Link href="/supplier/products" passHref legacyBehavior><a><FaBoxes /><span>Productos</span></a></Link></li>
-        <li><Link href="/supplier/stocks" passHref legacyBehavior><a><FaListAlt /><span>Stocks</span></a></Link></li>
-        <li><Link href="/supplier/sales" passHref legacyBehavior><a><FaChartLine /><span>Ventas</span></a></Link></li>
-        <li><Link href="/supplier/orders" passHref legacyBehavior><a><FaClipboardList /><span>Órdenes</span></a></Link></li>
-        <li><Link href="/supplier/support" passHref legacyBehavior><a><FaHeadset /><span>Soporte</span></a></Link></li>
-        <li><Link href="/supplier/renewal" passHref legacyBehavior><a><FaRedo /><span>Renewal</span></a></Link></li>
-        <li><Link href="/supplier/expired" passHref legacyBehavior><a><FaHourglassEnd /><span>Vencidas</span></a></Link></li>
-        <li><Link href="/supplier/wallet" passHref legacyBehavior><a><FaWallet /><span>Billetera</span></a></Link></li>
+        <li>
+          <Link href="/supplier/products" passHref legacyBehavior>
+            <a><FaBoxes /><span>Productos</span></a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/stocks" passHref legacyBehavior>
+            <a><FaListAlt /><span>Stocks</span></a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/sales" passHref legacyBehavior>
+            <a>
+              <FaChartLine /><span>Ventas</span>
+              {counts.sales > 0 && <span className="badge">{counts.sales}</span>}
+            </a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/orders" passHref legacyBehavior>
+            <a>
+              <FaClipboardList /><span>Órdenes</span>
+              {counts.orders > 0 && <span className="badge">{counts.orders}</span>}
+            </a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/support" passHref legacyBehavior>
+            <a>
+              <FaHeadset /><span>Soporte</span>
+              {counts.support > 0 && <span className="badge">{counts.support}</span>}
+            </a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/renewal" passHref legacyBehavior>
+            <a>
+              <FaRedo /><span>Renewal</span>
+              {counts.renewed > 0 && <span className="badge">{counts.renewed}</span>}
+            </a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/expired" passHref legacyBehavior>
+            <a>
+              <FaHourglassEnd /><span>Vencidas</span>
+              {counts.expired > 0 && <span className="badge">{counts.expired}</span>}
+            </a>
+          </Link>
+        </li>
+        <li>
+          <Link href="/supplier/wallet" passHref legacyBehavior>
+            <a><FaWallet /><span>Billetera</span></a>
+          </Link>
+        </li>
       </ul>
 
       <div className="logout-area">
@@ -121,6 +167,7 @@ export default function NavBarSupplier() {
           transition: transform 0.18s ease, background-color 0.18s ease;
           padding: 6px 10px;
           border-radius: 10px;
+          position: relative;
         }
 
         .supplier-nav-items li a {
@@ -129,11 +176,25 @@ export default function NavBarSupplier() {
           gap: 8px;
           text-decoration: none;
           color: #D1D1D1;
+          position: relative;
         }
 
         .supplier-nav-items li:hover { transform: translateY(-3px); background-color: rgba(255,255,255,0.04); }
         .supplier-nav-items li:hover svg { color: #BFBFBF; filter: drop-shadow(0 0 6px rgba(191,191,191,0.4)); }
         .supplier-nav-items li:hover span { color: #BFBFBF; }
+
+        .badge {
+          background: #ef4444;
+          color: #fff;
+          font-size: 0.7rem;
+          font-weight: bold;
+          border-radius: 999px;
+          padding: 2px 6px;
+          margin-left: 6px;
+          line-height: 1;
+          min-width: 20px;
+          text-align: center;
+        }
 
         .logout-area {
           display: flex;

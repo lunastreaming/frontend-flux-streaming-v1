@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
-import NavBarSupplier from '../../components/NavBarSupplier'
 import Footer from '../../components/Footer'
 import { FaSearch, FaEye, FaEyeSlash, FaUndo, FaEdit, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -193,7 +192,6 @@ export default function OrdersPage() {
   if (token === undefined) {
     return (
       <div className="min-h-screen page-bg text-white font-inter">
-        <NavBarSupplier />
         <main className="page-container">
           <div className="header-row">
             <div className="search-bar" style={{ height: 40, width: '100%', maxWidth: 520 }} />
@@ -213,7 +211,6 @@ export default function OrdersPage() {
   // Render principal
   return (
     <div className="min-h-screen page-bg text-white font-inter">
-      <NavBarSupplier />
 
       <main className="page-container">
         <div className="header-row">
