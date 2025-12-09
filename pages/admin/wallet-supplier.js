@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
+import TransferToUserModal from '../../components/TransferToUserModal'
 import { useAuth } from '../../context/AuthProvider'
-import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa'
+import { FaCheckCircle, FaTimesCircle, FaSpinner, FaExchangeAlt } from 'react-icons/fa'
 
 export default function WalletSupplierPending() {
   const { ensureValidAccess, logout } = useAuth()
@@ -18,12 +19,21 @@ export default function WalletSupplierPending() {
   const [confirmData, setConfirmData] = useState({
     open: false,
     id: null,
-    action: null,
+    action: null, // approve | reject
     message: ''
   })
 
+  // Flags y estados obtenidos de /api/users/me
+  const [canTransfer, setCanTransfer] = useState(false)
+  const [userBalance, setUserBalance] = useState(null)
+
+  // Estado para el TransferToUserModal
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState(null)
+
   useEffect(() => {
     fetchPending()
+    fetchMe()
   }, [])
 
   const getAuthToken = async () => {
@@ -33,6 +43,29 @@ export default function WalletSupplierPending() {
     } catch (_) {}
     if (typeof window !== 'undefined') return localStorage.getItem('accessToken')
     return null
+  }
+
+  const fetchMe = async () => {
+    try {
+      const token = await getAuthToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const res = await fetch(`${BASE}/api/users/me`, {
+        method: 'GET',
+        headers,
+        credentials: token ? 'omit' : 'include'
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
+      setCanTransfer(Boolean(data?.canTransfer))
+      setUserBalance(data?.balance ?? null)
+      console.log('Balance en padre después de fetchMe:', data?.balance)
+    } catch (err) {
+      console.error('Error fetching /me:', err)
+      setCanTransfer(false)
+      setUserBalance(null)
+    }
   }
 
   const fetchPending = async () => {
@@ -78,9 +111,10 @@ export default function WalletSupplierPending() {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const url = action === 'approve'
-        ? `${BASE}/api/wallet/admin/approve/${id}`
-        : `${BASE}/api/wallet/admin/reject/${id}`
+      const url =
+        action === 'approve'
+          ? `${BASE}/api/wallet/admin/approve/${id}`
+          : `${BASE}/api/wallet/admin/reject/${id}`
 
       const res = await fetch(url, {
         method: 'POST',
@@ -102,13 +136,14 @@ export default function WalletSupplierPending() {
       setItems(prev => prev.filter(i => i.id !== id))
     } catch (err) {
       console.error(`Error ${action} wallet request ${id}:`, err)
-      setError(`No se pudo ${action === 'approve' ? 'aprobar' : 'rechazar'} la solicitud`)
+      const label = action === 'approve' ? 'aprobar' : 'rechazar'
+      setError(`No se pudo ${label} la solicitud`)
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }))
     }
   }
 
-  // requestActionWithConfirm now expects a pre-formatted displayAmount string
+  // Confirm para aprobar/rechazar
   const requestActionWithConfirm = (id, action, userName, displayAmount) => {
     const actionText = action === 'approve' ? 'aprobar' : 'rechazar'
     const message = `¿Seguro que quieres ${actionText} la solicitud de ${userName ?? 'este proveedor'} por ${displayAmount}?`
@@ -126,7 +161,7 @@ export default function WalletSupplierPending() {
     setConfirmData({ open: false, id: null, action: null, message: '' })
   }
 
-  // Helper: parse amount-like values (number or string) into Number (units)
+  // Helpers de monto
   const parseToNumber = (v) => {
     if (v === null || v === undefined) return null
     if (typeof v === 'number') return v
@@ -139,8 +174,6 @@ export default function WalletSupplierPending() {
     return null
   }
 
-  // Helper: format amount for display
-  // If item.type === 'withdrawal' prefer item.realAmount, else use item.amount
   const formatItemAmount = (item) => {
     const currency = item.currency || 'PEN'
     const isWithdrawal = item.type && item.type.toLowerCase() === 'withdrawal'
@@ -153,26 +186,35 @@ export default function WalletSupplierPending() {
     return `${currency} ${display}`
   }
 
-  // Translate backend types to Spanish labels (recharge -> Recarga, withdrawal -> Retiro)
   const translateType = (type) => {
     if (!type || typeof type !== 'string') return ''
     const t = type.toLowerCase()
     switch (t) {
-      case 'recharge':
-        return 'Recarga'
-      case 'withdrawal':
-        return 'Retiro'
-      case 'adjustment':
-        return 'Ajuste'
-      case 'publish':
-        return 'Publicación'
-      case 'purchase':
-        return 'Compra'
-      case 'sale':
-        return 'Venta'
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1)
+      case 'recharge': return 'Recarga'
+      case 'withdrawal': return 'Retiro'
+      case 'adjustment': return 'Ajuste'
+      case 'publish': return 'Publicación'
+      case 'purchase': return 'Compra'
+      case 'sale': return 'Venta'
+      default: return type.charAt(0).toUpperCase() + type.slice(1)
     }
+  }
+
+  // Opción 2: enviar el saldo como parte del selectedItem
+  const openTransferModal = (item) => {
+    if (!canTransfer) {
+      alert('No tienes permisos para transferir.')
+      return
+    }
+    if (userBalance == null) {
+      console.warn('Intento de abrir modal sin balance cargado')
+      alert('Tu saldo aún no está cargado. Intenta nuevamente en unos segundos.')
+      return
+    }
+    // Inyectamos el saldo dentro del item seleccionado
+    setSelectedItem({ ...item, currentBalance: userBalance })
+    console.log('Abrir modal con balance (padre):', userBalance)
+    setShowTransferModal(true)
   }
 
   return (
@@ -188,7 +230,7 @@ export default function WalletSupplierPending() {
           <header className="mb-6 flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold">Recargas pendientes (Proveedores)</h1>
-              <p className="text-sm text-gray-400">Aprobar o rechazar solicitudes recibidas</p>
+              <p className="text-sm text-gray-400">Aprobar, rechazar o transferir solicitudes recibidas</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -219,7 +261,6 @@ export default function WalletSupplierPending() {
                 <article className="card" key={item.id}>
                   <div className="card-left">
                     <div className="user">{item.user ?? 'Proveedor'}</div>
-                    {/* Mostrar tipo traducido */}
                     <div className="meta">{translateType(item.type ?? item.method ?? 'Tipo')}</div>
                     <div className="date">{new Date(item.createdAt ?? Date.now()).toLocaleString()}</div>
                   </div>
@@ -245,6 +286,18 @@ export default function WalletSupplierPending() {
                       >
                         {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaTimesCircle />}
                       </button>
+
+                      {canTransfer && userBalance != null && (
+                        <button
+                          className="btn-transfer"
+                          onClick={() => openTransferModal(item)}
+                          disabled={Boolean(actionLoading[item.id])}
+                          aria-label={`Transferir solicitud ${item.id}`}
+                          title="Transferir"
+                        >
+                          <FaExchangeAlt />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -264,6 +317,19 @@ export default function WalletSupplierPending() {
         onCancel={handleCancelConfirm}
         loading={Boolean(confirmData.open && confirmData.id && actionLoading[confirmData.id])}
       />
+
+      {showTransferModal && selectedItem?.currentBalance != null && (
+        <TransferToUserModal
+          open={showTransferModal}
+          onClose={() => { setShowTransferModal(false); setSelectedItem(null) }}
+          sourceItem={selectedItem}  // incluye currentBalance
+          getAuthToken={getAuthToken}
+          baseUrl={BASE}
+          onSuccess={() => { setShowTransferModal(false); setSelectedItem(null); fetchPending() }}
+          // Nota: ya no pasamos userBalance como prop
+        />
+      )}
+
       <style jsx>{`
         .error-msg {
           max-width: 720px;
@@ -317,15 +383,15 @@ export default function WalletSupplierPending() {
 
         .actions { display:flex; gap:8px; align-items:center; }
 
-        .btn-approve, .btn-reject, .refresh-btn {
+        .btn-approve, .btn-reject, .refresh-btn, .btn-transfer {
           width:44px; height:44px; display:inline-grid; place-items:center; border-radius:10px; border:0; cursor:pointer;
         }
-
         .btn-approve { background: linear-gradient(135deg,#06b6d4 0%, #34d399 100%); color: #07101a; box-shadow: 0 8px 18px rgba(52,211,153,0.06); }
         .btn-reject { background: linear-gradient(135deg,#f97316 0%, #ef4444 100%); color: #fff; box-shadow: 0 8px 18px rgba(239,68,68,0.06); }
+        .btn-transfer { background: linear-gradient(135deg,#3b82f6 0%, #06b6d4 100%); color: #07101a; box-shadow: 0 8px 18px rgba(59,130,246,0.06); }
         .refresh-btn { background: rgba(255,255,255,0.03); color: #d1d1d1; width:40px; height:40px; border-radius:10px; }
 
-        .btn-approve:disabled, .btn-reject:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-approve:disabled, .btn-reject:disabled, .btn-transfer:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .skeleton { height: 120px; border-radius: 12px; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03)); animation: shimmer 1.2s linear infinite; }
 
         .spin { animation: spin 1s linear infinite; }

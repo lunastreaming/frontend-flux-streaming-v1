@@ -1,17 +1,16 @@
 // components/TransferToUserModal.jsx
 import { useEffect, useRef, useState } from 'react'
 import { FaSearch, FaSpinner } from 'react-icons/fa'
+import axios from 'axios'
 
 export default function TransferToUserModal({
   open,
   onClose,
-  sourceItem = null,           // item que inicia la transferencia (opcional, usado para mostrar origen)
-  getAuthToken,                // función async que devuelve token (igual que en la página)
+  sourceItem = null,
+  getAuthToken,
   baseUrl = '',
-  settingsPath = '/api/settings',            // ruta para obtener settings (puedes override)
   searchEndpoint = '/api/users/search-by-phone',
-  transferEndpoint = '/api/wallet/admin/transfer-to-user',
-  onSuccess = null             // callback para ejecutar después de una transferencia exitosa
+  onSuccess = null
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -27,7 +26,6 @@ export default function TransferToUserModal({
   }, [open])
 
   useEffect(() => {
-    // debounce search
     if (searchDebounce.current) clearTimeout(searchDebounce.current)
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSearchResults([])
@@ -39,12 +37,10 @@ export default function TransferToUserModal({
     return () => {
       if (searchDebounce.current) clearTimeout(searchDebounce.current)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   useEffect(() => {
     if (open) fetchSupplierDiscount()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   function resetAll() {
@@ -57,8 +53,7 @@ export default function TransferToUserModal({
     setTransferLoading(false)
   }
 
-  const safeBase = baseUrl || ''
-  const apiUrl = (path) => `${safeBase}${path.startsWith('/') ? path : '/' + path}`
+  const safeBase = (baseUrl || '').replace(/\/+$/, '')
 
   async function fetchSupplierDiscount() {
     try {
@@ -66,12 +61,9 @@ export default function TransferToUserModal({
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const res = await fetch(apiUrl(settingsPath), { method: 'GET', headers, credentials: token ? 'omit' : 'include' })
-      if (!res.ok) {
-        setSupplierDiscountFraction(0)
-        return
-      }
-      const data = await res.json()
+      const settingsUrl = `${safeBase}/api/admin/settings`
+      const res = await axios.get(settingsUrl, { headers, withCredentials: !token })
+      const data = res.data
       let frac = 0
       if (Array.isArray(data)) {
         for (const s of data) {
@@ -126,14 +118,9 @@ export default function TransferToUserModal({
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const url = `${apiUrl(searchEndpoint)}?q=${encodeURIComponent(q)}&limit=10`
-      const res = await fetch(url, { method: 'GET', headers, credentials: token ? 'omit' : 'include' })
-      if (!res.ok) {
-        const txt = await res.text().catch(() => null)
-        throw new Error(txt || `Error ${res.status}`)
-      }
-      const data = await res.json()
-      setSearchResults(Array.isArray(data) ? data : [])
+      const url = `${safeBase}${searchEndpoint}?q=${encodeURIComponent(q)}&limit=10`
+      const res = await axios.get(url, { headers, withCredentials: !token })
+      setSearchResults(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
       console.error('searchUsersByPhone error', err)
       setSearchResults([])
@@ -159,27 +146,13 @@ export default function TransferToUserModal({
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      const payload = {
-        targetUserId: selectedUser.id,
+      // Construcción directa de la URL (igual que settings)
+      const url = `${safeBase}/api/supplier/transfer-to-user`
+      await axios.post(url, {
+        sellerId: selectedUser.id,
         amount: gross
-      }
+      }, { headers, withCredentials: !token })
 
-      const res = await fetch(apiUrl(transferEndpoint), {
-        method: 'POST',
-        headers,
-        credentials: token ? 'omit' : 'include',
-        body: JSON.stringify(payload)
-      })
-
-      if (res.status === 401) {
-        throw new Error('No autorizado')
-      }
-      if (!res.ok) {
-        const txt = await res.text().catch(() => null)
-        throw new Error(txt || `Error ${res.status}`)
-      }
-
-      // success
       if (typeof onSuccess === 'function') onSuccess()
       onClose()
     } catch (err) {
@@ -211,7 +184,7 @@ export default function TransferToUserModal({
                     ? (sourceItem.realAmount ?? sourceItem.amount)
                     : sourceItem.amount
                   const n = parseToNumber(raw)
-                  return (n == null ? '0.00' : n.toFixed(2))
+                  return (n == null ? '0.00' : Number(n).toFixed(2))
                 })()}
               </div>
             )}
@@ -262,7 +235,7 @@ export default function TransferToUserModal({
             </div>
 
             <label className="label">
-              Monto bruto a transferir (unidades)
+              Monto a transferir (unidades)
               <input
                 value={transferAmount}
                 onChange={(e) => setTransferAmount(e.target.value)}
@@ -274,14 +247,15 @@ export default function TransferToUserModal({
 
             <div className="preview">
               <div>Descuento proveedor: <strong>{(Number(supplierDiscountFraction || 0) * 100).toFixed(2)}%</strong></div>
+
               {transferAmount && parseToNumber(transferAmount) != null ? (
                 <div className="calc">
-                  <div>Bruto: <strong>{Number(transferAmount).toFixed(2)}</strong></div>
-                  <div>Fee: <strong>{fee.toFixed(2)}</strong></div>
-                  <div>Pagable (neto): <strong>{net.toFixed(2)}</strong></div>
+                  <div>Monto: <strong>{Number(transferAmount).toFixed(2)}</strong></div>
+                  <div>Descuento: <strong>{fee.toFixed(2)}</strong></div>
+                  <div>Monto real a transferir: <strong>{net.toFixed(2)}</strong></div>
                 </div>
               ) : (
-                <div className="hint">Introduce un monto válido para ver el fee y neto</div>
+                <div className="hint">Introduce un monto válido para ver el cálculo</div>
               )}
             </div>
           </div>
@@ -291,7 +265,12 @@ export default function TransferToUserModal({
             <button
               className="btn-primary"
               onClick={handleSubmit}
-              disabled={transferLoading || !selectedUser || parseToNumber(transferAmount) == null || parseToNumber(transferAmount) <= 0}
+              disabled={
+                transferLoading ||
+                !selectedUser ||
+                parseToNumber(transferAmount) == null ||
+                parseToNumber(transferAmount) <= 0
+              }
             >
               {transferLoading ? <FaSpinner className="spin small" /> : 'Transferir'}
             </button>
@@ -307,11 +286,12 @@ export default function TransferToUserModal({
         .modal-header .close { background:transparent; border:0; color:#cfcfcf; font-size:1.1rem; cursor:pointer; }
         .modal-body { padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
         .modal-footer { padding:12px 18px; display:flex; gap:12px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.03); }
+        .source { padding:8px 10px; border-radius:8px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:#d1d1d1; }
         .label { display:block; font-size:0.9rem; color:#d1d1d1; }
         .input { width:100%; padding:10px 12px; border-radius:8px; background:#0d0d0d; border:1px solid rgba(255,255,255,0.04); color:#fff; margin-top:6px; }
         .search-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
         .btn-icon { width:40px; height:40px; display:inline-grid; place-items:center; border-radius:8px; background: rgba(255,255,255,0.03); border:0; color:#d1d1d1; cursor:pointer; }
-        .search-results { max-height:180px; overflow:auto; margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+        .search-results { max-height:200px; overflow:auto; margin-top:8px; display:flex; flex-direction:column; gap:6px; }
         .result { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px; border-radius:8px; background: rgba(255,255,255,0.01); cursor:pointer; border:1px solid rgba(255,255,255,0.02); }
         .result.selected { outline:2px solid rgba(99,102,241,0.18); background: linear-gradient(90deg, rgba(99,102,241,0.04), rgba(99,102,241,0.02)); }
         .r-left { display:flex; flex-direction:column; }

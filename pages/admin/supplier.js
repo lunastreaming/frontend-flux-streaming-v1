@@ -21,8 +21,8 @@ export default function AdminSuppliersPage() {
 
   // Búsqueda y paginación (server-side)
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)            // UI 1-based
-  const pageSize = 30                             // 30 por página (server-side)
+  const [page, setPage] = useState(1) // UI 1-based
+  const pageSize = 30
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
 
@@ -30,9 +30,10 @@ export default function AdminSuppliersPage() {
     open: false,
     userId: null,
     username: null,
-    action: null,
+    action: null, // 'verify' | 'disable' | 'delete' | 'transfer'
     message: '',
-    loading: false
+    loading: false,
+    canTransfer: null
   })
 
   // Estado para el modal de cambio de contraseña
@@ -112,14 +113,9 @@ export default function AdminSuppliersPage() {
     return <span className="status inactive">Inactivo</span>
   }
 
-  // Abre modal de confirmación para acciones que no sean password
-  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null) => {
+  // Abre modal de confirmación para acciones (incluye transfer)
+  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null, canTransfer = null) => {
     const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
-    // Si la acción es 'password' no usamos este modal; abrimos el modal de password
-    if (action === 'password') {
-      openPasswordModal(userId, username)
-      return
-    }
 
     let message = ''
     if (action === 'verify') {
@@ -128,10 +124,15 @@ export default function AdminSuppliersPage() {
       message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
     } else if (action === 'delete') {
       message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`
+    } else if (action === 'transfer') {
+      message = canTransfer
+        ? `Vas a deshabilitar la capacidad de transferir del proveedor ${username}. ¿Deseas continuar?`
+        : `Vas a habilitar la capacidad de transferir del proveedor ${username}. ¿Deseas continuar?`
     } else {
       message = `Confirmar acción ${action} para proveedor ${username}.`
     }
-    setConfirmData({ open: true, userId, username, action, message, loading: false })
+
+    setConfirmData({ open: true, userId, username, action, message, loading: false, canTransfer })
   }
 
   const callEndpoint = async (url, opts = {}, requireAuth = true) => {
@@ -156,7 +157,7 @@ export default function AdminSuppliersPage() {
   const handleConfirm = async () => {
     const { userId, action } = confirmData
     if (!userId || !action) {
-      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
+      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
       return
     }
     setConfirmData(prev => ({ ...prev, loading: true }))
@@ -171,13 +172,16 @@ export default function AdminSuppliersPage() {
       } else if (action === 'delete') {
         const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'DELETE' }, true)
+      } else if (action === 'transfer') {
+        const url = `${API_BASE}/api/admin/users/${encodeURIComponent(userId)}/enable-transfer`
+        await callEndpoint(url, { method: 'PATCH' }, true)
       } else {
         const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
         await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
       }
       // Refrescar la página actual desde el backend
       await fetchSuppliers(page)
-      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
+      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
     } catch (err) {
       console.error(`handleConfirm error for ${action} ${userId}:`, err)
       setError(err.message || 'Ocurrió un error en la acción')
@@ -188,7 +192,7 @@ export default function AdminSuppliersPage() {
   }
 
   const handleCancelConfirm = () => {
-    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
+    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
   }
 
   // Abrir / cerrar modal de contraseña
@@ -258,6 +262,7 @@ export default function AdminSuppliersPage() {
                         <th>Username</th>
                         <th>Celular</th>
                         <th>Balance</th>
+                        <th>Transfiere</th>
                         <th>Activo</th>
                         <th>Acciones</th>
                       </tr>
@@ -276,6 +281,7 @@ export default function AdminSuppliersPage() {
                             <td>{u.username ?? '-'}</td>
                             <td>{u.phone ?? u.celular ?? '-'}</td>
                             <td className="mono">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '-')}</td>
+                            <td>{canTransfer ? 'SI' : 'NO'}</td>
                             <td>{statusBadge(currentStatus)}</td>
                             <td>
                               <div className="actions">
@@ -296,10 +302,20 @@ export default function AdminSuppliersPage() {
                                   <FaKey />
                                 </button>
 
+                                {/* Transfer toggle: habilitar/deshabilitar según canTransfer */}
                                 <button
-                                  title={canTransfer ? 'Puede transferir' : 'No puede transferir'}
+                                  title={canTransfer ? 'Deshabilitar transferencia' : 'Habilitar transferencia'}
+                                  onClick={() =>
+                                    requestConfirmAction(
+                                      u.id,
+                                      u.username ?? u.phone ?? String(u.id),
+                                      currentStatus,
+                                      'transfer',
+                                      canTransfer
+                                    )
+                                  }
                                   aria-label={`Transfer capability ${u.id}`}
-                                  className={canTransfer ? 'transfer-true' : 'transfer-false'}
+                                  className={canTransfer ? 'transfer-enabled' : 'transfer-disabled'}
                                 >
                                   {canTransfer ? <FaExchangeAlt /> : <FaBan />}
                                 </button>
@@ -320,7 +336,7 @@ export default function AdminSuppliersPage() {
                         )
                       })}
                       {filtered.length === 0 && (
-                        <tr><td colSpan="7" className="empty">No se encontraron proveedores</td></tr>
+                        <tr><td colSpan="8" className="empty">No se encontraron proveedores</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -351,6 +367,8 @@ export default function AdminSuppliersPage() {
             ? 'Confirmar inhabilitación'
             : confirmData.action === 'delete'
             ? 'Confirmar eliminación'
+            : confirmData.action === 'transfer'
+            ? (confirmData.canTransfer ? 'Deshabilitar transferencia' : 'Habilitar transferencia')
             : 'Confirmar acción'
         }
         message={confirmData.message}
@@ -361,6 +379,8 @@ export default function AdminSuppliersPage() {
             ? 'Inhabilitar'
             : confirmData.action === 'delete'
             ? 'Eliminar'
+            : confirmData.action === 'transfer'
+            ? (confirmData.canTransfer ? 'Deshabilitar' : 'Habilitar')
             : 'Confirmar'
         }
         cancelText="Cancelar"
@@ -400,13 +420,13 @@ export default function AdminSuppliersPage() {
           table-layout: fixed;
           width: 100%;
           border-collapse: collapse;
-          min-width: 900px;
+          min-width: 980px;
           margin: 0 auto;
         }
 
         th, td {
           padding: 12px 10px;
-          text-align: left;
+          text-align: center; /* CENTRAR CELDAS */
           border-bottom: 1px solid rgba(255,255,255,0.03);
           font-size: 0.95rem;
           color: #d7d7d7;
@@ -421,8 +441,9 @@ export default function AdminSuppliersPage() {
         thead th:nth-child(3), tbody td:nth-child(3) { width: 16%; } /* Username */
         thead th:nth-child(4), tbody td:nth-child(4) { width: 14%; } /* Phone */
         thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; } /* Balance */
-        thead th:nth-child(6), tbody td:nth-child(6) { width: 10%; } /* Active */
-        thead th:nth-child(7), tbody td:nth-child(7) { width: 20%; max-width: 360px; vertical-align: top; padding-right: 8px; overflow: hidden; }
+        thead th:nth-child(6), tbody td:nth-child(6) { width: 10%; } /* Transfiere */
+        thead th:nth-child(7), tbody td:nth-child(7) { width: 10%; } /* Activo */
+        thead th:nth-child(8), tbody td:nth-child(8) { width: 20%; max-width: 360px; vertical-align: top; padding-right: 8px; overflow: hidden; } /* Acciones */
 
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
 
@@ -430,7 +451,7 @@ export default function AdminSuppliersPage() {
           display: flex;
           flex-wrap: nowrap;
           gap: 8px;
-          justify-content: flex-start;
+          justify-content: center; /* CENTRAR BOTONES */
           align-items: center;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
@@ -468,9 +489,15 @@ export default function AdminSuppliersPage() {
         .verify-btn { background: linear-gradient(90deg,#06b6d4,#10b981); color:#07101a; }
         .disable-btn { background: linear-gradient(90deg,#f97316,#ef4444); color:#fff; }
 
-        /* Transfer icons styling */
-        .transfer-true { background: linear-gradient(90deg,#06b6d4,#3b82f6); color: #07101a; }
-        .transfer-false { background: linear-gradient(90deg,#9ca3af,#6b7280); color: #0b0b0b; }
+        /* Transfer buttons */
+        .transfer-enabled {
+          background: linear-gradient(90deg,#06b6d4,#3b82f6);
+          color: #07101a;
+        }
+        .transfer-disabled {
+          background: linear-gradient(90deg,#9ca3af,#6b7280);
+          color: #ffffff;
+        }
 
         .loading, .empty { color:#9aa0a6; padding: 18px; text-align:center; }
         .error { color:#fecaca; padding: 10px; background: rgba(239,68,68,0.06); border-radius:8px; margin-bottom:8px; }
@@ -498,9 +525,9 @@ export default function AdminSuppliersPage() {
         .btn-refresh { width:40px; height:40px; display:inline-grid; place-items:center; border-radius:10px; border:0; background: rgba(255,255,255,0.03); color:#d1d1d1; cursor:pointer; }
 
         @media (max-width: 920px) {
-          table.users-table { min-width: 760px; }
+          table.users-table { min-width: 900px; }
           .search-box input { width: 100%; }
-          thead th:nth-child(7), tbody td:nth-child(7) { max-width: 300px; width: 26%; }
+          thead th:nth-child(8), tbody td:nth-child(8) { max-width: 300px; width: 26%; }
           thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; }
         }
       `}</style>

@@ -8,7 +8,7 @@ export default function ConfirmModal({
   title,
   message,
   description,
-  confirmText = 'DESEMBOLSAR',
+  confirmText = 'Confirmar',
   confirmLabel,
   cancelText = 'Cancelar',
   cancelLabel,
