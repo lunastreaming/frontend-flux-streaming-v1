@@ -569,7 +569,7 @@ export default function Home() {
         .stock-bar {
           display:flex;
           align-items:center;
-          justify-content: space-between;
+          justify-content: center;
           gap: 8px;
           padding: 8px 12px;
           font-weight: 800;
@@ -586,6 +586,12 @@ export default function Home() {
           color: var(--red-stock);
           border-bottom: 1px solid rgba(239,68,68,0.12);
         }
+
+        .stock-cat-name {
+  flex: 1;              /* ocupa todo el ancho disponible */
+  text-align: center;   /* centra el texto horizontalmente */
+}
+
 
         .product-media { width:100%; aspect-ratio: 4/3; background: #0b0b0b; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .product-media img { width:100%; height:100%; object-fit:cover; display:block; }

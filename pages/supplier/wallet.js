@@ -219,6 +219,26 @@ export default function BilleteraSupplier() {
     return `${currency} ${sign}${absVal}`
   }
 
+  const formatDateLocal = (value) => {
+  if (!value) return ''
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
   const translateStatus = (status) => {
     if (!status) return ''
     const s = status.toString().toLowerCase()
@@ -281,7 +301,7 @@ export default function BilleteraSupplier() {
                     <div className="pending-amt">{formatPendingAmount(p)}</div>
                     <div className="pending-meta">
                       <div className="pending-desc">{p.description || 'Solicitud pendiente'}</div>
-                      <div className="pending-date">{p.createdAt ? new Date(p.createdAt).toLocaleString() : ''}</div>
+                      <div className="pending-date">{p.createdAt ? formatDateLocal(p.createdAt) : ''}</div>
                     </div>
                   </div>
                   <div className="pending-actions">
@@ -307,7 +327,7 @@ export default function BilleteraSupplier() {
                   <div className="pending-amt">{m.currency || 'PEN'} {Number(m.amount).toFixed(2)}</div>
                   <div className="pending-meta">
                     <div className="pending-desc">{m.desc || m.description || 'Transacción'}</div>
-                    <div className="pending-date">{m.date ? new Date(m.date).toLocaleString() : ''}</div>
+                    <div className="pending-date">{m.date ? formatDateLocal(m.date) : ''}</div>
                   </div>
                 </div>
                 <div className="pending-actions">

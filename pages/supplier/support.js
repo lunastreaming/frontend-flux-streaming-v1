@@ -72,6 +72,32 @@ export default function SupportPage() {
     }
   }
 
+  const formatDateSplitLocal = (value) => {
+  if (!value) return { dateStr: '', timeStr: '' }
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return { dateStr: '', timeStr: '' }
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const locale = 'es-PE'
+    const dateStr = d.toLocaleDateString(locale, {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    const timeStr = d.toLocaleTimeString(locale, {
+      timeZone: userTimeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
+    return { dateStr, timeStr }
+  } catch {
+    return { dateStr: '', timeStr: '' }
+  }
+}
+
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const formatDateLocal = (v) => {
@@ -408,9 +434,9 @@ export default function SupportPage() {
                       ? r.daysRemaining
                       : computeDaysRemaining(r.endAt)
 
-                    const startSplit = formatDateSplitUTC(r.startAt)
-                    const endSplit = formatDateSplitUTC(r.endAt)
-                    const createdSplit = formatDateSplitUTC(r.ticketCreatedAt)
+                    const startSplit = formatDateSplitLocal(r.startAt)
+                    const endSplit = formatDateSplitLocal(r.endAt)
+                    const createdSplit = formatDateSplitLocal(r.ticketCreatedAt)
 
                     return (
                       <tr key={r.id ?? i}>

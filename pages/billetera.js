@@ -98,7 +98,7 @@ export default function Billetera() {
       }))
       const normalized = mapped.map(m => ({
         ...m,
-        date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : ''
+        date: m.dateRaw ? formatDateLocal(m.dateRaw) : ''
       }))
       setMovimientos(normalized)
     } else {
@@ -148,7 +148,7 @@ export default function Billetera() {
 
     const normalized = mapped.map(m => ({
       ...m,
-      date: m.dateRaw ? new Date(m.dateRaw).toLocaleString() : ''
+      date: m.dateRaw ? formatDateLocal(m.dateRaw) : ''
     }))
 
     setMovimientos(normalized)
@@ -178,7 +178,7 @@ export default function Billetera() {
     }))
     const presented = normalized.map(p => ({
       ...p,
-      createdAtFormatted: p.createdAtRaw ? new Date(p.createdAtRaw).toLocaleString() : ''
+      createdAtFormatted: p.createdAtRaw ? formatDateLocal(p.createdAtRaw) : ''
     }))
     setPending(presented)
   }
@@ -271,6 +271,26 @@ export default function Billetera() {
     if (Number.isNaN(n)) return '—'
     return `$${n.toFixed(2)}`
   }
+
+  const formatDateLocal = (value) => {
+  if (!value) return ''
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
 
   // paginador UI handlers para movimientos
   const movPrev = async () => {

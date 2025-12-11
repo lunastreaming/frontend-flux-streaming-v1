@@ -104,6 +104,26 @@ export default function AdminSoldsPage() {
   const formatAmount = (v, curr = 'PEN') =>
     v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
 
+  const formatDateLocal = (value) => {
+  if (!value) return '—'
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return '—'
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return '—'
+  }
+}
+
   const stateClass = (s) => {
     const st = String(s ?? '').toLowerCase()
     if (st === 'sold' || st === 'approved' || st === 'complete' || st === 'success') return 'tx-badge approved'
@@ -290,8 +310,8 @@ export default function AdminSoldsPage() {
 
                           <td><div className="row-inner">{r.providerName ?? '—'}</div></td>
 
-                          <td><div className="row-inner no-wrap">{formatDate(r.startAt)}</div></td>
-                          <td><div className="row-inner no-wrap">{formatDate(r.endAt)}</div></td>
+                          <td><div className="row-inner no-wrap">{formatDateLocal(r.startAt)}</div></td>
+                          <td><div className="row-inner no-wrap">{formatDateLocal(r.endAt)}</div></td>
 
                           <td>
                             <div className="row-inner center-inner">{r.daysRemaining ?? '—'}</div>

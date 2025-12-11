@@ -71,6 +71,26 @@ export default function AdminTransactionsPage() {
   const formatDate = (v) => v ? new Date(v).toLocaleString() : '—'
   const formatAmount = (v, curr = 'USD') => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
 
+  const formatDateLocal = (value) => {
+  if (!value) return '—'
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return '—'
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return '—'
+  }
+}
+
   // Mapea type a etiqueta legible (incluye chargeback -> Extorno)
   const typeLabel = (t) => {
     const tt = String(t ?? '').toLowerCase()
@@ -228,7 +248,7 @@ export default function AdminTransactionsPage() {
 
                         <td><div className="row-inner">{displayAmount(r)}</div></td>
 
-                        <td><div className="row-inner no-wrap">{formatDate(r.date)}</div></td>
+                        <td><div className="row-inner no-wrap">{formatDateLocal(r.date)}</div></td>
 
                         <td>
                           <div className="row-inner">
