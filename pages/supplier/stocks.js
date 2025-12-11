@@ -367,9 +367,12 @@ export default function StocksPage() {
                       <button className="btn-edit" title="Editar" onClick={() => handleEdit(s)}>
                         <FaEdit />
                       </button>
-                      <button className="btn-delete" title="Eliminar" onClick={() => confirmRemove(s)}>
-                        <FaTrashAlt />
-                      </button>
+                        {(s.status ?? '').toLowerCase() === 'inactive' && (
+    <button className="btn-delete" title="Eliminar" onClick={() => confirmRemove(s)}>
+      <FaTrashAlt />
+    </button>
+  )}
+
                     </div>
                   </td>
                 </tr>

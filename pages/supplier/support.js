@@ -202,6 +202,8 @@ export default function SupportPage() {
           refund: stock?.refund ?? t.refund ?? null,
           vendorName: stock?.providerName ?? t.providerName ?? t.provider_name ?? '',
           vendorPhone: stock?.providerPhone ?? t.providerPhone ?? t.provider_phone ?? '',
+          buyerUsername: stock?.buyerUsername ?? t.buyerUsername ?? '',
+buyerUsernamePhone: stock?.buyerUsernamePhone ?? t.buyerUsernamePhone ?? '',
           settings: stock?.settings ?? t.settings ?? null,
           daysRemaining: typeof stock?.daysRemaining === 'number' ? stock.daysRemaining : (t.daysRemaining ?? null),
           rawTicket: t,
@@ -481,12 +483,12 @@ export default function SupportPage() {
 
                         <td>
                           <div className="row-inner centered" style={{ gap: 8 }}>
-                            <div>{r.vendorName ?? ''}</div>
+                            <div>{r.buyerUsername ?? ''}</div>
                             <button
                               className="wa-btn"
-                              title={`WhatsApp vendedor ${r.vendorPhone ?? ''}`}
-                              onClick={() => openWhatsAppToVendor(r.vendorPhone, r.vendorName, r.productName)}
-                              aria-label={`WhatsApp vendedor ${r.vendorPhone ?? ''}`}
+                              title={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
+                              onClick={() => openWhatsAppToVendor(r.buyerUsernamePhone , r.buyerUsername, r.productName)}
+                              aria-label={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
                             >
                               <FaWhatsapp />
                             </button>
