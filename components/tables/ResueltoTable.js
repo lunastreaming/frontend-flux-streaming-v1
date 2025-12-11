@@ -42,6 +42,28 @@ export default function ResueltoTable() {
   } catch { return '' }
 }
 
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+const formatDateLocal = (v) => {
+  if (!v) return ''
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
   const formatPrice = (v) => {
     if (v === null || v === undefined) return ''
     try {
@@ -172,8 +194,8 @@ export default function ResueltoTable() {
                   <td><div className="row-inner">{row.url || ''}</div></td>
                   <td><div className="row-inner">{row.numeroPerfil || ''}</div></td>
                   <td><div className="row-inner">{row.pin || ''}</div></td>
-                  <td><div className="row-inner">{formatDateUTC(row.startAt)}</div></td>
-                  <td><div className="row-inner">{formatDateUTC(row.endAt)}</div></td>
+                  <td><div className="row-inner">{formatDateLocal(row.startAt)}</div></td>
+                  <td><div className="row-inner">{formatDateLocal(row.endAt)}</div></td>
                   <td><div className="row-inner">{row.daysRemaining ?? ''}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>

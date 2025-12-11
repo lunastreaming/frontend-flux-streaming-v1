@@ -124,6 +124,28 @@ export default function ExpiredPage() {
   } catch { return '' }
 }
 
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+const formatDateLocal = (v) => {
+  if (!v) return ''
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
   // Filtro de búsqueda
   const displayed = items.filter(it => {
     const q = search.trim().toLowerCase()
@@ -291,8 +313,8 @@ export default function ExpiredPage() {
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
 
                         {/* Inicio/Fin */}
-                        <td><div className="row-inner">{formatDateUTC(r.startAt)}</div></td>
-                        <td><div className="row-inner">{formatDateUTC(r.endAt)}</div></td>
+                        <td><div className="row-inner">{formatDateLocal(r.startAt)}</div></td>
+                        <td><div className="row-inner">{formatDateLocal(r.endAt)}</div></td>
 
                         {/* Proveedor / Celular proveedor */}
                         <td><div className="row-inner">{r.providerName ?? ''}</div></td>

@@ -117,6 +117,28 @@ export default function ProviderSalesPage() {
     }
   }
 
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  const formatDateLocal = (v) => {
+  if (!v) return ''
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
   const formatAmount = (v) => {
     if (v == null) return ''
     try {
@@ -306,8 +328,8 @@ export default function ProviderSalesPage() {
                         <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
                         {/* Fechas en UTC, reflejando exactamente el backend */}
-                        <td><div className="row-inner no-wrap">{formatDateUTC(r.startAt)}</div></td>
-                        <td><div className="row-inner no-wrap">{formatDateUTC(r.endAt)}</div></td>
+                        <td><div className="row-inner no-wrap">{formatDateLocal(r.startAt)}</div></td>
+                        <td><div className="row-inner no-wrap">{formatDateLocal(r.endAt)}</div></td>
                         <td><div className="row-inner">{formatAmount(r.refund)}</div></td>
                         <td><div className="row-inner">{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</div></td>
                         <td>

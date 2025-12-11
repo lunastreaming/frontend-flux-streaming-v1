@@ -72,6 +72,28 @@ export default function SupportPage() {
     }
   }
 
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  const formatDateLocal = (v) => {
+  if (!v) return ''
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleString('es-PE', {
+      timeZone: userTimeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
   const computeDaysRemaining = (endAt) => {
     if (!endAt) return null
     try {

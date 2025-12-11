@@ -47,11 +47,12 @@ export default function NavBarSupplier({ counts = {} }) {
 
   return (
     <nav className="supplier-navbar">
-      <Link href="/" passHref legacyBehavior>
-        <a className="logo-container" aria-label="Ir al inicio">
-          <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
-        </a>
-      </Link>
+      <Link href="/supplier" passHref legacyBehavior>
+  <a className="logo-container" aria-label="Ir al inicio">
+    <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
+  </a>
+</Link>
+
 
       <ul className="supplier-nav-items">
         <li>

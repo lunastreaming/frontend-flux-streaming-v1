@@ -42,10 +42,9 @@ export default function RenewalPage() {
     if (token === null) router.replace('/supplier/login')
   }, [token, router])
 
-  // Fetch de página desde /api/supplier/sales/provider/renewed
+  // Fetch de página
   const fetchPage = useCallback(async (p = page) => {
     if (!token) return
-
     setLoading(true)
     setError(null)
     try {
@@ -71,7 +70,6 @@ export default function RenewalPage() {
       setItems(content)
       setPage(Number(payload?.number ?? p))
       setTotalElements(Number(payload?.totalElements ?? payload?.total ?? content.length))
-
       const totalPagesCalc = Math.ceil((payload?.totalElements ?? content.length) / size) || 1
       setTotalPages(Number(payload?.totalPages ?? totalPagesCalc))
     } catch (err) {
@@ -99,22 +97,32 @@ export default function RenewalPage() {
     })
   }
 
-  const formatDate = (value) => {
+  const formatDateUTC = (value) => {
     if (!value) return ''
     try {
       const d = new Date(value)
       if (Number.isNaN(d.getTime())) return ''
-      return d.toLocaleDateString()
+      return d.toLocaleString('es-PE', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     } catch { return '' }
   }
 
-  const formatDateUTC = (value) => {
-  if (!value) return ''
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const formatDateLocal = (v) => {
+  if (!v) return ''
   try {
-    const d = new Date(value)
+    const d = new Date(v)
     if (Number.isNaN(d.getTime())) return ''
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
     return d.toLocaleString('es-PE', {
-      timeZone: 'UTC',
+      timeZone: userTimeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -122,7 +130,9 @@ export default function RenewalPage() {
       minute: '2-digit',
       second: '2-digit'
     })
-  } catch { return '' }
+  } catch {
+    return ''
+  }
 }
 
   const formatAmount = (v) => {
@@ -147,14 +157,12 @@ export default function RenewalPage() {
     )
   })
 
-  // Abrir modal para aceptar
+  // Abrir modal
   const handleAcceptClick = (row) => {
     setSelectedStock(row)
     setConfirmMode('accept')
     setConfirmOpen(true)
   }
-
-  // Abrir modal para reembolsar
   const handleRefundClick = (row) => {
     setSelectedStock(row)
     setConfirmMode('refund')
@@ -179,24 +187,23 @@ export default function RenewalPage() {
           alert(`Error al aprobar la renovación: ${res.status} ${txt}`)
         }
       } else if (confirmMode === 'refund') {
-  const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ buyerId: selectedStock.buyerId }) // opcional si quieres enviar algo
-  })
-
-  if (res.ok) {
-    const data = await res.json()
-    console.log('Reembolso exitoso:', data)
-    setSelectedStock(prev => ({ ...prev, refund: data.refund }))
-    await fetchPage(page) // refrescar tabla
-  } else if (res.status === 401) {
-    router.replace('/supplier/login')
-  } else {
-    const txt = await res.text().catch(() => '')
-    alert(`Error al reembolsar: ${res.status} ${txt}`)
-  }
-}
+        const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buyerId: selectedStock.buyerId })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          // El backend devuelve refundAmount; lo guardamos para mostrarlo inmediato en el modal
+          setSelectedStock(prev => ({ ...prev, refund: data.refundAmount }))
+          await fetchPage(page)
+        } else if (res.status === 401) {
+          router.replace('/supplier/login')
+        } else {
+          const txt = await res.text().catch(() => '')
+          alert(`Error al reembolsar: ${res.status} ${txt}`)
+        }
+      }
     } catch (err) {
       console.error(err)
       alert('Error de red en la operación')
@@ -210,7 +217,6 @@ export default function RenewalPage() {
   // Render principal
   return (
     <div className="min-h-screen page-bg text-white font-inter">
-
       <main className="page-container">
         <div className="header-row">
           <div className="search-bar">
@@ -305,8 +311,8 @@ export default function RenewalPage() {
                         <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
                         <td><div className="row-inner">{r.clientPhone ?? ''}</div></td>
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
-                        <td><div className="row-inner">{formatDateUTC(r.startAt)}</div></td>
-                        <td><div className="row-inner">{formatDateUTC(r.endAt)}</div></td>
+                        <td><div className="row-inner">{formatDateLocal(r.startAt)}</div></td>
+                        <td><div className="row-inner">{formatDateLocal(r.endAt)}</div></td>
                         <td><div className="row-inner">{r.providerName ?? ''}</div></td>
                         <td><div className="row-inner">{r.providerPhone ?? ''}</div></td>
                         <td>
@@ -318,13 +324,15 @@ export default function RenewalPage() {
                         </td>
                         <td>
                           <div className="row-inner config-cell">
-                            <button
-                              className="config-btn refund"
-                              title="Reembolsar"
-                              onClick={() => handleRefundClick(r)}
-                            >
-                              <FaUndo />
-                            </button>
+                            {Number(r.refund) > 0 && (
+                              <button
+                                className="config-btn refund"
+                                title="Reembolsar"
+                                onClick={() => handleRefundClick(r)}
+                              >
+                                <FaUndo />
+                              </button>
+                            )}
                             <button
                               className="config-btn accept"
                               title="Aceptar"
@@ -416,7 +424,7 @@ export default function RenewalPage() {
           font-size:0.9rem;
           line-height:1;
           color:#0b1220;
-          background:#CBD5E1; /* neutral fallback */
+          background:#CBD5E1;
           box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
         }
         .badge.positive { background:#22c55e; color:#052e1a; }
@@ -448,7 +456,6 @@ export default function RenewalPage() {
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
 
-        /* modern horizontal scrollbar themed */
         .table-scroll::-webkit-scrollbar { height: 12px; }
         .table-scroll::-webkit-scrollbar-track { background: transparent; }
         .table-scroll::-webkit-scrollbar-thumb {

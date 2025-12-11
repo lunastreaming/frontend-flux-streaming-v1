@@ -197,7 +197,8 @@ export default function Home() {
           // stock ahora proviene de availableStockCount cuando esté presente
           stock: stockCount,
           // <-- guardamos el objeto product completo para usar en el modal
-          fullProduct: productWrapper
+          fullProduct: productWrapper,
+          isOnRequest: productWrapper.isOnRequest ?? false
         }
       })
 
@@ -345,7 +346,16 @@ export default function Home() {
               <h3>{selectedCategory ? `Productos en la categoría` : 'Todos los productos activos'}</h3>
               <p className="muted">{prodLoading ? 'Cargando productos...' : (prodError ? prodError : `${products.length} resultados`)}</p>
             </div>
-
+<div className="legend">
+  <div className="legend-item">
+    <span className="legend-dot blue"></span>
+    <span>A SOLICITUD</span>
+  </div>
+  <div className="legend-item">
+    <span className="legend-dot emerald"></span>
+    <span>ENTREGA INMEDIATA</span>
+  </div>
+</div>
             <div className="cards-grid">
               {prodLoading && Array.from({ length: 8 }).map((_, i) => (
                 <article className="product-card skeleton" key={`psk-${i}`} />
@@ -361,60 +371,60 @@ export default function Home() {
                 const categoryName = p.categoryName ?? categories.find(c => String(c.id) === String(p.categoryId))?.name ?? 'Sin categoría'
 
                 return (
-                  <article className="product-card" key={p.id}>
-                    <div className={`stock-bar stock-cat ${hasStock ? 'stock-available' : 'stock-empty'}`}>
-                      <div className="stock-cat-name">{categoryName}</div>
-                    </div>
+<article className="product-card" key={p.id}>
+<div className={`stock-bar ${p.isOnRequest ? 'stock-request' : 'stock-normal'}`}>
+  <div className="stock-cat-name">{categoryName}</div>
+</div>
 
-                    <div className="product-media">
-                      {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} loading="lazy" />
-                      ) : (
-                        <div className="product-media placeholder" />
-                      )}
-                    </div>
+  <div className="product-media">
+    {p.imageUrl ? (
+      <img src={p.imageUrl} alt={p.name} loading="lazy" />
+    ) : (
+      <div className="product-media placeholder" />
+    )}
+  </div>
 
-                    <div className="product-body">
-                      <div className="product-title marquee" title={p.name}>
-                        <span>{p.name}</span>
-                      </div>
+  <div className="product-body">
+    <div className="product-title marquee" title={p.name}>
+      <span>{p.name}</span>
+    </div>
 
-                      {p.providerName && (
-                        <div className="provider-name" title={p.providerName}>
-                          {p.providerName}
-                        </div>
-                      )}
+    {p.providerName && (
+      <div className="provider-name" title={p.providerName}>
+        {p.providerName}
+      </div>
+    )}
 
-                      <div className="price-badge">{formatPrice(p.salePrice)}</div>
+    <div className="price-badge">{formatPrice(p.salePrice)}</div>
 
-                      <div className="product-actions">
-                        {hasStock ? (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                            <button
-                              className={`btn-primary in-stock`}
-                              onClick={() => handleBuyClick(p)}
-                              aria-disabled="false"
-                            >
-                              <span className="btn-text">Comprar</span>
-                            </button>
+    <div className="product-actions">
+      {hasStock ? (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+          <button
+            className={`btn-primary in-stock`}
+            onClick={() => handleBuyClick(p)}
+            aria-disabled="false"
+          >
+            <span className="btn-text">Comprar</span>
+          </button>
 
-                            <div className="stock-pill" aria-hidden>
-                              <span className="stock-icon">📦</span>
-                              <span className="stock-count-pill">{stockCount}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            className="btn-primary out-stock disabled-sin-stock"
-                            aria-disabled="true"
-                            onClick={() => {}}
-                          >
-                            SIN STOCK
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
+          <div className="stock-pill" aria-hidden>
+            <span className="stock-icon">📦</span>
+            <span className="stock-count-pill">{stockCount}</span>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="btn-primary out-stock disabled-sin-stock"
+          aria-disabled="true"
+          onClick={() => {}}
+        >
+          SIN STOCK
+        </button>
+      )}
+    </div>
+  </div>
+</article>
                 )
               })}
             </div>
@@ -466,6 +476,50 @@ export default function Home() {
           --blue-buy: #0677f5;
           --red-buy: #ef4444;
         }
+
+        .stock-request {
+  background: rgba(59,130,246,0.15); /* azul suave */
+  color: #3b82f6; /* azul */
+  border-bottom: 1px solid rgba(59,130,246,0.25);
+}
+
+.stock-normal {
+  background: rgba(16, 185, 129, 0.15); /* verde esmeralda suave */
+  color: #10b981; /* verde esmeralda */
+  border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.legend {
+  display: flex;
+  gap: 24px;
+  margin: 16px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  padding: 6px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+
+
+.legend-dot.blue { background-color: #3b82f6; }   
+.legend-dot.emerald { background-color: #10b981; }
+
 
         .page-root { background-color: #0D0D0D; color: #D1D1D1; min-height: 100vh; }
 
