@@ -13,11 +13,18 @@ export default function StocksPage() {
   const [confirmPayload, setConfirmPayload] = useState({ id: null, name: '', action: '', stock: null })
   const [confirmLoading, setConfirmLoading] = useState(false)
 
+  // Paginación
+  const [page, setPage] = useState(0)
+  const [size] = useState(50) // 50 por página
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    fetchStocks()
-  }, [])
+    fetchStocks(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   function getAuthHeaders() {
     const token = localStorage.getItem('accessToken')
@@ -50,12 +57,12 @@ export default function StocksPage() {
     }
   }
 
-  const fetchStocks = async () => {
+  const fetchStocks = async (p = 0) => {
     try {
       const headers = getAuthHeaders()
       if (!headers) return
 
-      const res = await fetch(`${BASE_URL}/api/stocks/provider/me`, { headers })
+      const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}`, { headers })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
         console.error('[fetchStocks] fetch failed', res.status, txt)
@@ -63,11 +70,21 @@ export default function StocksPage() {
       }
 
       const text = await res.text()
-      const data = text ? JSON.parse(text) : []
-      const normalized = Array.isArray(data) ? data.map(item => normalizeStock(item)).filter(Boolean) : []
+      const payload = text ? JSON.parse(text) : {}
+
+      const content = Array.isArray(payload?.content) ? payload.content : (Array.isArray(payload) ? payload : [])
+      const normalized = content.map(item => normalizeStock(item)).filter(Boolean)
+
       setStocks(normalized)
+      setPage(Number(payload?.number ?? p))
+      setTotalElements(Number(payload?.totalElements ?? payload?.total ?? content.length))
+      const totalPagesCalc = Math.ceil((payload?.totalElements ?? content.length) / size) || 1
+      setTotalPages(Number(payload?.totalPages ?? totalPagesCalc))
     } catch (err) {
       console.error('Error al cargar stocks:', err)
+      setStocks([])
+      setTotalElements(0)
+      setTotalPages(1)
     }
   }
 
@@ -221,7 +238,6 @@ export default function StocksPage() {
     return 'Confirmar'
   }
 
-  // Helper: short display for long urls (returns empty string for falsy)
   const displayUrl = (rawUrl, max = 48) => {
     if (!rawUrl) return ''
     const s = String(rawUrl)
@@ -311,7 +327,6 @@ export default function StocksPage() {
 
                   <td>
                     <div className="row-inner url-cell">
-                      {/* Show URL as plain text. If empty, render an empty element (no dash). */}
                       {s.url ? (
                         <span className="url-text" title={s.url}>
                           {displayUrl(s.url, 48)}
@@ -363,6 +378,29 @@ export default function StocksPage() {
           </table>
         </div>
 
+        {/* Paginación */}
+        <div className="pager-row">
+          <div className="pager-info">
+            Mostrando {filtered.length} de {totalElements}
+          </div>
+          <div className="pager-controls">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              className="pager-btn"
+              disabled={page <= 0}
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              className="pager-btn"
+              disabled={page >= totalPages - 1}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+
         <ConfirmModal
           open={confirmOpen}
           title={confirmPayload.action === 'remove' ? 'Confirmar eliminación' : 'Confirmar cambio de estado'}
@@ -373,7 +411,6 @@ export default function StocksPage() {
           onCancel={handleCancelConfirm}
           loading={confirmLoading}
         />
-
       </main>
 
       <style jsx>{`
@@ -510,18 +547,16 @@ export default function StocksPage() {
         .btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: #0d0d0d; }
         .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); color: #fff; }
 
-        /* URL cell styles: plain text, empty when missing.
-           Use the same color as other table values by inheriting the container color. */
-        .url-cell { min-width: 0; } /* allow truncation */
+        .url-cell { min-width: 0; }
         .url-text {
-          color: inherit; /* match other table values */
+          color: inherit;
           display: inline-block;
           max-width: 100%;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .url-empty { display: inline-block; width: 0; height: 0; } /* visually empty */
+        .url-empty { display: inline-block; width: 0; height: 0; }
 
         @media (max-width: 980px) {
           col:nth-child(3) { width: 120px; }
@@ -537,6 +572,21 @@ export default function StocksPage() {
           td { padding: 0 12px; }
           .row-inner { padding: 10px; }
         }
+
+        /* Paginación */
+        .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
+        .pager-info { color:#cbd5e1; }
+        .pager-controls { display:flex; gap:8px; }
+        .pager-btn {
+          padding:8px 12px;
+          border-radius:8px;
+          border:none;
+          background:rgba(255,255,255,0.08);
+          color:#e1e1e1;
+          cursor:pointer;
+          font-weight:700;
+        }
+        .pager-btn:disabled { opacity:0.45; cursor:not-allowed; }
       `}</style>
     </div>
   )
