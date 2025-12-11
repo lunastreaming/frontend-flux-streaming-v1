@@ -264,7 +264,7 @@ export default function ProviderSalesPage() {
                     <th>Pin</th>
                     <th>Inicio</th>
                     <th>Fin</th>
-                    <th>Desembolso</th>
+                    <th>Reembolso</th>
                     <th>Vendedor</th>
                     <th>Días restantes</th>
                     <th>Configuraciones</th>

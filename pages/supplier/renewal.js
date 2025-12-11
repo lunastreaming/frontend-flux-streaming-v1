@@ -188,6 +188,7 @@ export default function RenewalPage() {
   if (res.ok) {
     const data = await res.json()
     console.log('Reembolso exitoso:', data)
+    setSelectedStock(prev => ({ ...prev, refund: data.refund }))
     await fetchPage(page) // refrescar tabla
   } else if (res.status === 401) {
     router.replace('/supplier/login')
@@ -373,7 +374,7 @@ export default function RenewalPage() {
           onConfirm={handleConfirm}
           message={
             confirmMode === 'refund'
-              ? `¿Desea reembolsar el stock ${selectedStock?.id} por ${formatAmount(selectedStock?.purchasePrice)}?`
+              ? `¿Desea reembolsar el stock ${selectedStock?.id} por ${formatAmount(selectedStock?.refund)}?`
               : `¿Desea aprobar la renovación del stock ${selectedStock?.id}?`
           }
         />
