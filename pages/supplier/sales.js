@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
 import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
-import StockEditModal from '../../components/StockEditModal' // 👈 integración del modal de edición
+import StockEditModal from '../../components/StockEditModal'
 
 export default function ProviderSalesPage() {
   const router = useRouter()
@@ -97,12 +97,21 @@ export default function ProviderSalesPage() {
     })
   }
 
-  const formatDate = (v) => {
+  // Fechas en UTC para reflejar exactamente el backend
+  const formatDateUTC = (v) => {
     if (!v) return ''
     try {
       const d = new Date(v)
       if (Number.isNaN(d.getTime())) return ''
-      return d.toLocaleString()
+      return d.toLocaleString('es-PE', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     } catch {
       return ''
     }
@@ -148,7 +157,7 @@ export default function ProviderSalesPage() {
     setConfirmOpen(true)
   }
 
-  // Reembolso: confirmar -> llamar endpoint no full
+  // Reembolso: confirmar -> llamar endpoint
   const handleRefundConfirm = async () => {
     if (!selectedStock) return
     try {
@@ -162,7 +171,6 @@ export default function ProviderSalesPage() {
       const txt = await res.text().catch(() => '')
       if (!res.ok) throw new Error(`refund_failed ${res.status} ${txt}`)
 
-      // Refrescar tabla tras reembolso
       await fetchPage(page)
     } catch (err) {
       console.error(err)
@@ -173,7 +181,7 @@ export default function ProviderSalesPage() {
     }
   }
 
-  // Editar stock activo: abrir StockEditModal con datos precargados
+  // Editar stock: abrir modal
   const handleEditClick = (row) => {
     setSelectedStock(row)
     setEditOpen(true)
@@ -294,13 +302,13 @@ export default function ProviderSalesPage() {
                         </td>
                         {/* URL en texto plano */}
                         <td><div className="row-inner">{r.url ?? ''}</div></td>
-                        <td><div className="row-inner">{r.numberProfile ?? ''}</div></td>
+                        <td><div className="row-inner">{r.numberProfile ?? r.numeroPerfil ?? ''}</div></td>
                         <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
-                        <td><div className="row-inner no-wrap">{formatDate(r.startAt)}</div></td>
-                        <td><div className="row-inner no-wrap">{formatDate(r.endAt)}</div></td>
+                        {/* Fechas en UTC, reflejando exactamente el backend */}
+                        <td><div className="row-inner no-wrap">{formatDateUTC(r.startAt)}</div></td>
+                        <td><div className="row-inner no-wrap">{formatDateUTC(r.endAt)}</div></td>
                         <td><div className="row-inner">{formatAmount(r.refund)}</div></td>
-                        {/* Se quitó la columna ESTADO */}
                         <td><div className="row-inner">{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</div></td>
                         <td>
                           <div className="row-inner">
@@ -354,22 +362,22 @@ export default function ProviderSalesPage() {
       {confirmOpen && (
         <ConfirmModal
           open={confirmOpen}
-          onCancel={() => setConfirmOpen(false)}   // cierre correcto según tu ConfirmModal
+          onCancel={() => setConfirmOpen(false)}
           onConfirm={handleRefundConfirm}
           message={`¿Desea reembolsar el monto ${formatAmount(selectedStock?.refund)}?`}
         />
       )}
 
-      {/* StockEditModal para edición de stock activo */}
+      {/* StockEditModal para edición */}
       {editOpen && selectedStock && (
         <StockEditModal
           visible={editOpen}
           onClose={() => setEditOpen(false)}
           onSuccess={() => {
             setEditOpen(false)
-            fetchPage(page) // refrescar tabla tras editar
+            fetchPage(page)
           }}
-          initialData={selectedStock}  // precargar los datos existentes
+          initialData={selectedStock}
           BASE_URL={BASE_URL}
         />
       )}

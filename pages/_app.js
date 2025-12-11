@@ -4,8 +4,18 @@ import { AuthProvider } from '../context/AuthProvider'
 import SupplierLayout from '../components/SupplierLayout'
 
 export default function MyApp({ Component, pageProps, router }) {
-  // Si la ruta empieza con /supplier, usamos el layout
-  if (router.pathname.startsWith('/supplier')) {
+  const path = router.pathname
+
+  // rutas que NO deben mostrar el layout del proveedor
+  const excludedSupplierRoutes = [
+    '/supplier/loginSupplier',
+    '/supplier/registerSupplier'
+  ]
+
+  const isSupplierRoute =
+    path.startsWith('/supplier') && !excludedSupplierRoutes.includes(path)
+
+  if (isSupplierRoute) {
     return (
       <AuthProvider>
         <SupplierLayout>
@@ -15,7 +25,7 @@ export default function MyApp({ Component, pageProps, router }) {
     )
   }
 
-  // Para otras rutas, solo AuthProvider
+  // Para otras rutas (incluyendo loginSupplier y registerSupplier)
   return (
     <AuthProvider>
       <Component {...pageProps} />

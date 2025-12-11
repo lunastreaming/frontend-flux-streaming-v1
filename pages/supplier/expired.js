@@ -107,6 +107,23 @@ export default function ExpiredPage() {
     } catch { return '' }
   }
 
+  const formatDateUTC = (value) => {
+  if (!value) return ''
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString('es-PE', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch { return '' }
+}
+
   // Filtro de búsqueda
   const displayed = items.filter(it => {
     const q = search.trim().toLowerCase()
@@ -274,8 +291,8 @@ export default function ExpiredPage() {
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
 
                         {/* Inicio/Fin */}
-                        <td><div className="row-inner">{formatDate(r.startAt)}</div></td>
-                        <td><div className="row-inner">{formatDate(r.endAt)}</div></td>
+                        <td><div className="row-inner">{formatDateUTC(r.startAt)}</div></td>
+                        <td><div className="row-inner">{formatDateUTC(r.endAt)}</div></td>
 
                         {/* Proveedor / Celular proveedor */}
                         <td><div className="row-inner">{r.providerName ?? ''}</div></td>

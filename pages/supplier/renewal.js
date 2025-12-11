@@ -108,6 +108,23 @@ export default function RenewalPage() {
     } catch { return '' }
   }
 
+  const formatDateUTC = (value) => {
+  if (!value) return ''
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString('es-PE', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch { return '' }
+}
+
   const formatAmount = (v) => {
     if (v == null) return ''
     try {
@@ -162,19 +179,23 @@ export default function RenewalPage() {
           alert(`Error al aprobar la renovación: ${res.status} ${txt}`)
         }
       } else if (confirmMode === 'refund') {
-        const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (res.status === 204) {
-          await fetchPage(page)
-        } else if (res.status === 401) {
-          router.replace('/supplier/login')
-        } else {
-          const txt = await res.text().catch(() => '')
-          alert(`Error al reembolsar: ${res.status} ${txt}`)
-        }
-      }
+  const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ buyerId: selectedStock.buyerId }) // opcional si quieres enviar algo
+  })
+
+  if (res.ok) {
+    const data = await res.json()
+    console.log('Reembolso exitoso:', data)
+    await fetchPage(page) // refrescar tabla
+  } else if (res.status === 401) {
+    router.replace('/supplier/login')
+  } else {
+    const txt = await res.text().catch(() => '')
+    alert(`Error al reembolsar: ${res.status} ${txt}`)
+  }
+}
     } catch (err) {
       console.error(err)
       alert('Error de red en la operación')
@@ -283,8 +304,8 @@ export default function RenewalPage() {
                         <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
                         <td><div className="row-inner">{r.clientPhone ?? ''}</div></td>
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
-                        <td><div className="row-inner">{formatDate(r.startAt)}</div></td>
-                        <td><div className="row-inner">{formatDate(r.endAt)}</div></td>
+                        <td><div className="row-inner">{formatDateUTC(r.startAt)}</div></td>
+                        <td><div className="row-inner">{formatDateUTC(r.endAt)}</div></td>
                         <td><div className="row-inner">{r.providerName ?? ''}</div></td>
                         <td><div className="row-inner">{r.providerPhone ?? ''}</div></td>
                         <td>

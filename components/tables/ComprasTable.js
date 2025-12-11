@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo } from 'react-icons/fa'
 import SupportModal from '../SupportModal'
-import RenewModal from '../RenewModal' // ← import del modal de renovación
+import RenewModal from '../RenewModal'
 
-export default function ComprasTable({ endpoint = 'purchases', balance }) {
+export default function ComprasTable({ endpoint = 'purchases', balance, search = '' }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -13,20 +13,44 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
   const [showSupportModal, setShowSupportModal] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
 
-  // ← estado para el modal de renovación
   const [showRenewModal, setShowRenewModal] = useState(false)
   const [renewProduct, setRenewProduct] = useState(null)
 
+  // paginación
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const SIZE = 50
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
-  const formatDate = (value) => {
+  // Formateo en UTC para ver el mismo valor del backend (sin desplazamiento de zona horaria)
+  const formatDateUTC = (value) => {
     if (!value) return ''
     try {
       const d = new Date(value)
       if (Number.isNaN(d.getTime())) return ''
-      return d.toLocaleDateString()
+      return d.toLocaleString('es-PE', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     } catch { return '' }
   }
+
+  // Si quisieras ver el ISO exacto del backend (incluye milisegundos y 'Z'), usa esta:
+  // const formatIsoUTC = (value) => {
+  //   if (!value) return ''
+  //   try {
+  //     const d = new Date(value)
+  //     if (Number.isNaN(d.getTime())) return ''
+  //     return d.toISOString() // UTC puro
+  //   } catch { return '' }
+  // }
 
   const formatPrice = (v) => {
     if (v === null || v === undefined) return ''
@@ -48,34 +72,36 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
     setSelectedStock(stock)
     setShowSupportModal(true)
   }
-
   const closeSupportModal = () => {
     setSelectedStock(null)
     setShowSupportModal(false)
   }
 
-  const fetchData = async () => {
+  const fetchData = async (pageToLoad = 0) => {
     setLoading(true); setError(null)
     try {
       const token = localStorage.getItem('accessToken')
-      const res = await fetch(`${BASE_URL}/api/stocks/${endpoint}`, {
+      const res = await fetch(`${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
-      const normalized = Array.isArray(data) ? data : (data.content || [])
-      setItems(normalized)
+
+      // data: PagedResponse<StockResponse>
+      setItems(data.content || [])
+      setTotalPages(data.totalPages ?? 0)
+      setTotalElements(data.totalElements ?? 0)
     } catch (err) {
       setError(err.message || String(err))
       setItems([])
+      setTotalPages(0)
+      setTotalElements(0)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchData()
-  }, [endpoint])
+  useEffect(() => { fetchData(page) }, [endpoint, page])
 
   const createSupport = async (choice) => {
     try {
@@ -92,16 +118,13 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
         })
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      await fetchData()
+      await fetchData(page) // refrescar manteniendo página
     } catch (err) {
       console.error('Error creando soporte:', err)
     }
   }
 
-  // ← abrir/cerrar RenewModal
   const openRenewModal = (row) => {
-    // Si tu backend no trae el objeto product en row.product,
-    // puedes pasar row y resolver dentro del modal.
     setRenewProduct(row.product ?? row)
     setShowRenewModal(true)
   }
@@ -109,6 +132,19 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
     setRenewProduct(null)
     setShowRenewModal(false)
   }
+
+  const goPrev = () => setPage(p => Math.max(0, p - 1))
+  const goNext = () => setPage(p => (p + 1 < totalPages ? p + 1 : p))
+  const jumpTo = (e) => {
+    const val = Number(e.target.value) - 1
+    if (!Number.isNaN(val) && val >= 0 && val < totalPages) setPage(val)
+  }
+
+  // calcular items visibles por búsqueda (si aplica)
+  const displayed = useMemo(() => {
+    const q = (search || '').toLowerCase()
+    return items.filter(i => (i.productName ?? '').toLowerCase().includes(q))
+  }, [items, search])
 
   if (loading) return <div className="info">Cargando…</div>
   if (error) return <div className="error">Error: {error}</div>
@@ -139,7 +175,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
             </tr>
           </thead>
           <tbody>
-            {items.map((row, idx) => {
+            {displayed.map((row, idx) => {
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
@@ -165,7 +201,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
 
               return (
                 <tr key={row.id}>
-                  <td><div className="row-inner index">{idx + 1}</div></td>
+                  <td><div className="row-inner index">{idx + 1 + page * SIZE}</div></td>
                   <td><div className="row-inner">{row.id || ''}</div></td>
                   <td><div className="row-inner td-name">{row.productName || ''}</div></td>
                   <td><div className="row-inner">{row.username || ''}</div></td>
@@ -186,8 +222,9 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
                   <td><div className="row-inner">{row.url || ''}</div></td>
                   <td><div className="row-inner">{row.numeroPerfil || ''}</div></td>
                   <td><div className="row-inner">{row.pin || ''}</div></td>
-                  <td><div className="row-inner">{formatDate(row.startAt)}</div></td>
-                  <td><div className="row-inner">{formatDate(row.endAt)}</div></td>
+                  {/* Fechas en UTC, reflejando exactamente el backend */}
+                  <td><div className="row-inner">{formatDateUTC(row.startAt)}</div></td>
+                  <td><div className="row-inner">{formatDateUTC(row.endAt)}</div></td>
                   <td><div className="row-inner">{row.daysRemaining ?? ''}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>
@@ -233,6 +270,26 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
         </table>
       </div>
 
+      {/* Controles de paginación */}
+      <div className="pagination">
+        <button disabled={page === 0} onClick={goPrev}>Anterior</button>
+        <span>Página {page + 1} de {Math.max(totalPages, 1)} • Total: {totalElements}</span>
+        <button disabled={page + 1 >= totalPages} onClick={goNext}>Siguiente</button>
+      </div>
+
+      <div className="pagination-extra">
+        <label htmlFor="jump">Ir a página:</label>
+        <input
+          id="jump"
+          type="number"
+          min={1}
+          max={Math.max(totalPages, 1)}
+          onChange={jumpTo}
+          placeholder="N°"
+        />
+      </div>
+
+      {/* Modales */}
       {showSupportModal && (
         <SupportModal
           open={showSupportModal}
@@ -244,7 +301,6 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
         />
       )}
 
-      {/* Render RenewModal solo cuando está abierto */}
       {showRenewModal && (
         <RenewModal
           product={renewProduct}
@@ -252,7 +308,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
           onClose={closeRenewModal}
           onSuccess={() => {
             closeRenewModal()
-            fetchData()
+            fetchData(page) // refrescar manteniendo página actual
           }}
         />
       )}
@@ -283,6 +339,11 @@ export default function ComprasTable({ endpoint = 'purchases', balance }) {
 
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
+
+        .pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px; color:#cbd5e1; }
+        .pagination button { padding:6px 12px; border-radius:6px; border:none; cursor:pointer; }
+        .pagination-extra { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:8px; color:#cbd5e1; }
+        .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color:#fff; }
       `}</style>
     </div>
   )

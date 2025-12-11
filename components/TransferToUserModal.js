@@ -106,6 +106,15 @@ export default function TransferToUserModal({
     return { fee, net }
   }
 
+const computeFeeAndTotal = (grossStr) => {
+  const gross = parseToNumber(grossStr)
+  if (gross == null || isNaN(gross)) return { fee: 0, total: 0 }
+  const frac = supplierDiscountFraction == null ? 0 : Number(supplierDiscountFraction)
+  const fee = roundToTwo(gross * frac)
+  const total = roundToTwo(gross + fee) // proveedor paga más
+  return { fee, total }
+}
+
   async function searchUsersByPhone(q) {
     if (!q || q.trim().length < 2) {
       setSearchResults([])
@@ -165,7 +174,8 @@ export default function TransferToUserModal({
 
   if (!open) return null
 
-  const { fee, net } = computeFeeAndNet(transferAmount)
+const { fee, total } = computeFeeAndTotal(transferAmount)
+
 
   return (
     <>
@@ -246,14 +256,15 @@ export default function TransferToUserModal({
             </label>
 
             <div className="preview">
-              <div>Descuento proveedor: <strong>{(Number(supplierDiscountFraction || 0) * 100).toFixed(2)}%</strong></div>
+              <div>Porcentaje de cargo: <strong>{(Number(supplierDiscountFraction || 0) * 100).toFixed(2)}%</strong></div>
 
               {transferAmount && parseToNumber(transferAmount) != null ? (
                 <div className="calc">
-                  <div>Monto: <strong>{Number(transferAmount).toFixed(2)}</strong></div>
-                  <div>Descuento: <strong>{fee.toFixed(2)}</strong></div>
-                  <div>Monto real a transferir: <strong>{net.toFixed(2)}</strong></div>
-                </div>
+  <div>Monto al vendedor: <strong>{Number(transferAmount).toFixed(2)}</strong></div>
+  <div>Cargo al proveedor: <strong>{fee.toFixed(2)}</strong></div>
+  <div>Total descontado al proveedor: <strong>{total.toFixed(2)}</strong></div>
+</div>
+
               ) : (
                 <div className="hint">Introduce un monto válido para ver el cálculo</div>
               )}

@@ -46,14 +46,26 @@ export default function SupportPage() {
     if (token === null) router.replace('/supplier/login')
   }, [token, router])
 
-  const formatDateSplit = (value) => {
+  // Fechas en UTC: split en fecha y hora, sin aplicar zona local
+  const formatDateSplitUTC = (value) => {
     if (!value) return { dateStr: '', timeStr: '' }
     try {
       const d = new Date(value)
       if (Number.isNaN(d.getTime())) return { dateStr: '', timeStr: '' }
       const locale = 'es-PE'
-      const dateStr = d.toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' })
-      const timeStr = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true })
+      const dateStr = d.toLocaleDateString(locale, {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+      const timeStr = d.toLocaleTimeString(locale, {
+        timeZone: 'UTC',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      })
       return { dateStr, timeStr }
     } catch {
       return { dateStr: '', timeStr: '' }
@@ -205,7 +217,9 @@ export default function SupportPage() {
     const raw = String(vendorPhone ?? '').replace(/[^\d+]/g, '')
     const name = vendorName ?? ''
     const product = productName ?? ''
-    const message = `Hola ${name} 👋🏻\n🫴He generado un pedido *${product}*🫴\n✉ Por favor acepte mi solicitud, ¡¡¡Gracias!!!`
+    const message = `Hola ${name} 👋🏻
+🫴He generado un pedido *${product}*🫴
+✉ Por favor acepte mi solicitud, ¡¡¡Gracias!!!`
     const encoded = encodeURIComponent(message)
     if (!raw) {
       window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
@@ -372,9 +386,9 @@ export default function SupportPage() {
                       ? r.daysRemaining
                       : computeDaysRemaining(r.endAt)
 
-                    const startSplit = formatDateSplit(r.startAt)
-                    const endSplit = formatDateSplit(r.endAt)
-                    const createdSplit = formatDateSplit(r.ticketCreatedAt)
+                    const startSplit = formatDateSplitUTC(r.startAt)
+                    const endSplit = formatDateSplitUTC(r.endAt)
+                    const createdSplit = formatDateSplitUTC(r.ticketCreatedAt)
 
                     return (
                       <tr key={r.id ?? i}>

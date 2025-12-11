@@ -9,6 +9,10 @@ export default function ReembolsadoTable({ search = '' }) {
   const [error, setError] = useState(null)
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
 
+  // paginación
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   const formatDate = (value) => {
@@ -19,6 +23,23 @@ export default function ReembolsadoTable({ search = '' }) {
       return d.toLocaleDateString()
     } catch { return '—' }
   }
+
+  const formatDateUTC = (value) => {
+  if (!value) return '—'
+  try {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return '—'
+    return d.toLocaleString('es-PE', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch { return '—' }
+}
 
   const formatPrice = (v) => {
     if (v === null || v === undefined) return '—'
@@ -41,13 +62,15 @@ export default function ReembolsadoTable({ search = '' }) {
       setLoading(true); setError(null)
       try {
         const token = localStorage.getItem('accessToken')
-        const res = await fetch(`${BASE_URL}/api/stocks/refunds`, {
+        const res = await fetch(`${BASE_URL}/api/stocks/refunds?page=${page}&size=50`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) throw new Error(`Error ${res.status}`)
         const data = await res.json()
-        const normalized = Array.isArray(data) ? data : (data.content || [])
-        setItems(normalized)
+
+        // ahora data es un Page<StockResponse>
+        setItems(data.content || [])
+        setTotalPages(data.totalPages || 0)
       } catch (err) {
         setError(err.message || String(err))
         setItems([])
@@ -56,7 +79,7 @@ export default function ReembolsadoTable({ search = '' }) {
       }
     }
     fetchData()
-  }, [])
+  }, [page]) // refetch cuando cambie la página
 
   const displayed = items.filter(i => (i.productName ?? '').toLowerCase().includes(search.toLowerCase()))
 
@@ -92,7 +115,7 @@ export default function ReembolsadoTable({ search = '' }) {
 
               return (
                 <tr key={row.id}>
-                  <td><div className="row-inner index">{idx + 1}</div></td>
+                  <td><div className="row-inner index">{idx + 1 + page * 50}</div></td>
                   <td><div className="row-inner">{row.id}</div></td>
                   <td><div className="row-inner td-name">{row.productName}</div></td>
                   <td><div className="row-inner">{row.username}</div></td>
@@ -107,8 +130,8 @@ export default function ReembolsadoTable({ search = '' }) {
                   <td><div className="row-inner">{row.url ?? ''}</div></td>
                   <td><div className="row-inner">{row.numeroPerfil ?? ''}</div></td>
                   <td><div className="row-inner">{row.pin ?? ''}</div></td>
-                  <td><div className="row-inner">{formatDate(row.startAt)}</div></td>
-                  <td><div className="row-inner">{formatDate(row.endAt)}</div></td>
+                  <td><div className="row-inner">{formatDateUTC(row.startAt)}</div></td>
+                  <td><div className="row-inner">{formatDateUTC(row.endAt)}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName}</div></td>
                   <td><div className="row-inner">{row.clientPhone}</div></td>
@@ -118,6 +141,13 @@ export default function ReembolsadoTable({ search = '' }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Controles de paginación */}
+      <div className="pagination">
+        <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</button>
+        <span>Página {page + 1} de {totalPages}</span>
+        <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Siguiente</button>
       </div>
 
       <style jsx>{`
@@ -134,6 +164,9 @@ export default function ReembolsadoTable({ search = '' }) {
         .pw-btn { background:none; border:none; color:#9fb4c8; cursor:pointer; }
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
+        .pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px; }
+        .pagination button { padding:6px 12px; border-radius:6px; border:none; cursor:pointer; }
+        .pagination span { color:#cbd5e1; }
       `}</style>
     </div>
   )

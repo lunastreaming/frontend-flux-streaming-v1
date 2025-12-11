@@ -9,6 +9,11 @@ export default function SoporteTable() {
   const [error, setError] = useState(null)
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
 
+  // paginación
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   const formatDate = (value) => {
@@ -36,27 +41,41 @@ export default function SoporteTable() {
     })
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true); setError(null)
-      try {
-        const token = localStorage.getItem('accessToken')
-        const res = await fetch(`${BASE_URL}/api/support/client/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (!res.ok) throw new Error(`Error ${res.status}`)
-        const data = await res.json()
-        const normalized = Array.isArray(data) ? data : (data.content || [])
-        setItems(normalized)
-      } catch (err) {
-        setError(err.message || String(err))
-        setItems([])
-      } finally {
-        setLoading(false)
-      }
+  const fetchData = async (pageToLoad = 0) => {
+    setLoading(true); setError(null)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch(`${BASE_URL}/api/support/client/me?page=${pageToLoad}&size=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
+
+      // data es un Page<StockResponse>
+      setItems(Array.isArray(data) ? data : (data.content || []))
+      setTotalPages(data.totalPages ?? 0)
+      setTotalElements(data.totalElements ?? 0)
+    } catch (err) {
+      setError(err.message || String(err))
+      setItems([])
+      setTotalPages(0)
+      setTotalElements(0)
+    } finally {
+      setLoading(false)
     }
-    fetchData()
-  }, [])
+  }
+
+  useEffect(() => {
+    fetchData(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
+
+  const goPrev = () => setPage(p => Math.max(0, p - 1))
+  const goNext = () => setPage(p => (p + 1 < totalPages ? p + 1 : p))
+  const jumpTo = (e) => {
+    const val = Number(e.target.value) - 1
+    if (!Number.isNaN(val) && val >= 0 && val < totalPages) setPage(val)
+  }
 
   if (loading) return <div className="info">Cargando…</div>
   if (error) return <div className="error">Error: {error}</div>
@@ -89,7 +108,6 @@ export default function SoporteTable() {
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
-              // 👉 Mensaje predeterminado para proveedor
               const whatsappProviderMsg = `Hola *${row.providerName ?? ''}* 👋🏻
 🍿Te envié para soporte *${row.productName ?? ''}*🍿
 ✉ *Mail*: ${row.username ?? ''}
@@ -113,7 +131,7 @@ export default function SoporteTable() {
 
               return (
                 <tr key={row.id}>
-                  <td><div className="row-inner index">{idx + 1}</div></td>
+                  <td><div className="row-inner index">{idx + 1 + page * 50}</div></td>
                   <td><div className="row-inner">{row.id || ''}</div></td>
                   <td><div className="row-inner td-name">{row.productName || ''}</div></td>
                   <td><div className="row-inner">{row.username || ''}</div></td>
@@ -124,6 +142,7 @@ export default function SoporteTable() {
                         <button
                           onClick={() => togglePasswordVisibility(row.id)}
                           className="pw-btn"
+                          aria-label={isVisible ? 'Ocultar password' : 'Mostrar password'}
                         >
                           {isVisible ? <FaEyeSlash /> : <FaEye />}
                         </button>
@@ -137,10 +156,8 @@ export default function SoporteTable() {
                   <td><div className="row-inner">{formatDate(row.endAt)}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>
-                  {/* 👉 Celular cliente: solo número */}
                   <td><div className="row-inner">{row.clientPhone || ''}</div></td>
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
-                  {/* 👉 Nueva columna: Celular Proveedor con botón de WhatsApp */}
                   <td>
                     <div className="row-inner whatsapp-cell">
                       <button
@@ -160,6 +177,25 @@ export default function SoporteTable() {
         </table>
       </div>
 
+      <div className="pagination">
+        <button disabled={page === 0} onClick={goPrev}>Anterior</button>
+        <span>Página {page + 1} de {Math.max(totalPages, 1)}</span>
+        <button disabled={page + 1 >= totalPages} onClick={goNext}>Siguiente</button>
+      </div>
+
+      <div className="pagination-extra">
+        <label htmlFor="jump">Ir a página:</label>
+        <input
+          id="jump"
+          type="number"
+          min={1}
+          max={Math.max(totalPages, 1)}
+          onChange={jumpTo}
+          placeholder="N°"
+        />
+        <span>Total registros: {totalElements}</span>
+      </div>
+
       <style jsx>{`
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; }
         .table-scroll { overflow:auto; border-radius:8px; }
@@ -176,6 +212,10 @@ export default function SoporteTable() {
         .wa-number { font-size:12px; margin-top:4px; color:#cbd5e1; }
         .info { padding:28px; text-align:center; color:#cbd5e1; }
         .error { padding:28px; text-align:center; color:#fca5a5; }
+        .pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px; }
+        .pagination button { padding:6px 12px; border-radius:6px; border:none; cursor:pointer; }
+        .pagination-extra { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:8px; color:#cbd5e1; }
+        .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color:#fff; }
       `}</style>
     </div>
   )
