@@ -47,71 +47,74 @@ export default function NavBarSupplier({ counts = {} }) {
 
   return (
     <nav className="supplier-navbar">
-      <Link href="/supplier" passHref legacyBehavior>
-  <a className="logo-container" aria-label="Ir al inicio">
-    <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
-  </a>
-</Link>
+      {/* Un solo bloque principal con logo + menú */}
+      <div className="navbar-main">
+        <Link href="/supplier" passHref legacyBehavior>
+          <a className="logo-container" aria-label="Ir al inicio">
+            <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
+          </a>
+        </Link>
 
+        <ul className="supplier-nav-items">
+          <li>
+            <Link href="/supplier/products" passHref legacyBehavior>
+              <a><FaBoxes /><span>Productos</span></a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/stocks" passHref legacyBehavior>
+              <a><FaListAlt /><span>Stocks</span></a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/sales" passHref legacyBehavior>
+              <a>
+                <FaChartLine /><span>Ventas</span>
+                {counts.sales > 0 && <span className="badge">{counts.sales}</span>}
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/orders" passHref legacyBehavior>
+              <a>
+                <FaClipboardList /><span>Órdenes</span>
+                {counts.orders > 0 && <span className="badge">{counts.orders}</span>}
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/support" passHref legacyBehavior>
+              <a>
+                <FaHeadset /><span>Soporte</span>
+                {counts.support > 0 && <span className="badge">{counts.support}</span>}
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/renewal" passHref legacyBehavior>
+              <a>
+                <FaRedo /><span>Renewal</span>
+                {counts.renewed > 0 && <span className="badge">{counts.renewed}</span>}
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/expired" passHref legacyBehavior>
+              <a>
+                <FaHourglassEnd /><span>Vencidas</span>
+                {counts.expired > 0 && <span className="badge">{counts.expired}</span>}
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/wallet" passHref legacyBehavior>
+              <a><FaWallet /><span>Billetera</span></a>
+            </Link>
+          </li>
+        </ul>
+      </div>
 
-      <ul className="supplier-nav-items">
-        <li>
-          <Link href="/supplier/products" passHref legacyBehavior>
-            <a><FaBoxes /><span>Productos</span></a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/stocks" passHref legacyBehavior>
-            <a><FaListAlt /><span>Stocks</span></a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/sales" passHref legacyBehavior>
-            <a>
-              <FaChartLine /><span>Ventas</span>
-              {counts.sales > 0 && <span className="badge">{counts.sales}</span>}
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/orders" passHref legacyBehavior>
-            <a>
-              <FaClipboardList /><span>Órdenes</span>
-              {counts.orders > 0 && <span className="badge">{counts.orders}</span>}
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/support" passHref legacyBehavior>
-            <a>
-              <FaHeadset /><span>Soporte</span>
-              {counts.support > 0 && <span className="badge">{counts.support}</span>}
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/renewal" passHref legacyBehavior>
-            <a>
-              <FaRedo /><span>Renewal</span>
-              {counts.renewed > 0 && <span className="badge">{counts.renewed}</span>}
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/expired" passHref legacyBehavior>
-            <a>
-              <FaHourglassEnd /><span>Vencidas</span>
-              {counts.expired > 0 && <span className="badge">{counts.expired}</span>}
-            </a>
-          </Link>
-        </li>
-        <li>
-          <Link href="/supplier/wallet" passHref legacyBehavior>
-            <a><FaWallet /><span>Billetera</span></a>
-          </Link>
-        </li>
-      </ul>
-
+      {/* Botón de logout a la derecha */}
       <div className="logout-area">
         <button
           type="button"
@@ -138,9 +141,16 @@ export default function NavBarSupplier({ counts = {} }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
+        }
+
+        .navbar-main {
+          display: flex;
+          align-items: center;
+          gap: 32px;
+          flex: 1;
         }
 
         .logo-container {
@@ -178,6 +188,7 @@ export default function NavBarSupplier({ counts = {} }) {
           text-decoration: none;
           color: #D1D1D1;
           position: relative;
+          min-height: 40px;
         }
 
         .supplier-nav-items li:hover { transform: translateY(-3px); background-color: rgba(255,255,255,0.04); }
@@ -185,13 +196,15 @@ export default function NavBarSupplier({ counts = {} }) {
         .supplier-nav-items li:hover span { color: #BFBFBF; }
 
         .badge {
+          position: absolute;
+          top: -6px;
+          right: -10px;
           background: #ef4444;
           color: #fff;
           font-size: 0.7rem;
           font-weight: bold;
           border-radius: 999px;
           padding: 2px 6px;
-          margin-left: 6px;
           line-height: 1;
           min-width: 20px;
           text-align: center;
@@ -223,6 +236,7 @@ export default function NavBarSupplier({ counts = {} }) {
 
         @media (max-width: 768px) {
           .supplier-navbar { flex-direction: column; align-items: flex-start; padding: 12px; gap: 12px; }
+          .navbar-main { width: 100%; }
           .supplier-nav-items { flex-direction: column; gap: 12px; width: 100%; justify-content: flex-start; }
           .logout-area { width: 100%; display: flex; justify-content: flex-end; }
         }
