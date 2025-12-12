@@ -377,7 +377,7 @@ export default function OrdersPage() {
           open={confirmOpen}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={handleRefundConfirm}
-          message={`¿Desea reembolsar el monto ${formatAmount(selectedStock?.refund)}?`}
+          message={`¿Desea reembolsar el monto ${formatAmount(selectedStock?.amount)}?`}
         />
       )}
 
