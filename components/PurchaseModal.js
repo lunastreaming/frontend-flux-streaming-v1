@@ -1,7 +1,99 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthProvider'
+import Select, { components } from 'react-select'
+import countriesData from '../data/countries.json'
+
+// Helper para URL de banderas
+const flagPngUrl = (iso2) => `https://flagcdn.com/w40/${iso2.toLowerCase()}.png`
+
+// Opción con bandera en el menú desplegable
+function OptionWithFlag(props) {
+  const { data } = props
+  const iso = data.value
+  const alt = `${data.name} flag`
+  return (
+    <components.Option {...props}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <img
+          src={flagPngUrl(iso)}
+          alt={alt}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+            const parent = e.currentTarget.parentElement
+            if (parent && data.flag) {
+              const el = document.createElement('span')
+              el.textContent = data.flag
+              el.style.fontSize = '14px'
+              parent.insertBefore(el, e.currentTarget)
+            }
+          }}
+          style={{ width: 28, height: 18, objectFit: 'cover', borderRadius: 2 }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 14, color: '#EEE' }}>{data.name}</div>
+          <div style={{ fontSize: 12, color: '#9A9A9A' }}>{`+${data.dial}`}</div>
+        </div>
+      </div>
+    </components.Option>
+  )
+}
+
+// Valor seleccionado con bandera
+function SingleValueWithFlag(props) {
+  const { data } = props
+  const iso = data.value
+  return (
+    <components.SingleValue {...props}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <img
+          src={flagPngUrl(iso)}
+          alt={`${data.name} flag`}
+          onError={(e) => { e.currentTarget.style.display = 'none' }}
+          style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }}
+        />
+        <span style={{ color: '#F0F0F0' }}>{data.name} (+{data.dial})</span>
+      </div>
+    </components.SingleValue>
+  )
+}
+
+const selectStyles = {
+  control: (base) => ({
+    ...base,
+    backgroundColor: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
+    cursor: 'pointer',
+    minWidth: 140,
+    height: 44,
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: '#F0F0F0',
+    fontSize: '0.88rem',
+  }),
+  menu: (base) => ({
+    ...base,
+    backgroundColor: '#131313',
+    borderRadius: 14,
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#232323' : '#131313',
+    color: '#F0F0F0',
+    fontSize: '0.88rem',
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    display: 'none',
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#9A9A9A',
+  }),
+}
 
 export default function PurchaseModal({ product, balance, onClose, onSuccess }) {
   const { ensureValidAccess } = useAuth()
@@ -15,6 +107,30 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
   const [customerPhone, setCustomerPhone] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [countries, setCountries] = useState([])
+  const [selectedCountry, setSelectedCountry] = useState(null)
+  const [loadingCountries, setLoadingCountries] = useState(true)
+
+  useEffect(() => {
+  try {
+    setLoadingCountries(true)
+    const mapped = countriesData
+      .map(c => ({
+        label: `${c.flag ? c.flag + ' ' : ''}${c.name} (+${c.dial})`,
+        value: c.code,
+        name: c.name,
+        dial: String(c.dial).replace(/\D/g, ''),
+        flag: c.flag || null
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    setCountries(mapped)
+    const defaultCountry = mapped.find(c => c.name.toLowerCase().includes('peru')) || mapped[0]
+    setSelectedCountry(defaultCountry)
+  } finally {
+    setLoadingCountries(false)
+  }
+}, [])
+
 
   // Estado para modal de términos
   const [termsOpen, setTermsOpen] = useState(false)
@@ -120,15 +236,19 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         return
       }
 
-      const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/purchase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          clientName: customerName.trim(),
-          clientPhone: customerPhone.trim(),
-          password: password.trim()
-        })
-      })
+// normalizar número con país seleccionado
+const localDigits = customerPhone.replace(/\D/g, '')
+const fullPhone = `+${String(selectedCountry.dial).replace(/\D/g, '')}${localDigits}`
+
+const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/purchase`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  body: JSON.stringify({
+    clientName: customerName.trim(),
+    clientPhone: fullPhone,   // 👈 ahora envías el número completo
+    password: password.trim()
+  })
+})
 
       if (!res.ok) {
         const contentType = res.headers.get('content-type') || ''
@@ -222,14 +342,26 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
               />
             </div>
             <div style={formRow}>
-              <label style={label}>Celular</label>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                style={input}
-              />
-            </div>
+  <label style={label}>Celular</label>
+  <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8, alignItems: 'center' }}>
+    <Select
+      options={countries}
+      value={selectedCountry}
+      onChange={opt => setSelectedCountry(opt)}
+      placeholder={loadingCountries ? '...' : 'País'}
+      isDisabled={loadingCountries}
+      components={{ Option: OptionWithFlag, SingleValue: SingleValueWithFlag }}
+      styles={selectStyles}
+    />
+    <input
+      type="tel"
+      value={customerPhone}
+      onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+      style={input}
+      placeholder="Celular"
+    />
+  </div>
+</div>
             <div style={formRow}>
               <label style={label}>Password</label>
               <div style={passwordWrap}>
