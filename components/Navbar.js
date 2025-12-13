@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { FaUserAlt, FaWallet, FaShoppingCart, FaSignOutAlt } from 'react-icons/fa'
 import { useRouter } from 'next/router'
@@ -9,10 +11,29 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     setHasMounted(true)
   }, [])
+
+  // Cerrar menú al cambiar de ruta
+  useEffect(() => {
+    const handleRouteChange = () => setMenuOpen(false)
+    router.events.on('routeChangeComplete', handleRouteChange)
+    return () => {
+      router.events.off('routeChangeComplete', handleRouteChange)
+    }
+  }, [router.events])
+
+  // Cerrar con Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    if (menuOpen) window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   // Evitamos render en SSR para prevenir mismatches de hidratación
   if (!hasMounted) return null
@@ -51,17 +72,34 @@ export default function Navbar() {
     }
   }
 
+  const toggleMenu = () => setMenuOpen(v => !v)
+  const closeMenu = () => setMenuOpen(false)
+
   return (
-    <nav className="navbar">
+    <nav className="navbar" role="navigation" aria-label="Barra de navegación principal">
       <Link href="/" passHref legacyBehavior>
-        <a className="logo-container" aria-label="Ir al inicio">
+        <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
           <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
         </a>
       </Link>
 
-      <div className="nav-right">
-        <ul className="nav-items">
-          <li className="nav-item">
+      {/* Botón hamburger visible solo en mobile */}
+      <button
+        className={`hamburger ${menuOpen ? 'open' : ''}`}
+        aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+        aria-expanded={menuOpen}
+        aria-controls="primary-navigation"
+        onClick={toggleMenu}
+        type="button"
+      >
+        <span className="hamburger-box" aria-hidden="true">
+          <span className="hamburger-inner" />
+        </span>
+      </button>
+
+      <div className={`nav-right ${menuOpen ? 'mobile-open' : ''}`}>
+        <ul id="primary-navigation" className={`nav-items ${menuOpen ? 'open' : ''}`}>
+          <li className="nav-item" onClick={closeMenu}>
             <Link href="/" passHref legacyBehavior>
               <a>
                 <FaUserAlt className="nav-icon" />
@@ -70,7 +108,7 @@ export default function Navbar() {
             </Link>
           </li>
 
-          <li className="nav-item">
+          <li className="nav-item" onClick={closeMenu}>
             <Link href="/billetera" passHref legacyBehavior>
               <a>
                 <FaWallet className="nav-icon" />
@@ -79,7 +117,7 @@ export default function Navbar() {
             </Link>
           </li>
 
-          <li className="nav-item">
+          <li className="nav-item" onClick={closeMenu}>
             <Link href="/compras" passHref legacyBehavior>
               <a>
                 <FaShoppingCart className="nav-icon" />
@@ -91,12 +129,12 @@ export default function Navbar() {
 
         {!user ? (
           <Link href="/login" passHref legacyBehavior>
-            <a className="login-box" aria-label="Iniciar sesión">Login</a>
+            <a className="login-box" aria-label="Iniciar sesión" onClick={closeMenu}>Login</a>
           </Link>
         ) : (
           <button
             className="login-box logout"
-            onClick={handleLogout}
+            onClick={() => { handleLogout(); closeMenu() }}
             aria-label="Cerrar sesión"
             disabled={loggingOut}
             title={loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
@@ -106,7 +144,8 @@ export default function Navbar() {
           </button>
         )}
       </div>
-            <style jsx>{`
+
+      <style jsx>{`
         .navbar {
           width: 100%;
           max-width: 1200px;
@@ -120,9 +159,10 @@ export default function Navbar() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
+          gap: 16px;
         }
 
         .logo-container {
@@ -130,13 +170,40 @@ export default function Navbar() {
           transition: transform 0.4s ease, filter 0.4s ease;
         }
         .logo-container:hover {
-          transform: scale(1.1);
-          filter: drop-shadow(0 0 12px #BFBFBF);
+          transform: scale(1.05);
+          filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image {
           height: 40px;
           object-fit: contain;
         }
+
+        /* HAMBURGER */
+        .hamburger {
+          display: none;
+          background: transparent;
+          border: none;
+          padding: 8px;
+          margin-left: 8px;
+          cursor: pointer;
+          border-radius: 8px;
+        }
+        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25); }
+        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
+        .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
+          width: 28px;
+          height: 2px;
+          background-color: #E0E0E0;
+          position: absolute;
+          left: 0;
+          transition: transform 0.25s ease, opacity 0.2s ease;
+        }
+        .hamburger-inner { top: 50%; transform: translateY(-50%); }
+        .hamburger-inner::before { content: ''; top: -8px; }
+        .hamburger-inner::after { content: ''; top: 8px; }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg) translateX(0); top: 0; opacity: 0; }
+        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
 
         .nav-right {
           display: flex;
@@ -182,7 +249,7 @@ export default function Navbar() {
         .nav-item:hover {
           transform: scale(1.05);
           background-color: rgba(255, 255, 255, 0.05);
-          box-shadow: 0 0 12px rgba(191, 191, 191, 0.4);
+          box-shadow: 0 0 12px rgba(191, 191, 191, 0.15);
         }
         .nav-item:hover .nav-icon {
           color: #BFBFBF;
@@ -210,8 +277,8 @@ export default function Navbar() {
         }
         .login-box:hover {
           background-color: rgba(46, 46, 46, 0.6);
-          box-shadow: 0 0 12px rgba(191, 191, 191, 0.5);
-          transform: scale(1.05);
+          box-shadow: 0 0 12px rgba(191, 191, 191, 0.2);
+          transform: translateY(-1px);
         }
 
         .login-box.logout {
@@ -231,26 +298,68 @@ export default function Navbar() {
           box-shadow: 0 8px 18px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
         }
 
-        .logout-icon {
-          font-size: 1rem;
-          color: rgba(255,255,255,0.95);
-        }
-        .logout-text {
-          color: #fff;
-          font-weight: 700;
-        }
+        .logout-icon { font-size: 1rem; color: rgba(255,255,255,0.95); }
+        .logout-text { color: #fff; font-weight: 700; }
 
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
+        /* MOBILE STYLES */
         @media (max-width: 768px) {
-          .navbar { flex-direction: column; align-items: flex-start; padding: 16px; }
-          .logo-container { margin-bottom: 12px; }
-          .nav-right { flex-direction: column; align-items: flex-start; gap: 16px; width: 100%; }
-          .nav-items { flex-direction: column; gap: 16px; width: 100%; }
-          .login-box { align-self: flex-end; }
+          .navbar {
+            padding: 12px 16px;
+            gap: 12px;
+          }
+
+          .hamburger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          /* Ocultamos los items por defecto en mobile */
+          .nav-items {
+            display: none;
+          }
+
+          /* Cuando el menú está abierto mostramos los items en columna */
+          .nav-items.open {
+            display: flex;
+            position: absolute;
+            top: calc(100% + 12px);
+            right: 16px;
+            background: rgba(20,20,20,0.95);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 12px;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 200px;
+            z-index: 60;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+          }
+
+          .nav-item {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+          }
+
+          .nav-item a { width: 100%; }
+
+          .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          /* Ajustes para que el login/logout se vea bien en mobile */
+          .login-box {
+            padding: 10px 12px;
+            font-size: 0.95rem;
+          }
         }
       `}</style>
     </nav>

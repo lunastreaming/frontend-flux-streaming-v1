@@ -17,54 +17,6 @@ export default function PedidoTable({ search = '' }) {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
   const SIZE = 50
 
-  const formatDate = (value) => {
-    if (!value) return '—'
-    try {
-      const d = new Date(value)
-      if (Number.isNaN(d.getTime())) return '—'
-      return d.toLocaleDateString()
-    } catch { return '—' }
-  }
-
-  const formatDateUTC = (value) => {
-  if (!value) return '—'
-  try {
-    const d = new Date(value)
-    if (Number.isNaN(d.getTime())) return '—'
-    return d.toLocaleString('es-PE', {
-      timeZone: 'UTC',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch { return '—' }
-}
-
-const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-
-const formatDateLocal = (v) => {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return ''
-  }
-}
-
   const togglePasswordVisibility = (id) => {
     setVisiblePasswords(prev => {
       const copy = new Set(prev)
@@ -130,13 +82,9 @@ const formatDateLocal = (v) => {
               <th>URL</th>
               <th>Nº Perfil</th>
               <th>Pin</th>
-              <th>Inicio</th>
-              <th>Fin</th>
               <th>Cliente</th>
-              <th>Celular</th>
-              <th>Tipo Soporte</th>
               <th>Proveedor</th>
-              <th>Detalle</th>
+              <th>Celular</th>
             </tr>
           </thead>
           <tbody>
@@ -144,19 +92,17 @@ const formatDateLocal = (v) => {
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
-              const whatsappMsg = `Hola ${row.clientName ?? ''} 👋🏻
-🍿De ${row.productName ?? ''}🍿
-✉ usuario: ${row.username ?? ''}
-🔐 Contraseña: ${row.password ?? ''}
-🌍 Url: ${row.url ?? ''}
-👥 Perfil: ${row.numeroPerfil ?? ''}
-🔐 Pin: ${row.pin ?? ''}`
+              const whatsappMsgProvider = `Hola *${row.providerName ?? ''}* 👋🏻
+🫴He generado un pedido *${row.productName ?? ''}*🫴
+✉ *Por favor acepte mi solicitud, ¡¡¡Gracias!!!*`
 
-              const onClickWhatsAppClient = () => {
-                const phoneRaw = row.clientPhone ?? ''
+
+
+              const onClickWhatsAppProvider = () => {
+                const phoneRaw = row.providerPhone ?? ''
                 const phone = String(phoneRaw || '').replace(/[^\d+]/g, '')
                 const waNumber = phone.startsWith('+') ? phone.slice(1) : phone
-                const encoded = encodeURIComponent(whatsappMsg)
+                const encoded = encodeURIComponent(whatsappMsgProvider)
                 if (!waNumber) {
                   window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
                   return
@@ -181,20 +127,16 @@ const formatDateLocal = (v) => {
                   <td><div className="row-inner">{row.url ?? ''}</div></td>
                   <td><div className="row-inner">{row.numeroPerfil ?? ''}</div></td>
                   <td><div className="row-inner">{row.pin ?? ''}</div></td>
-                  <td><div className="row-inner">{formatDateLocal(row.startAt)}</div></td>
-                  <td><div className="row-inner">{formatDateLocal(row.endAt)}</div></td>
                   <td><div className="row-inner">{row.clientName}</div></td>
+                  <td><div className="row-inner">{row.providerName}</div></td>
                   <td>
                     <div className="row-inner whatsapp-cell">
-                      <button className="wa-btn" onClick={onClickWhatsAppClient} aria-label="Enviar por WhatsApp">
+                      <button className="wa-btn" onClick={onClickWhatsAppProvider} aria-label="Enviar por WhatsApp al proveedor">
                         <FaWhatsapp />
                       </button>
-                      <div className="wa-number">{row.clientPhone}</div>
+                      <div className="wa-number">{row.providerPhone}</div>
                     </div>
                   </td>
-                  <td><div className="row-inner">{row.supportType ?? '—'}</div></td>
-                  <td><div className="row-inner">{row.providerName}</div></td>
-                  <td><div className="row-inner">{row.supportResolutionNote ?? '—'}</div></td>
                 </tr>
               )
             })}
@@ -224,7 +166,7 @@ const formatDateLocal = (v) => {
       <style jsx>{`
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; }
         .table-scroll { overflow:auto; border-radius:8px; }
-        table.styled-table { width:100%; border-collapse:separate; border-spacing: 0 12px; color:#e1e1e1; min-width: 980px; }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing: 0 12px; color:#e1e1e1; min-width: 900px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
         thead th { padding:10px; text-align:center; font-weight:700; }
         tbody td { padding:0; text-align:center; }

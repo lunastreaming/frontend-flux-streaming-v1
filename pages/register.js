@@ -3,7 +3,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Select, { components } from 'react-select'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faHashtag } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faHashtag, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import countriesData from '../data/countries.json' // Ajusta la ruta si necesitas
 
@@ -66,6 +66,7 @@ export default function Register() {
   // Form fields
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false) // 👁️ nuevo estado
   const [whatsapp, setWhatsapp] = useState('') // solo dígitos del número (sin prefijo)
   const [refCode, setRefCode] = useState('')
 
@@ -270,10 +271,11 @@ export default function Register() {
           </div>
           {showFieldError('username') && <div id="username-error" className="field-error">{errors.username}</div>}
 
-          <div className="group">
+          {/* Password con ojito */}
+          <div className="group password-group">
             <div className="icon"><FontAwesomeIcon icon={faLock} /></div>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -281,7 +283,17 @@ export default function Register() {
               required
               aria-invalid={!!errors.password}
               aria-describedby="password-error"
+              aria-label="Contraseña"
             />
+            <button
+              type="button"
+              className="eye-btn"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
             <span className="underline" />
           </div>
           {showFieldError('password') && <div id="password-error" className="field-error">{errors.password}</div>}
@@ -423,6 +435,24 @@ export default function Register() {
           outline: none;
         }
         .group input::placeholder { color: #8e8e8e; }
+
+        /* 👁️ Password: espacio y botón ojito */
+        .group.password-group { padding-right: 44px; }
+        .eye-btn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
 
         /* --- Whatsapp specific layout --- */
         .group.whatsapp {

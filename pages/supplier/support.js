@@ -263,21 +263,23 @@ buyerUsernamePhone: stock?.buyerUsernamePhone ?? t.buyerUsernamePhone ?? '',
     )
   })
 
-  const openWhatsAppToVendor = (vendorPhone, vendorName, productName) => {
-    const raw = String(vendorPhone ?? '').replace(/[^\d+]/g, '')
-    const name = vendorName ?? ''
-    const product = productName ?? ''
-    const message = `Hola ${name} 👋🏻
+const openWhatsAppToVendor = (vendorPhone, vendorName, productName, username) => {
+  const raw = String(vendorPhone ?? '').replace(/[^\d+]/g, '')
+  const name = vendorName ?? ''
+  const product = productName ?? ''
+  const user = username ?? '' // renombrada localmente si quieres normalizar
+  const message = `Hola ${name} 👋🏻
 🫴He generado un pedido *${product}*🫴
-✉ Por favor acepte mi solicitud, ¡¡¡Gracias!!!`
-    const encoded = encodeURIComponent(message)
-    if (!raw) {
-      window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
-      return
-    }
-    const num = raw.startsWith('+') ? raw.slice(1) : raw
-    window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encoded}`, '_blank')
+Usuario: ${user} 👻
+Enviar captura del error para poder ayudarte☺️`
+  const encoded = encodeURIComponent(message)
+  if (!raw) {
+    window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
+    return
   }
+  const num = raw.startsWith('+') ? raw.slice(1) : raw
+  window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encoded}`, '_blank')
+}
 
   // ---------- Resolve modal (Edit) ----------
   const openResolveModal = (row) => {
@@ -487,7 +489,7 @@ buyerUsernamePhone: stock?.buyerUsernamePhone ?? t.buyerUsernamePhone ?? '',
                             <button
                               className="wa-btn"
                               title={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
-                              onClick={() => openWhatsAppToVendor(r.buyerUsernamePhone , r.buyerUsername, r.productName)}
+                              onClick={() => openWhatsAppToVendor(r.buyerUsernamePhone , r.buyerUsername, r.productName, r.username)}
                               aria-label={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
                             >
                               <FaWhatsapp />

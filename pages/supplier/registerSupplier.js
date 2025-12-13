@@ -4,7 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Select, { components } from 'react-select'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faHashtag } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faHashtag, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import countriesData from '../../data/countries.json' // ajusta ruta si tu estructura difiere
 
@@ -65,6 +65,7 @@ export default function RegisterSupplier() {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false) // 👁️ nuevo estado
   const [phone, setPhone] = useState('') // local phone digits only
   const [refCode, setRefCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -74,6 +75,10 @@ export default function RegisterSupplier() {
   const [countries, setCountries] = useState([])
   const [selectedCountry, setSelectedCountry] = useState(null)
   const [loadingCountries, setLoadingCountries] = useState(true)
+
+  // Opción 2: estado y función para onBlur
+  const [touched, setTouched] = useState({ username: false, password: false, phone: false })
+  const handleBlur = field => setTouched(prev => ({ ...prev, [field]: true }))
 
   useEffect(() => {
     try {
@@ -90,7 +95,6 @@ export default function RegisterSupplier() {
       setCountries(mapped)
       const defaultCountry = mapped.find(c => c.name.toLowerCase().includes('peru')) || mapped[0]
       setSelectedCountry(defaultCountry)
-      // keep phone input empty (user types local number)
       setPhone('')
     } finally {
       setLoadingCountries(false)
@@ -112,7 +116,6 @@ export default function RegisterSupplier() {
       return
     }
 
-    // normalize phone digits and build E.164-like with selected dial
     const localDigits = phone.replace(/\D/g, '')
     const fullPhone = `+${String(selectedCountry.dial).replace(/\D/g, '')}${localDigits}`
 
@@ -136,7 +139,6 @@ export default function RegisterSupplier() {
         let msg = `Error ${res.status}`
         try {
           const json = await res.json()
-          // if backend returns technical codes like message: "phone_taken"
           if (json?.message === 'phone_taken') {
             msg = 'El número de teléfono ya está registrado'
           } else if (json?.message === 'username_taken') {
@@ -179,10 +181,46 @@ export default function RegisterSupplier() {
 
           {error && <div className="error" role="alert">{error}</div>}
 
-          <div className="group"><FontAwesomeIcon icon={faUser} /><input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} /></div>
-          <div className="group"><FontAwesomeIcon icon={faLock} /><input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} /></div>
+          <div className="group">
+            <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
+            <input
+              type="text"
+              placeholder="Usuario"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              onBlur={() => handleBlur('username')}
+              aria-label="Usuario"
+              required
+            />
+            <span className="underline" />
+          </div>
+
+          {/* Password con ojito y handleBlur */}
+          <div className="group password-group">
+            <div className="icon"><FontAwesomeIcon icon={faLock} /></div>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Contraseña"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onBlur={() => handleBlur('password')}
+              required
+              aria-label="Contraseña"
+            />
+            <button
+              type="button"
+              className="eye-btn"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+            </button>
+            <span className="underline" />
+          </div>
 
           <div className="group whatsapp">
+            {/* select-country */}
             <div className="select-country">
               <Select
                 options={countries}
@@ -195,37 +233,57 @@ export default function RegisterSupplier() {
               />
             </div>
 
+            {/* phone input */}
             <div className="cell-input-wrapper">
               <div className="input-icon" aria-hidden="true">
                 <FontAwesomeIcon icon={faWhatsapp} />
               </div>
               <input
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="Celular"
                 value={phone}
                 onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                inputMode="numeric"
+                onBlur={() => handleBlur('phone')}
+                aria-label="Celular"
+                required
               />
             </div>
+
+            <span className="underline" />
           </div>
 
-          <div className="group"><FontAwesomeIcon icon={faHashtag} /><input type="text" placeholder="Código de referencia" value={refCode} onChange={e => setRefCode(e.target.value)} /></div>
+          <div className="group">
+            <div className="icon"><FontAwesomeIcon icon={faHashtag} /></div>
+            <input
+              type="text"
+              placeholder="Código de referencia"
+              value={refCode}
+              onChange={e => setRefCode(e.target.value)}
+              aria-label="Código de referencia"
+            />
+            <span className="underline" />
+          </div>
 
           <button type="submit" className="cta" disabled={loading}>
             {loading ? 'Registrando...' : 'Registrarme'}
           </button>
 
           <p className="back-login">
-            ¿Ya tienes cuenta? <span className="link" onClick={() => router.push('/supplier/loginSupplier')}>Ir al login</span>
+            ¿Ya tienes cuenta?{' '}
+            <span className="link" onClick={() => router.push('/supplier/loginSupplier')}>Ir al login</span>
           </p>
         </form>
       </div>
 
       {success && (
-        <div className="popup">
+        <div className="popup" role="dialog" aria-modal="true">
           <div className="popup-content">
+            <div className="check">✔</div>
             <h2>Registro exitoso</h2>
             <p>Redirigiendo al login...</p>
+            <button className="popup-button" onClick={() => router.push('/supplier/loginSupplier')}>Ir ahora</button>
           </div>
         </div>
       )}
@@ -233,46 +291,81 @@ export default function RegisterSupplier() {
       <style jsx>{`
         .canvas {
           min-height: 100vh;
-          background: radial-gradient(circle at 20% 10%, #1a1a1a, #0e0e0e);
+          background: radial-gradient(1200px 600px at 20% 10%, #1a1a1a 0%, #0e0e0e 60%, #0b0b0b 100%);
+          position: relative;
           display: grid;
           place-items: center;
-          padding: 24px;
+          overflow: hidden;
+          padding: 40px 12px;
         }
         .card {
+          width: 92%;
+          max-width: 520px;
           background: rgba(22,22,22,0.6);
           border: 1px solid rgba(255,255,255,0.08);
           backdrop-filter: blur(16px);
           border-radius: 20px;
           padding: 28px;
-          width: 92%;
-          max-width: 520px;
+          box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
           display: flex;
           flex-direction: column;
           gap: 14px;
+          position: relative;
         }
-        .title { font-size: 1.8rem; font-weight: 800; text-align: center; color: #f3f3f3; }
-        .subtitle { text-align: center; color: #afafaf; font-size: 0.95rem; margin-bottom: 6px; }
-        .error { color: #ffb4b4; text-align: center; font-size: 0.95rem; }
+        .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; }
+        .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px; }
+        .error { color: #ffb4b4; text-align:center; margin-bottom: 6px; }
 
         .group {
+          position: relative;
           display: flex;
           align-items: center;
-          gap: 10px;
           background: rgba(30,30,30,0.7);
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 14px;
-          padding: 10px 14px;
+          padding: 8px 10px;
         }
+        .icon { position: absolute; left: 12px; display:flex; align-items:center; color:#cfcfcf; font-size:1rem; }
         .group input {
-          flex: 1;
+          width: 100%;
+          padding: 12px 14px 12px 44px;
           background: transparent;
           border: none;
+          border-radius: 10px;
           color: #f5f5f5;
           font-size: 1rem;
           outline: none;
         }
+        .group input::placeholder { color: #8e8e8e; }
+        .underline {
+          position: absolute;
+          bottom: 6px; left: 44px; right: 10px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent);
+          border-radius:2px; opacity:0; transform:scaleX(0.8);
+          transition:opacity .2s, transform .2s;
+        }
+        .group:focus-within .underline { opacity:1; transform:scaleX(1); }
 
-        /* whatsapp row */
+        /* 👁️ Password: espacio y botón ojito */
+        .group.password-group { padding-right: 44px; }
+        .eye-btn {
+          position: absolute;
+          right: 10px;
+          background: transparent;
+          border: none;
+          color: #cfcfcf;
+          width: 32px;
+          height: 32px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+
+        /* Whatsapp group */
         .group.whatsapp {
           display: grid;
           grid-template-columns: 140px 1fr;
@@ -288,72 +381,52 @@ export default function RegisterSupplier() {
           align-items: center;
           padding: 0 8px;
         }
-
-        .cell-input-wrapper {
-          position: relative;
-          display: block;
-        }
+        .cell-input-wrapper { position: relative; display: block; }
         .cell-input-wrapper input {
-          padding-left: 40px;
-          width: 100%;
-          height: 44px;
-          border-radius: 10px;
-          border: none;
-          background: transparent;
-          color: #f5f5f5;
-          outline: none;
-          font-size: 1rem;
+          padding-left: 40px; /* espacio para el icono whatsapp */
+          width: 100%; height: 44px; border-radius: 10px;
+          border: none; background: transparent; color: #f5f5f5;
+          outline: none; font-size: 1rem;
         }
         .input-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #25D366;
-          font-size: 18px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          pointer-events: none;
+          position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+          color: #25D366; font-size: 18px; display: flex; align-items: center; justify-content: center; pointer-events: none;
         }
 
         .cta {
-          padding: 12px;
-          background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+          padding: 12px 16px;
+          background: linear-gradient(135deg,#8b5cf6 0%,#22d3ee 100%);
           color: #0e0e0e;
           border: none;
           border-radius: 14px;
           font-weight: 800;
           cursor: pointer;
         }
-        .back-login { text-align: center; font-size: 0.95rem; color: #afafaf; }
-        .link { color: #f3f3f3; font-weight: 600; text-decoration: underline; cursor: pointer; }
+        .back-login { text-align: center; font-size: 0.95rem; color: #afafaf; margin-top: 8px; }
+        .link { color: #f3f3f3; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
-        .popup {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.6);
-          display: grid;
-          place-items: center;
-          z-index: 999;
-        }
+        .popup { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display:grid; place-items:center; z-index:999; }
         .popup-content {
           background: rgba(20,20,20,0.85);
-          border: 1px solid rgba(255,255,255,0.1);
-          backdrop-filter: blur(12px);
-          border-radius: 18px;
-          padding: 24px;
-          max-width: 420px;
-          width: 92%;
-          text-align: center;
-          color: #ededed;
+          border-radius:18px; padding:24px; text-align:center; color:#ededed;
           box-shadow: 0 24px 48px rgba(0,0,0,0.45);
         }
+        .check {
+          width:56px; height:56px; border-radius:50%; display:grid; place-items:center; margin:0 auto 10px;
+          background: linear-gradient(135deg,#22d3ee 0%,#8b5cf6 100%); color:#0e0e0e; font-weight:900;
+          box-shadow: 0 10px 18px rgba(139, 92, 246, 0.25);
+        }
+        .popup-button {
+          padding:10px 14px; background:#f3f3f3; color:#0e0e0e; border:none; border-radius:12px; font-weight:800; cursor:pointer;
+          transition: transform 0.08s ease, filter 0.2s ease;
+        }
+        .popup-button:hover { filter: brightness(0.98); }
+        .popup-button:active { transform: translateY(1px); }
 
         @media (max-width: 640px) {
           .group.whatsapp { grid-template-columns: 112px 1fr; }
           .select-country { min-width: 112px; }
-          .input-icon { left: 10px; font-size: 16px; }
+          .input-icon { left: 10px; font-size:16px; }
           .cell-input-wrapper input { padding-left: 36px; }
         }
       `}</style>
