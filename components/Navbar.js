@@ -97,7 +97,7 @@ export default function Navbar() {
         </span>
       </button>
 
-      <div className={`nav-right ${menuOpen ? 'mobile-open' : ''}`}>
+      <div className="nav-right">
         <ul id="primary-navigation" className={`nav-items ${menuOpen ? 'open' : ''}`}>
           <li className="nav-item" onClick={closeMenu}>
             <Link href="/" passHref legacyBehavior>
@@ -125,24 +125,28 @@ export default function Navbar() {
               </a>
             </Link>
           </li>
-        </ul>
 
-        {!user ? (
-          <Link href="/login" passHref legacyBehavior>
-            <a className="login-box" aria-label="Iniciar sesión" onClick={closeMenu}>Login</a>
-          </Link>
-        ) : (
-          <button
-            className="login-box logout"
-            onClick={() => { handleLogout(); closeMenu() }}
-            aria-label="Cerrar sesión"
-            disabled={loggingOut}
-            title={loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
-          >
-            <FaSignOutAlt className="logout-icon" />
-            <span className="logout-text">{loggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
-          </button>
-        )}
+          {!user ? (
+            <li className="nav-item" onClick={closeMenu}>
+              <Link href="/login" passHref legacyBehavior>
+                <a className="login-box" aria-label="Iniciar sesión">Login</a>
+              </Link>
+            </li>
+          ) : (
+            <li className="nav-item" onClick={closeMenu}>
+              <button
+                className="login-box logout"
+                onClick={handleLogout}
+                aria-label="Cerrar sesión"
+                disabled={loggingOut}
+                title={loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+              >
+                <FaSignOutAlt className="logout-icon" />
+                <span className="logout-text">{loggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
+              </button>
+            </li>
+          )}
+        </ul>
       </div>
 
       <style jsx>{`
@@ -163,6 +167,9 @@ export default function Navbar() {
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
           gap: 16px;
+          position: relative; /* importante para posicionar el dropdown */
+          z-index: 1000;
+          overflow: visible; /* permitir que el dropdown se muestre fuera */
         }
 
         .logo-container {
@@ -187,6 +194,7 @@ export default function Navbar() {
           margin-left: 8px;
           cursor: pointer;
           border-radius: 8px;
+          z-index: 1200;
         }
         .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25); }
         .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
@@ -196,13 +204,13 @@ export default function Navbar() {
           background-color: #E0E0E0;
           position: absolute;
           left: 0;
-          transition: transform 0.25s ease, opacity 0.2s ease;
+          transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
         }
         .hamburger-inner { top: 50%; transform: translateY(-50%); }
         .hamburger-inner::before { content: ''; top: -8px; }
         .hamburger-inner::after { content: ''; top: 8px; }
-        .hamburger.open .hamburger-inner { transform: rotate(45deg); }
-        .hamburger.open .hamburger-inner::before { transform: rotate(90deg) translateX(0); top: 0; opacity: 0; }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%; }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0; }
         .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
 
         .nav-right {
@@ -324,20 +332,20 @@ export default function Navbar() {
             display: none;
           }
 
-          /* Cuando el menú está abierto mostramos los items en columna */
+          /* Cuando el menú está abierto mostramos los items en columna (dropdown absoluto) */
           .nav-items.open {
             display: flex;
             position: absolute;
-            top: calc(100% + 12px);
+            top: calc(100% + 10px);
             right: 16px;
-            background: rgba(20,20,20,0.95);
+            background: rgba(20,20,20,0.98);
             border: 1px solid rgba(255,255,255,0.04);
             border-radius: 12px;
             padding: 12px;
             flex-direction: column;
             gap: 8px;
-            min-width: 200px;
-            z-index: 60;
+            min-width: 220px;
+            z-index: 1100;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           }
 
