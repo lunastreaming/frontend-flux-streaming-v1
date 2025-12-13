@@ -13,13 +13,28 @@ import {
   FaWallet,
   FaSignOutAlt
 } from 'react-icons/fa'
+import { useState, useEffect } from 'react'
 
 export default function NavBarSupplier({ counts = {} }) {
   const router = useRouter()
   const { logout } = useAuth()
 
+  const [menuOpen, setMenuOpen] = useState(false)
+
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
   const LOGOUT_ENDPOINT = `${API_BASE}/api/auth/logout`
+
+  useEffect(() => {
+    const handleRouteChange = () => setMenuOpen(false)
+    router.events.on('routeChangeComplete', handleRouteChange)
+    return () => router.events.off('routeChangeComplete', handleRouteChange)
+  }, [router.events])
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false) }
+    if (menuOpen) window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   const handleLogout = async () => {
     try {
@@ -45,28 +60,44 @@ export default function NavBarSupplier({ counts = {} }) {
     }
   }
 
+  const toggleMenu = () => setMenuOpen(v => !v)
+  const closeMenu = () => setMenuOpen(false)
+
   return (
-    <nav className="supplier-navbar">
-      {/* Un solo bloque principal con logo + menú */}
+    <nav className="supplier-navbar" role="navigation" aria-label="Barra de navegación proveedor">
       <div className="navbar-main">
         <Link href="/supplier" passHref legacyBehavior>
-          <a className="logo-container" aria-label="Ir al inicio">
+          <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
             <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
           </a>
         </Link>
 
-        <ul className="supplier-nav-items">
-          <li>
+        {/* Hamburger */}
+        <button
+          className={`hamburger ${menuOpen ? 'open' : ''}`}
+          aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuOpen}
+          aria-controls="supplier-primary-navigation"
+          onClick={toggleMenu}
+          type="button"
+        >
+          <span className="hamburger-box" aria-hidden="true">
+            <span className="hamburger-inner" />
+          </span>
+        </button>
+
+        <ul id="supplier-primary-navigation" className={`supplier-nav-items ${menuOpen ? 'open' : ''}`}>
+          <li onClick={closeMenu}>
             <Link href="/supplier/products" passHref legacyBehavior>
               <a><FaBoxes /><span>Productos</span></a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/stocks" passHref legacyBehavior>
               <a><FaListAlt /><span>Stocks</span></a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/sales" passHref legacyBehavior>
               <a>
                 <FaChartLine /><span>Ventas</span>
@@ -74,7 +105,7 @@ export default function NavBarSupplier({ counts = {} }) {
               </a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/orders" passHref legacyBehavior>
               <a>
                 <FaClipboardList /><span>Órdenes</span>
@@ -82,7 +113,7 @@ export default function NavBarSupplier({ counts = {} }) {
               </a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/support" passHref legacyBehavior>
               <a>
                 <FaHeadset /><span>Soporte</span>
@@ -90,7 +121,7 @@ export default function NavBarSupplier({ counts = {} }) {
               </a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/renewal" passHref legacyBehavior>
               <a>
                 <FaRedo /><span>Renewal</span>
@@ -98,7 +129,7 @@ export default function NavBarSupplier({ counts = {} }) {
               </a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/expired" passHref legacyBehavior>
               <a>
                 <FaHourglassEnd /><span>Vencidas</span>
@@ -106,15 +137,29 @@ export default function NavBarSupplier({ counts = {} }) {
               </a>
             </Link>
           </li>
-          <li>
+          <li onClick={closeMenu}>
             <Link href="/supplier/wallet" passHref legacyBehavior>
               <a><FaWallet /><span>Billetera</span></a>
             </Link>
           </li>
+
+          {/* Logout as menu item for mobile; on desktop the separate button remains visible */}
+          <li className="logout-item" onClick={closeMenu}>
+            <button
+              type="button"
+              className="logout-button-inline"
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <FaSignOutAlt />
+              <span className="sr-only">Cerrar sesión</span>
+            </button>
+          </li>
         </ul>
       </div>
 
-      {/* Botón de logout a la derecha */}
+      {/* Desktop logout button */}
       <div className="logout-area">
         <button
           type="button"
@@ -144,6 +189,9 @@ export default function NavBarSupplier({ counts = {} }) {
           flex-wrap: nowrap;
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
+          position: relative;
+          z-index: 1000;
+          overflow: visible;
         }
 
         .navbar-main {
@@ -159,6 +207,34 @@ export default function NavBarSupplier({ counts = {} }) {
         }
         .logo-container:hover { transform: scale(1.05); filter: drop-shadow(0 0 8px #BFBFBF); }
         .logo-image { height: 40px; object-fit: contain; }
+
+        /* HAMBURGER */
+        .hamburger {
+          display: none;
+          background: transparent;
+          border: none;
+          padding: 8px;
+          margin-left: 8px;
+          cursor: pointer;
+          border-radius: 8px;
+          z-index: 1200;
+        }
+        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25); }
+        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
+        .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
+          width: 28px;
+          height: 2px;
+          background-color: #E0E0E0;
+          position: absolute;
+          left: 0;
+          transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
+        }
+        .hamburger-inner { top: 50%; transform: translateY(-50%); }
+        .hamburger-inner::before { content: ''; top: -8px; }
+        .hamburger-inner::after { content: ''; top: 8px; }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%; }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0; }
+        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
 
         .supplier-nav-items {
           display: flex;
@@ -179,6 +255,8 @@ export default function NavBarSupplier({ counts = {} }) {
           padding: 6px 10px;
           border-radius: 10px;
           position: relative;
+          display: flex;
+          align-items: center;
         }
 
         .supplier-nav-items li a {
@@ -232,13 +310,66 @@ export default function NavBarSupplier({ counts = {} }) {
         .logout-button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(255,77,77,0.2); }
         .logout-button svg { width: 18px; height: 18px; }
 
+        .logout-button-inline {
+          display: inline-grid;
+          place-items: center;
+          width: 40px;
+          height: 40px;
+          background: linear-gradient(135deg, rgba(255,77,77,0.95) 0%, rgba(255,107,107,0.95) 100%);
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+        }
+
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* MOBILE STYLES */
         @media (max-width: 768px) {
           .supplier-navbar { flex-direction: column; align-items: flex-start; padding: 12px; gap: 12px; }
-          .navbar-main { width: 100%; }
-          .supplier-nav-items { flex-direction: column; gap: 12px; width: 100%; justify-content: flex-start; }
+          .navbar-main { width: 100%; display: flex; align-items: center; gap: 12px; }
+
+          .hamburger { display: inline-flex; align-items: center; justify-content: center; }
+
+          /* Ocultamos los items por defecto en mobile */
+          .supplier-nav-items { display: none; }
+
+          /* Dropdown absoluto */
+          .supplier-nav-items.open {
+            display: flex;
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 16px;
+            background: rgba(20,20,20,0.98);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 12px;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 220px;
+            z-index: 1100;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+          }
+
+          .supplier-nav-items li { width: 100%; padding: 10px 12px; border-radius: 8px; }
+          .supplier-nav-items li a { width: 100%; }
+
           .logout-area { width: 100%; display: flex; justify-content: flex-end; }
+
+          /* Hide desktop logout button when dropdown is used (optional) */
+          .logout-area { display: none; }
+          .supplier-nav-items.open .logout-button-inline { display: inline-grid; }
+
+          /* If you prefer the menu to be inline (push content down) instead of absolute,
+             replace .supplier-nav-items.open rules with position: static; width: 100%; */
+        }
+
+        @media (min-width: 769px) {
+          /* Ensure dropdown not visible on desktop */
+          .supplier-nav-items.open { position: static; display: flex; }
+          .logout-area { display: flex; }
         }
       `}</style>
     </nav>
