@@ -3,8 +3,9 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
-import { Turnstile } from '@marsidev/react-turnstile' // ⬅️ IMPORTACIÓN DE TURNSTILE
+// ⬅️ Importamos Turnstile y el nuevo icono de advertencia
+import { faUser, faLock, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
+import { Turnstile } from '@marsidev/react-turnstile' 
 
 export default function LoginAdmin() {
   const router = useRouter()
@@ -17,7 +18,7 @@ export default function LoginAdmin() {
   const [turnstileToken, setTurnstileToken] = useState(null) // ⬅️ NUEVO: Estado para el token
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-admin`
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY 
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY // ⬅️ NUEVO: Clave pública
 
   const pickToken = (data) => {
     if (!data) return null
@@ -28,7 +29,7 @@ export default function LoginAdmin() {
     e.preventDefault()
     setError(null)
 
-    // ⚠️ NUEVA VALIDACIÓN: Verificar si el token de Turnstile existe
+    // ⚠️ Validación de Turnstile
     if (turnstileSiteKey && !turnstileToken) {
         setError('Por favor, completa la verificación de seguridad (robot).')
         return
@@ -44,11 +45,11 @@ export default function LoginAdmin() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
        
-        // 🔑 Envía el token al backend para su verificación
+        // 🔑 Envía el token al backend
         body: JSON.stringify({ 
             username: username.trim(), 
             password,
-            turnstileToken: turnstileToken // Aquí se envía el token al servidor
+            turnstileToken: turnstileToken // Aquí se envía el token
         }),
       })
 
@@ -67,7 +68,6 @@ export default function LoginAdmin() {
         return
       }
 
-    
       // Decodificar rol desde el JWT (fuente de verdad)
       let payload = null
       try {
@@ -121,7 +121,13 @@ export default function LoginAdmin() {
           <h1 className="title">Acceso Administrativo</h1>
           <p className="subtitle">Login administrativo</p>
 
-          {error && <div className="error">{error}</div>}
+          {/* 🚨 MEJORA 2: Estilo de error con icono */}
+          {error && (
+            <div className="error-box" role="alert">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="error-icon" />
+                <p className="error-text">{error}</p>
+            </div>
+          )}
 
           <div className="group">
             <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
@@ -239,9 +245,29 @@ export default function LoginAdmin() {
         .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px;
         }
 
-        .error { color: #ffb4b4; text-align: center; font-size: 0.95rem;
+        /* 🚨 MEJORA: Estilos de Error Box (Mejora 2) */
+        .error-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 92, 92, 0.08);
+            border: 1px solid rgba(255, 92, 92, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            animation: fadeInError 0.3s ease forwards;
+        }
+        .error-icon {
+            color: #ff5c5c; 
+            font-size: 1.2rem;
+        }
+        .error-text {
+            color: #ffb4b4;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin: 0;
         }
 
+        /* 🚨 MEJORA: Espaciado y Foco (Mejoras 1 & 3) */
         .group {
           position: relative;
           display: flex;
@@ -250,17 +276,35 @@ export default function LoginAdmin() {
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 14px;
           padding: 8px 10px;
+          margin-bottom: 8px; /* ⬅️ MEJORA: Espacio extra abajo */
           transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .group:focus-within { border-color: #8b5cf6; background: rgba(30, 30, 30, 0.85);
+        .group:focus-within { 
+            border-color: #8b5cf6; 
+            background: rgba(30, 30, 30, 0.85);
         }
-        .icon { position: absolute; left: 12px; display: flex; align-items: center; color: #cfcfcf;
-          font-size: 1rem;
+        .icon { 
+            position: absolute; 
+            left: 12px; 
+            display: flex; 
+            align-items: center; 
+            color: #cfcfcf;
+            font-size: 1rem;
+            transition: color 0.2s ease; /* ⬅️ MEJORA: Transición para el icono */
         }
+        .group:focus-within .icon { 
+            color: #8b5cf6; /* ⬅️ MEJORA: Icono cambia de color en foco */
+        }
+
         .group input { width: 100%; padding: 12px 14px 12px 40px;
           background: transparent; border: none; border-radius: 10px; color: #f5f5f5; font-size: 1rem; outline: none;
         }
-        .group input::placeholder { color: #8e8e8e;
+        .group input::placeholder { 
+            color: #8e8e8e;
+            transition: color 0.2s ease;
+        }
+        .group:focus-within input::placeholder {
+            color: #cfcfcf; /* ⬅️ MEJORA: Placeholder más claro en foco */
         }
         .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px;
           background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8);
@@ -292,6 +336,7 @@ export default function LoginAdmin() {
           color: #fff;
         }
 
+        /* 🚨 MEJORA: CTA con transiciones y estado :active (Mejoras 4 & 5) */
         .cta {
           padding: 12px 16px;
           background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
@@ -300,12 +345,22 @@ export default function LoginAdmin() {
           border-radius: 14px;
           font-weight: 800;
           cursor: pointer;
-          transition: filter 0.2s ease, box-shadow 0.2s ease;
           box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
+          transition: filter 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease, transform 0.1s ease;
         }
         .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22);
         }
-        .cta:disabled { opacity: 0.7; cursor: not-allowed;
+        .cta:active { 
+            transform: translateY(1px); /* ⬅️ MEJORA: Efecto "presionado" */
+            filter: brightness(0.95); 
+            box-shadow: 0 8px 16px rgba(139, 92, 246, 0.15);
+        }
+        .cta:disabled { 
+            opacity: 0.6; /* ⬅️ MEJORA: Opacidad ajustada */
+            cursor: not-allowed; 
+            filter: none;
+            box-shadow: none;
+            transform: none;
         }
 
         @media (max-width: 640px) {

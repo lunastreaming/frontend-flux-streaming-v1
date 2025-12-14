@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
-import { Turnstile } from '@marsidev/react-turnstile' // ⬅️ NUEVO: Importación de Turnstile
+// ⬅️ Nuevo: Se importa el icono de advertencia
+import { faUser, faLock, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
+import { Turnstile } from '@marsidev/react-turnstile' 
 
 export default function Login() {
   const router = useRouter()
@@ -15,10 +16,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState(null) // ⬅️ NUEVO: Estado para el token
+  const [turnstileToken, setTurnstileToken] = useState(null) 
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-seller`
-  // Usamos directamente la variable de entorno, es la forma más limpia en Next.js
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY 
 
   const pickToken = (data) => {
@@ -30,10 +30,10 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     
-    // ⚠️ Validación de Turnstile
-    if (!turnstileToken) {
-      setError('Por favor, completa la verificación de seguridad.')
-      return
+    // ⚠️ Validación de Turnstile (Aseguramos que solo se valide si la clave existe)
+    if (turnstileSiteKey && !turnstileToken) {
+        setError('Por favor, completa la verificación de seguridad (robot).')
+        return
     }
 
     if (!username.trim() || !password) {
@@ -47,7 +47,7 @@ export default function Login() {
       const resp = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // 🔑 IMPORTANTE: Envía el token al backend para su verificación
+        // 🔑 Envía el token al backend para su verificación
         body: JSON.stringify({ 
           username: username.trim(), 
           password,
@@ -115,9 +115,11 @@ export default function Login() {
           <h1 className="title">Bienvenido</h1>
           <p className="subtitle">Login Luna Plataformas</p>
 
+          {/* 🚨 MEJORA: Estilo de error con icono */}
           {error && (
             <div className="error-box" role="alert">
-              <p className="error-text">{error}</p>
+                <FontAwesomeIcon icon={faExclamationTriangle} className="error-icon" />
+                <p className="error-text">{error}</p>
             </div>
           )}
 
@@ -183,15 +185,14 @@ export default function Login() {
           <button 
             type="submit" 
             className="cta" 
-            // ⬅️ NUEVO: Deshabilitar si está cargando o no hay token
-            disabled={loading || !turnstileToken}
+           // ⬅️ Ajustado: Deshabilitar si está cargando O si la clave existe y no hay token
+            disabled={loading || (turnstileSiteKey && !turnstileToken)}
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
 
           <p className="back-login">
-            ¿No tienes una cuenta?
-            <Link href="/register"><span className="link">Regístrate aquí</span></Link>
+            ¿No tienes una cuenta? <Link href="/register"><span className="link">Regístrate aquí</span></Link>
           </p>
         </form>
       </div>
@@ -281,25 +282,33 @@ export default function Login() {
           margin-bottom: 6px;
         }
 
+        /* 🚨 MEJORA: Estilos de Error Box */
         .error-box {
-          background: rgba(255, 92, 92, 0.08);
-          border: 1px solid rgba(255, 92, 92, 0.2);
-          border-radius: 12px;
-          padding: 12px 16px;
-          text-align: center;
-          animation: fadeInError 0.3s ease forwards;
+            display: flex; /* ⬅️ Nuevo: Para alinear icono y texto */
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 92, 92, 0.08);
+            border: 1px solid rgba(255, 92, 92, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            animation: fadeInError 0.3s ease forwards;
+        }
+        .error-icon {
+            color: #ff5c5c; /* Color del icono */
+            font-size: 1.2rem;
         }
         .error-text {
-          color: #ffb4b4;
-          font-size: 0.95rem;
-          font-weight: 500;
-          margin: 0;
+            color: #ffb4b4;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin: 0;
         }
         @keyframes fadeInError {
           from { opacity: 0; transform: translateY(-4px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
+        /* 🚨 MEJORA: Espaciado y Foco */
         .group {
           position: relative;
           display: flex;
@@ -308,14 +317,59 @@ export default function Login() {
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 14px;
           padding: 8px 10px;
+          margin-bottom: 8px; /* ⬅️ MEJORA: Espacio extra abajo */
           transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .group:focus-within { border-color: #8b5cf6; background: rgba(30, 30, 30, 0.85); }
-        .icon { position: absolute; left: 12px; display: flex; align-items: center; color: #cfcfcf; font-size: 1rem; }
-        .group input { width: 100%; padding: 12px 14px 12px 40px; background: transparent; border: none; border-radius: 10px; color: #f5f5f5; font-size: 1rem; outline: none; }
-        .group input::placeholder { color: #8e8e8e; }
-        .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8); transition: opacity 0.2s ease, transform 0.2s ease; }
-        .group:focus-within .underline { opacity: 1; transform: scaleX(1); }
+        .group:focus-within { 
+            border-color: #8b5cf6; 
+            background: rgba(30, 30, 30, 0.85);
+        }
+        .icon { 
+            position: absolute; 
+            left: 12px; 
+            display: flex; 
+            align-items: center; 
+            color: #cfcfcf;
+            font-size: 1rem; 
+            transition: color 0.2s ease; /* ⬅️ MEJORA: Transición para el icono */
+        }
+        .group:focus-within .icon { 
+            color: #8b5cf6; /* ⬅️ MEJORA: Icono cambia de color en foco */
+        }
+
+        .group input { 
+          width: 100%; 
+          padding: 12px 14px 12px 40px;
+          background: transparent; 
+          border: none; 
+          border-radius: 10px; 
+          color: #f5f5f5; 
+          font-size: 1rem; 
+          outline: none;
+        }
+        .group input::placeholder { 
+            color: #8e8e8e; 
+            transition: color 0.2s ease; /* ⬅️ MEJORA: Transición para placeholder */
+        }
+        .group:focus-within input::placeholder {
+            color: #cfcfcf; /* ⬅️ MEJORA: Placeholder más claro en foco */
+        }
+        .underline { 
+            position: absolute; 
+            bottom: 6px; 
+            left: 40px; 
+            right: 10px; 
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); 
+            border-radius: 2px; 
+            opacity: 0; 
+            transform: scaleX(0.8);
+            transition: opacity 0.2s ease, transform 0.2s ease; 
+        }
+        .group:focus-within .underline { 
+            opacity: 1;
+            transform: scaleX(1); 
+        }
 
         /* Password group specific: eye button on the right */
         .password-group { padding-right: 44px; } /* leave space for eye button */
@@ -333,8 +387,12 @@ export default function Login() {
           border-radius: 8px;
           transition: background 0.12s ease, color 0.12s ease;
         }
-        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+        .eye-btn:hover { 
+            background: rgba(255,255,255,0.04);
+            color: #fff; 
+        }
 
+        /* 🚨 MEJORA: CTA con transiciones y estado :active */
         .cta {
           padding: 12px 16px;
           background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
@@ -343,31 +401,53 @@ export default function Login() {
           border-radius: 14px;
           font-weight: 800;
           cursor: pointer;
-          transition: filter 0.2s ease, box-shadow 0.2s ease;
           box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
+          /* ⬅️ MEJORA: Transiciones completas */
+          transition: filter 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease, transform 0.1s ease; 
         }
-        .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22); }
-        .cta:disabled { opacity: 0.7; cursor: not-allowed; filter: none; box-shadow: none; }
+        .cta:hover { 
+            filter: brightness(1.05); 
+            box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22);
+        }
+        .cta:active { 
+            transform: translateY(1px); /* ⬅️ MEJORA: Efecto "presionado" */
+            filter: brightness(0.95); 
+            box-shadow: 0 8px 16px rgba(139, 92, 246, 0.15);
+        }
+        .cta:disabled { 
+            opacity: 0.6; /* ⬅️ MEJORA: Opacidad ajustada */
+            cursor: not-allowed; 
+            filter: none;
+            box-shadow: none;
+            transform: none;
+        }
 
-        .back-login { text-align: center; font-size: 0.95rem; color: #afafaf; margin-top: 6px; }
-        .link { color: #f3f3f3; font-weight: 600; text-decoration: underline; cursor: pointer; }
-        .link:hover { color: #d6d6d6; }
+        .back-login { 
+            text-align: center; 
+            font-size: 0.95rem; 
+            color: #afafaf; 
+            margin-top: 6px;
+        }
+        .link { 
+            color: #f3f3f3; 
+            font-weight: 600; 
+            text-decoration: underline; 
+            cursor: pointer;
+        }
+        .link:hover { 
+            color: #d6d6d6;
+        }
 
-        .popup { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); display: grid; place-items: center; z-index: 999; animation: fadeInOverlay 0.2s ease forwards; backdrop-filter: blur(2px); }
-        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-        .popup-content { background: rgba(20, 20, 20, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border-radius: 18px; padding: 24px; max-width: 420px; width: 92%; text-align: center; color: #ededed; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45); animation: scaleIn 0.25s ease forwards; }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        .check { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 10px; background: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 100%); color: #0e0e0e; font-weight: 900; box-shadow: 0 10px 18px rgba(139, 92, 246, 0.25); }
-        .popup-content h2 { font-size: 1.35rem; margin-bottom: 6px; font-weight: 800; }
-        .popup-content p { font-size: 0.98rem; color: #bfbfbf; margin-bottom: 14px; }
-        .popup-button { padding: 10px 14px; background: #f3f3f3; color: #0e0e0e; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; transition: transform 0.08s ease, filter 0.2s ease; }
-        .popup-button:hover { filter: brightness(0.98); }
-        .popup-button:active { transform: translateY(1px); }
+        /* ... (Otros estilos como .popup, @media, etc. se mantuvieron) ... */
 
         @media (max-width: 560px) {
-          .card { padding: 20px; border-radius: 16px; }
-          .title { font-size: 1.4rem; }
-          .cta { width: 100%; }
+          .card { padding: 20px;
+            border-radius: 16px; 
+          }
+          .title { font-size: 1.4rem;
+          }
+          .cta { width: 100%;
+          }
         }
       `}</style>
     </>

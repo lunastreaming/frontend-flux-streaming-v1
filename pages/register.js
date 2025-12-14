@@ -3,7 +3,8 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Select, { components } from 'react-select'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faHashtag, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
+// 🚨 CAMBIO: Se añade faExclamationTriangle para el Error Box
+import { faUser, faLock, faHashtag, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import countriesData from '../data/countries.json' // Ajusta la ruta si necesitas
 
@@ -17,7 +18,8 @@ function OptionWithFlag(props) {
   const alt = `${data.name} flag`
   return (
     <components.Option {...props}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div 
+        style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img
           src={flagPngUrl(iso)}
           alt={alt}
@@ -47,7 +49,8 @@ function SingleValueWithFlag(props) {
   const iso = data.value
   return (
     <components.SingleValue {...props}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div 
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <img
           src={flagPngUrl(iso)}
           alt={`${data.name} flag`}
@@ -66,7 +69,7 @@ export default function Register() {
   // Form fields
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false) // 👁️ nuevo estado
+  const [showPassword, setShowPassword] = useState(false)
   const [whatsapp, setWhatsapp] = useState('') // solo dígitos del número (sin prefijo)
   const [refCode, setRefCode] = useState('')
 
@@ -107,9 +110,10 @@ export default function Register() {
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/register`
 
+  // 🚨 CAMBIO DE VALIDACIÓN: Requiere 6 caracteres
   const validateUsername = value => {
     if (!value || !value.trim()) return 'El usuario es obligatorio'
-    if (value.trim().length < 3) return 'El usuario debe tener al menos 3 caracteres'
+    if (value.trim().length < 6) return 'El usuario debe tener al menos 6 caracteres' // 🚨 Cambiado de 3 a 6
     return null
   }
   const validatePassword = value => {
@@ -125,6 +129,7 @@ export default function Register() {
     return null
   }
 
+  // Las validaciones en tiempo real para UX ahora usan la nueva regla de 6
   useEffect(() => { setErrors(prev => ({ ...prev, username: validateUsername(username) })) }, [username])
   useEffect(() => { setErrors(prev => ({ ...prev, password: validatePassword(password) })) }, [password])
   useEffect(() => { setErrors(prev => ({ ...prev, phone: validatePhone(whatsapp) })) }, [whatsapp])
@@ -149,6 +154,7 @@ export default function Register() {
     const phErr = validatePhone(whatsapp)
     setErrors({ username: uErr, password: pErr, phone: phErr })
 
+    // Se mantiene la verificación con la nueva regla
     if (uErr || pErr || phErr) {
       setError('Corrige los errores del formulario')
       return
@@ -181,11 +187,9 @@ export default function Register() {
       })
 
       if (!resp.ok) {
-        // Intentamos parsear JSON del backend
         let parsed = null
         try { parsed = await resp.json() } catch (_) { parsed = null }
 
-        // Si viene un objeto errors por campo, lo aplicamos
         if (parsed && parsed.errors && typeof parsed.errors === 'object') {
           const newErr = { username: null, password: null, phone: null }
           for (const k of Object.keys(parsed.errors)) {
@@ -196,10 +200,8 @@ export default function Register() {
           setErrors(prev => ({ ...prev, ...newErr }))
           setError(parsed.message || 'Errores de validación')
         } else if (parsed && parsed.message) {
-          // Backend devuelve un código técnico en message, por ejemplo "username_taken"
           const key = parsed.message
           if (backendMessageMap[key]) {
-            // Asignamos mensaje amigable al campo correspondiente
             if (key === 'username_taken') {
               setErrors(prev => ({ ...prev, username: backendMessageMap[key] }))
             } else if (key === 'phone_taken') {
@@ -230,10 +232,14 @@ export default function Register() {
   }
 
   const handleClose = () => router.push('/')
+  
+  // Condición para deshabilitar el botón
+  const isFormInvalid = errors.username || errors.password || errors.phone || !username || !password || !whatsapp;
 
   // Select components/styles
   const selectComponents = useMemo(() => ({ Option: OptionWithFlag, SingleValue: SingleValueWithFlag }), [])
   const selectStyles = {
+    // Se mantiene la estructura y se eliminan los bordes de react-select
     control: (base) => ({ ...base, backgroundColor: 'transparent', border: 'none', boxShadow: 'none', cursor: 'pointer', minWidth: 140, height: 44 }),
     singleValue: (base) => ({ ...base, color: '#F0F0F0', fontSize: '0.88rem' }),
     menu: (base) => ({ ...base, backgroundColor: '#131313', borderRadius: 14 }),
@@ -253,8 +259,15 @@ export default function Register() {
           <h1 className="title">Regístrate</h1>
           <p className="subtitle">Regístrate a Luna</p>
 
-          {error && <div className="form-error" role="alert">{error}</div>}
+          {/* 🚨 NUEVO: Error Box para errores generales/servidor */}
+          {error && (
+            <div className="error-box" role="alert">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="error-icon" />
+                <p className="error-text">{error}</p>
+            </div>
+          )}
 
+          {/* CAMPO USUARIO */}
           <div className="group">
             <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
             <input
@@ -349,7 +362,12 @@ export default function Register() {
             <span className="underline" />
           </div>
 
-          <button type="submit" className="cta" disabled={loading}>
+          <button 
+            type="submit" 
+            className="cta" 
+            // 🚨 CAMBIO: Se deshabilita si está cargando O si el formulario es inválido
+            disabled={loading || isFormInvalid}
+          >
             {loading ? 'Registrando...' : 'Registrarme'}
           </button>
 
@@ -372,6 +390,7 @@ export default function Register() {
       )}
 
       <style jsx>{`
+        /* --- ESTILOS MEJORADOS --- */
         .canvas {
           min-height: 100vh;
           background: radial-gradient(1200px 600px at 20% 10%, #1a1a1a 0%, #0e0e0e 60%, #0b0b0b 100%);
@@ -392,27 +411,51 @@ export default function Register() {
           box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px; /* Ajustado a 12px */
           position: relative;
+          /* 🚨 NUEVO: Animación de subida al cargar */
+          animation: rise 0.35s ease forwards;
         }
+        @keyframes rise { 
+          from { opacity: 0; transform: translateY(10px) scale(0.98); } 
+          to { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+
         .close {
-          position: absolute;
-          top: 12px;
-          right: 12px;
+          position: absolute; top: 12px; right: 12px;
           background: rgba(255,255,255,0.06);
           border: 1px solid rgba(255,255,255,0.12);
           color: #cfcfcf;
-          width: 36px;
-          height: 36px;
+          width: 36px; height: 36px;
           border-radius: 10px;
-          display: grid;
-          place-items: center;
+          display: grid; place-items: center;
           cursor: pointer;
+          transition: background 0.1s ease;
         }
+        .close:hover { background: rgba(255,255,255,0.1); }
         .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; }
         .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px; }
+        
+        /* 🚨 NUEVO: Error Box para errores generales/servidor */
+        .error-box {
+            display: flex; 
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 92, 92, 0.08);
+            border: 1px solid rgba(255, 92, 92, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            animation: fadeInError 0.3s ease forwards;
+            margin-bottom: 4px; /* Ajustado */
+        }
+        .error-icon { color: #ff5c5c; font-size: 1.2rem; }
+        .error-text { color: #ffb4b4; font-size: 0.95rem; font-weight: 500; margin: 0; }
+        @keyframes fadeInError {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-        .form-error { color: #ffb4b4; text-align:center; margin-bottom: 6px; }
+        /* Grupos de Inputs */
         .group {
           position: relative;
           display: flex;
@@ -421,9 +464,23 @@ export default function Register() {
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 14px;
           padding: 8px 10px;
+          /* 🚨 MEJORA: Transición para el foco */
+          transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .group:focus-within { border-color: #8b5cf6; background: rgba(30,30,30,0.85); }
-        .icon { position: absolute; left: 12px; display:flex; align-items:center; color:#cfcfcf; font-size:1rem; }
+        /* 🚨 MEJORA: Estilo de Foco para el grupo */
+        .group:focus-within { 
+            border-color: #8b5cf6; 
+            background: rgba(30, 30, 30, 0.85);
+        }
+        .icon { 
+            position: absolute; left: 12px; display:flex; align-items:center; color:#cfcfcf; font-size:1rem;
+            /* 🚨 MEJORA: Transición para el ícono */
+            transition: color 0.2s ease; 
+        }
+        /* 🚨 MEJORA: Ícono cambia de color en foco */
+        .group:focus-within .icon { 
+            color: #8b5cf6;
+        }
         .group input {
           width: 100%;
           padding: 12px 14px 12px 44px;
@@ -434,22 +491,30 @@ export default function Register() {
           font-size: 1rem;
           outline: none;
         }
-        .group input::placeholder { color: #8e8e8e; }
+        .group input::placeholder { 
+            color: #8e8e8e;
+            /* 🚨 MEJORA: Transición para el placeholder */
+            transition: color 0.2s ease;
+        }
+        /* 🚨 MEJORA: Placeholder se aclara en foco */
+        .group:focus-within input::placeholder {
+            color: #cfcfcf; 
+        }
+        .underline {
+          position: absolute;
+          bottom: 6px; left: 44px; right: 10px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent);
+          border-radius:2px; opacity:0; transform:scaleX(0.8);
+          transition:opacity .2s, transform .2s;
+        }
+        .group:focus-within .underline { opacity:1; transform:scaleX(1); }
 
         /* 👁️ Password: espacio y botón ojito */
         .group.password-group { padding-right: 44px; }
         .eye-btn {
-          position: absolute;
-          right: 10px;
-          background: transparent;
-          border: none;
-          color: #cfcfcf;
-          width: 32px;
-          height: 32px;
-          display: grid;
-          place-items: center;
-          cursor: pointer;
-          border-radius: 8px;
+          position: absolute; right: 10px; background: transparent; border: none; color: #cfcfcf;
+          width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; border-radius: 8px;
           transition: background 0.12s ease, color 0.12s ease;
         }
         .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
@@ -460,6 +525,7 @@ export default function Register() {
           grid-template-columns: 140px 1fr;
           gap: 8px;
           align-items: center;
+          padding: 0; /* Quitamos padding del grupo para el select y el input */
         }
         .select-country {
           background: rgba(30,30,30,0.7);
@@ -469,65 +535,110 @@ export default function Register() {
           display: flex;
           align-items: center;
           padding: 0 8px;
+          /* 🚨 MEJORA: Transición para el foco del select */
+          transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        /* 🚨 MEJORA: Estilo de Foco para el select */
+        .group.whatsapp:focus-within .select-country {
+            border-color: #8b5cf6; 
+            background: rgba(30, 30, 30, 0.85);
         }
 
         /* wrapper around the input to position icon inside the input */
         .cell-input-wrapper {
-          position: relative;
-          display: block;
+          position: relative; 
+          display: block; 
+          height: 44px; 
+          /* 🚨 MEJORA: Se mueve el background/border aquí para tener foco individual */
+          background: rgba(30,30,30,0.7);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 14px;
+          transition: border-color 0.2s ease, background 0.2s ease;
         }
+        .group.whatsapp:focus-within .cell-input-wrapper {
+             border-color: #8b5cf6; 
+             background: rgba(30, 30, 30, 0.85);
+        }
+
         .cell-input-wrapper input {
-          padding-left: 40px; /* leave room for the whatsapp icon */
-          width: 100%;
-          height: 44px;
+          /* 🚨 FIX: Ajuste de padding-left para alinear texto con ícono */
+          padding: 0 14px 0 38px;
+          width: 100%; height: 44px;
           border-radius: 10px;
-          border: none;
-          background: transparent;
-          color: #f5f5f5;
-          outline: none;
-          font-size: 1rem;
+          border: none; background: transparent; color: #f5f5f5;
+          outline: none; font-size: 1rem;
         }
         .input-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
+          position: absolute; 
+          left: 11px; /* Posición horizontal ajustada */
+          top: 50%; 
           transform: translateY(-50%);
           color: #25D366; /* whatsapp green */
-          font-size: 18px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          font-size: 16px; /* Tamaño ajustado para alineación vertical */
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
           pointer-events: none;
         }
 
-        .underline { position: absolute; bottom: 6px; left: 44px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(139,92,246,0.8), transparent); border-radius:2px; opacity:0; transform:scaleX(0.8); transition:opacity .2s, transform .2s;}
-        .group:focus-within .underline { opacity:1; transform:scaleX(1); }
+        /* 🚨 MEJORA: Estilo para errores en campos (Mensaje amigable) */
+        .field-error { 
+            color: #ff5c5c; /* Color más fuerte para error */
+            font-size: 0.85rem;
+            margin: -6px 0 4px 10px; 
+            font-weight: 500;
+            animation: fadeInField 0.2s ease forwards;
+        }
+        @keyframes fadeInField {
+            from { opacity: 0; transform: translateY(-2px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-        .field-error { color:#ffb4b4; font-size:12px; margin-top:-6px; margin-bottom:6px; }
-
+        /* 🚨 MEJORA: CTA con transiciones y estado :active */
         .cta {
           padding: 12px 16px;
-          background: linear-gradient(135deg,#8b5cf6 0%,#22d3ee 100%);
+          background: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
           color: #0e0e0e;
           border: none;
           border-radius: 14px;
           font-weight: 800;
           cursor: pointer;
+          box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
+          transition: filter 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease, transform 0.1s ease;
+          margin-top: 10px;
+        }
+        .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22); }
+        .cta:active { 
+            transform: translateY(1px); /* Efecto "presionado" */
+            filter: brightness(0.95); 
+            box-shadow: 0 8px 16px rgba(139, 92, 246, 0.15);
+        }
+        .cta:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            filter: none;
+            box-shadow: none;
+            transform: none;
         }
 
         .back-login { text-align: center; font-size: 0.95rem; color: #afafaf; margin-top: 8px; }
         .link { color: #f3f3f3; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
+        /* Estilos de Popup */
         .popup { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display:grid; place-items:center; z-index:999; }
-        .popup-content { background: rgba(20,20,20,0.85); border-radius:18px; padding:24px; text-align:center; color:#ededed; }
-        .check { width:56px; height:56px; border-radius:50%; display:grid; place-items:center; margin:0 auto 10px; background: linear-gradient(135deg,#22d3ee 0%,#8b5cf6 100%); color:#0e0e0e; font-weight:900; }
-        .popup-button { padding:10px 14px; background:#f3f3f3; color:#0e0e0e; border:none; border-radius:12px; font-weight:800; cursor:pointer; }
+        .popup-content { background: rgba(20,20,20,0.85); border-radius:18px; padding:24px; text-align:center; color:#ededed; box-shadow: 0 24px 48px rgba(0,0,0,0.45); }
+        .check { width:56px; height:56px; border-radius:50%; display:grid; place-items:center; margin:0 auto 10px; background: linear-gradient(135deg,#22d3ee 0%,#8b5cf6 100%); color:#0e0e0e; font-weight:900; box-shadow: 0 10px 18px rgba(139, 92, 246, 0.25); }
+        .popup-button { padding:10px 14px; background:linear-gradient(135deg,#8b5cf6 0%,#22d3ee 100%); color:#0e0e0e; border:none; border-radius:12px; font-weight:800; cursor:pointer; transition: transform 0.08s ease, filter 0.2s ease; }
+        .popup-button:hover { filter: brightness(1.05); }
+        .popup-button:active { transform: translateY(1px); }
 
+        /* Media Queries */
         @media (max-width: 640px) {
           .group.whatsapp { grid-template-columns: 112px 1fr; }
           .select-country { min-width: 112px; }
-          .input-icon { left: 10px; font-size:16px; }
-          .cell-input-wrapper input { padding-left: 36px; }
+          /* Ajustes en media query para móvil */
+          .input-icon { left: 10px; font-size: 16px; } 
+          .cell-input-wrapper input { padding-left: 36px; } 
         }
       `}</style>
     </>
