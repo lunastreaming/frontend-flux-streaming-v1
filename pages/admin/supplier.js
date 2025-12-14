@@ -218,7 +218,7 @@ export default function AdminSuppliersPage() {
     <>
       <Head><title>Proveedores | Admin</title></Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
+      <div className="min-h-screen text-white font-inter">
         <AdminNavBar />
 
         <main className="max-w-7xl mx-auto px-6 py-8">

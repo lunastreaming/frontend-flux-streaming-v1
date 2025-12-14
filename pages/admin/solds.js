@@ -394,7 +394,7 @@ export default function AdminSoldsPage() {
       />
 
       <style jsx>{`
-        .page-bg { background: radial-gradient(circle at top, #0b1220, #05060a); min-height:100vh; }
+        .page-bg { /* Se eliminó el fondo para usar el fondo del padre */ min-height:100vh; }
         .page-container { padding: 48px 20px; max-width:1200px; margin:0 auto; }
 
         .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }

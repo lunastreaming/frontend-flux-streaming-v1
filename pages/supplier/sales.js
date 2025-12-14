@@ -405,7 +405,10 @@ export default function ProviderSalesPage() {
       )}
 
       <style jsx>{`
-        .page-bg { background: radial-gradient(circle at top, #0b1220, #05060a); min-height:100vh; }
+        .page-bg { 
+          background: radial-gradient(circle at top, #0b1220, #05060a); [cite: 16]
+          min-height: 100vh; 
+        }
         .page-container { padding: 36px 20px; max-width: 1400px; margin:0 auto; }
         .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
         .search-bar { display:flex; align-items:center; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:0 12px; height:40px; max-width:520px; width:100%; }

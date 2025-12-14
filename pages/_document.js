@@ -13,7 +13,10 @@ export default function Document() {
           content="Luna Streaming - Visuales ritualizados y experiencias simbólicas"
         />
       </Head>
-      <body>
+      {/* ESTILO EN LÍNEA: Forzamos la transparencia absoluta del body 
+        para que se vea la imagen que está aplicada en el 'html' desde globals.css.
+      */}
+      <body style={{ backgroundColor: 'transparent', margin: 0, padding: 0 }}>
         <Main />
         <NextScript />
       </body>

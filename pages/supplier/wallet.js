@@ -391,7 +391,7 @@ export default function BilleteraSupplier() {
         .wallet-container {
           min-height: 80vh;
           padding: 60px 24px;
-          background: #0d0d0d;
+          /* background: #0d0d0d; <- Se eliminó esta línea para usar el fondo del padre */
           display: flex;
           flex-direction: column;
           align-items: center;

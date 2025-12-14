@@ -155,7 +155,8 @@ export default function Navbar() {
           max-width: 1200px;
           margin: 32px auto;
           padding: 16px 32px;
-          background-color: rgba(26, 26, 26, 0.8);
+          /* 🚨 CAMBIO DE OPACIDAD: De 0.8 a 0.4 (más transparente) */
+          background-color: rgba(26, 26, 26, 0.4); 
           backdrop-filter: blur(12px);
           border-radius: 20px;
           border: 1px solid #2E2E2E;

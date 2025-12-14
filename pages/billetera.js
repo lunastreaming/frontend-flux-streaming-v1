@@ -130,7 +130,8 @@ export default function Billetera() {
 
     const data = await res.json()
 
-    // Si viene un Page (objeto con content), lo usamos; si viene un array, lo tratamos como contenido directo
+    // Si viene un Page (objeto con content), lo usamos;
+    // si viene un array, lo tratamos como contenido directo
     const content = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : []
     const totalElements = typeof data?.totalElements === 'number' ? data.totalElements : (Array.isArray(data) ? data.length : (typeof data?.total === 'number' ? data.total : content.length))
     const totalPages = typeof data?.totalPages === 'number' ? data.totalPages : Math.max(1, Math.ceil(totalElements / size))
@@ -203,6 +204,7 @@ export default function Billetera() {
       router.replace('/login')
       throw new Error('No autorizado')
     }
+  
     if (!res.ok) {
       let msg = `Error ${res.status}`
       try { const body = await res.json(); msg = body?.message || JSON.stringify(body) } catch (e) {}
@@ -417,7 +419,8 @@ export default function Billetera() {
       />
 
       <style jsx>{`
-        .wallet-container { min-height: 80vh; padding: 60px 24px; background: #0d0d0d; display:flex; flex-direction:column; align-items:center; gap:24px; }
+        /* 🚨 CAMBIO CRÍTICO APLICADO AQUÍ: background: transparent; */
+        .wallet-container { min-height: 80vh; padding: 60px 24px; background: transparent; display:flex; flex-direction:column; align-items:center; gap:24px; }
         .balance-card, .movements-card, .pending-card { width:100%; max-width:680px; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); border-radius:16px; padding:18px; box-shadow:0 12px 24px rgba(0,0,0,0.4); color:#f3f3f3; }
         .balance-card h2, .movements-card h3, .pending-card h3 { margin:0 0 12px; font-weight:700; }
         .balance-amount { font-size:2.2rem; font-weight:800; margin-bottom:12px; }

@@ -2,18 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fondo global ritualizado */
-html, body {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  color: #e5e5e5; /* texto claro */
-  min-height: 100vh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
+/*
+ * 1. Elemento HTML: Capa base de fondo. Aplica la imagen y el degradado.
+ */
+html {
+    /* Estilos base */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    color: #e5e5e5;
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
 
-  /* Fondo degradado manual */
-  background-image: linear-gradient(to bottom, #171717, #000000);
-  background-repeat: no-repeat;
-  background-size: cover;
+    /* APLICA EL FONDO: Degradado sutil (0.3 a 0.7) + Tu imagen */
+    background: 
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%), 
+      url('/background.png') center center no-repeat;
+    
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+/*
+ * 2. Elemento BODY: Debe ser transparente para que se filtre el fondo HTML.
+ */
+body {
+    /* CRUCIAL: Debe ser transparente. */
+    background-color: transparent; 
+
+    /* Asegurar que se mantengan los estilos de layout */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    color: #e5e5e5;
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
 }

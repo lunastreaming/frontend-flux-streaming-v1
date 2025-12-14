@@ -313,7 +313,7 @@ export default function AdminTransactionsPage() {
       />
 
       <style jsx>{`
-        .page-bg { background: radial-gradient(circle at top, #0b1220, #05060a); min-height:100vh; }
+        .page-bg { /* Se eliminó el fondo para usar el fondo del padre */ min-height:100vh; }
         .page-container { padding: 60px 24px; max-width:1200px; margin:0 auto; }
         .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:24px; }
         .search-bar { display:flex; align-items:center; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:0 12px; height:38px; max-width:520px; width:100%; }

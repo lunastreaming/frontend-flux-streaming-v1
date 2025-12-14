@@ -17,8 +17,10 @@ export default function SupplierIndex() {
     expired: 0
   })
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
+''
+  const token = typeof window !== 'undefined' ?
+localStorage.getItem('accessToken') : null
 
   useEffect(() => {
     if (!token) return
@@ -32,12 +34,14 @@ export default function SupplierIndex() {
       fetch(`${BASE_URL}/api/supplier/supplier/stocks/expired?page=0&size=30`, { headers }).then(r => r.json())
     ])
       .then(([orders, sales, support, renewed, expired]) => {
+  
         setCounts({
           orders: orders.totalElements ?? 0,
           sales: sales.totalElements ?? 0,
           support: support.totalElements ?? 0,
           renewed: renewed.totalElements ?? 0,
-          expired: expired.totalElements ?? 0
+          expired: expired.totalElements ??
+ 0
         })
       })
       .catch(err => console.error('Error cargando conteos', err))
@@ -47,7 +51,8 @@ export default function SupplierIndex() {
     { href: '/supplier/products', title: 'Productos', icon: <FaBoxes />, desc: 'Gestiona tus catálogos y colecciones' },
     { href: '/supplier/items', title: 'Items', icon: <FaListAlt />, desc: 'Control de unidades y SKUs' },
     { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine />, desc: 'Resumen de ventas y métricas' },
-    { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList />, desc: 'Revisión y fulfillment' },
+    { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList />, desc: 
+ 'Revisión y fulfillment' },
     { href: '/supplier/support', title: 'Soporte', icon: <FaHeadset />, desc: 'Tickets y comunicación con clientes' },
     { href: '/supplier/renewal', title: 'Renewal', icon: <FaRedo />, desc: 'Renovaciones y suscripciones' },
     { href: '/supplier/expired', title: 'Vencidas', icon: <FaHourglassEnd />, desc: 'Items o suscripciones vencidas' },
@@ -57,17 +62,20 @@ export default function SupplierIndex() {
   return (
     <>
       <Head>
-        <title>Panel Supplier | Luna Streaming</title>
+        <title>Panel Supplier |
+ Luna Streaming</title>
       </Head>
 
       <div className="page-bg">
         {/* Pasamos counts al NavBarSupplier */}
+        {/* Asegúrate de incluir <NavBarSupplier counts={counts} /> si es necesario */}
 
         <main className="container">
           <header className="hero">
             <div>
               <h1>Panel de Proveedor</h1>
-              <p className="lead">Accede rápidamente a las secciones principales de tu espacio de proveedor</p>
+              <p className="lead">Accede rápidamente a las secciones principales de tu espacio de 
+ proveedor</p>
             </div>
           </header>
 
@@ -75,12 +83,14 @@ export default function SupplierIndex() {
             {cards.map(c => (
               <Link key={c.href} href={c.href} passHref legacyBehavior>
                 <a className="card" aria-label={c.title}>
+                 
                   <div className="icon">{c.icon}</div>
                   <div className="body">
                     <h3>{c.title}</h3>
                     <p>{c.desc}</p>
                   </div>
                 </a>
+     
               </Link>
             ))}
           </section>
@@ -90,7 +100,8 @@ export default function SupplierIndex() {
       <style jsx>{`
         .page-bg {
           min-height: 100vh;
-          background: linear-gradient(180deg, #070707 0%, #0f1724 100%);
+          /* 🚨 SOLUCIÓN: Cambiado de degradado opaco a transparente */
+          background: transparent;
           color: #e6e6e6;
           padding-bottom: 48px;
         }
@@ -110,8 +121,10 @@ export default function SupplierIndex() {
           padding: 18px;
           border: 1px solid rgba(255,255,255,0.03);
         }
-        .hero h1 { margin: 0; font-size: 1.6rem; font-weight: 800; }
-        .lead { margin: 4px 0 0; color: #9aa0a6; }
+        .hero h1 { margin: 0; font-size: 1.6rem; font-weight: 800;
+        }
+        .lead { margin: 4px 0 0; color: #9aa0a6;
+        }
 
         .grid {
           display: grid;
@@ -147,12 +160,16 @@ export default function SupplierIndex() {
           font-size: 20px;
           color: #d1d5db;
         }
-        .body h3 { margin: 0 0 6px; font-size: 1rem; font-weight: 800; color: #ffffff; }
-        .body p { margin: 0; color: #9aa0a6; font-size: 0.9rem; }
+        .body h3 { margin: 0 0 6px; font-size: 1rem; font-weight: 800;
+        color: #ffffff; }
+        .body p { margin: 0; color: #9aa0a6; font-size: 0.9rem;
+        }
 
         @media (max-width: 720px) {
-          .hero { flex-direction: column; align-items: flex-start; }
-          .grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+          .hero { flex-direction: column;
+          align-items: flex-start; }
+          .grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          }
         }
       `}</style>
     </>

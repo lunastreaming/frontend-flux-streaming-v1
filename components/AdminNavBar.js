@@ -61,7 +61,7 @@ export default function AdminNavBar() {
 
   return (
     <nav className="admin-navbar" role="navigation" aria-label="Barra de navegación de administrador">
-      <Link href="/" passHref legacyBehavior>
+      <Link href="/admin" passHref legacyBehavior>
         <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
           <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
         </a>
@@ -107,16 +107,25 @@ export default function AdminNavBar() {
       </ul>
 
       <style jsx>{`
-        .admin-navbar {
+.admin-navbar {
           width: 100%;
           max-width: 1200px;
           margin: 32px auto;
           padding: 16px 24px;
-          background-color: rgba(26, 26, 26, 0.8);
-          backdrop-filter: blur(12px);
-          border-radius: 20px;
-          border: 1px solid #2E2E2E;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          
+          /* 1. RESTAURAR FONDO OSCURO (SEMI-TRANSPARENTE) Y EL EFECTO BLUR */
+          background-color: rgba(26, 26, 26, 0.8); /* Fondo oscuro con transparencia */
+          backdrop-filter: blur(12px); /* Efecto de desenfoque */
+          
+          border-radius: 20px; /* Mantener los bordes redondeados */
+          
+          /* 2. REEMPLAZAR EL BORDE COMPLETO POR LÍNEAS SUPERIOR E INFERIOR */
+          border: none; /* Anula el borde de 4 lados original */
+          border-top: 1px solid rgba(255, 255, 255, 0.1); /* Línea superior sutil */
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Línea inferior sutil */
+          
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* Mantener la sombra */
+          
           display: flex;
           align-items: center;
           justify-content: space-between;

@@ -136,7 +136,8 @@ export default function ComprasPage() {
 
       <style jsx>{`
         .page-bg { 
-          background: radial-gradient(circle at top, #0b1220, #05060a);
+          /* 1. FIX: Fondo transparente para ver la imagen de fondo */
+          background: transparent;
           min-height: 100vh; 
         }
         
@@ -170,7 +171,7 @@ export default function ComprasPage() {
         .search-icon-inline { color: #9fb4c8; margin-right: 12px; }
         
         .search-input-inline { 
-          flex: 1; 
+          flex: 1;
           background: transparent; 
           border: none; 
           color: #fff; 
@@ -187,6 +188,12 @@ export default function ComprasPage() {
           padding-bottom: 8px; /* Espacio para scrollbar */
           -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
           scrollbar-width: none; /* Ocultar scrollbar en Firefox */
+
+          /* 2. FIX: Ajustes para mejor visualización en Android/Chrome */
+          margin-left: -16px; 
+          padding-left: 16px; 
+          padding-right: 16px; 
+          width: calc(100% + 32px); 
         }
         
         .actions-right::-webkit-scrollbar {
@@ -199,9 +206,7 @@ export default function ComprasPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          
-          /* Tamaño móvil ligeramente más compacto pero cómodo */
+          gap: 6px; /* Tamaño móvil ligeramente más compacto pero cómodo */
           min-width: 68px;
           width: 68px;
           height: 68px;
@@ -265,6 +270,11 @@ export default function ComprasPage() {
           .actions-right {
             overflow-x: visible; /* Quita el scroll */
             justify-content: flex-end;
+            /* Se eliminan los ajustes de margen/padding de móvil */
+            margin-left: 0; 
+            padding-left: 0; 
+            padding-right: 0; 
+            width: auto; 
           }
 
           .icon-btn {
