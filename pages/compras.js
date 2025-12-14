@@ -1,3 +1,4 @@
+// ComprasPage.js
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -86,19 +87,8 @@ export default function ComprasPage() {
         
         {/* Cabecera Responsiva */}
         <div className="header-row">
-          {/* Barra de búsqueda */}
-          <div className="search-bar">
-            <FaSearch className="search-icon-inline" />
-            <input
-              type="text"
-              placeholder="Buscar producto..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="search-input-inline"
-            />
-          </div>
-
-          {/* Botones de navegación (Scroll horizontal en móvil) */}
+          
+          {/* ⭐ 1. Botones de navegación (Scroll horizontal en móvil) */}
           <div className="actions-right" role="toolbar" aria-label="Filtros de vista">
             {[
               { id: 'compras', label: 'Compras', icon: FaShoppingCart },
@@ -119,6 +109,18 @@ export default function ComprasPage() {
               </div>
             ))}
           </div>
+
+          {/* ⭐ 2. Barra de búsqueda */}
+          <div className="search-bar">
+            <FaSearch className="search-icon-inline" />
+            <input
+              type="text"
+              placeholder="Buscar producto..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="search-input-inline"
+            />
+          </div>
         </div>
 
         {/* Tablas */}
@@ -133,16 +135,15 @@ export default function ComprasPage() {
         </div>
       </main>
       <Footer />
-
+      
       <style jsx>{`
         .page-bg { 
-          /* 1. FIX: Fondo transparente para ver la imagen de fondo */
           background: transparent;
-          min-height: 100vh; 
+          min-height: 100vh;
         }
         
         .page-container { 
-          padding: 80px 16px 40px; /* Padding ajustado para móvil */
+          padding: 80px 16px 40px; 
           max-width: 1200px; 
           margin: 0 auto;
           width: 100%;
@@ -151,12 +152,12 @@ export default function ComprasPage() {
         /* --- Header Layout --- */
         .header-row {
           display: flex;
-          flex-direction: column; /* Móvil: Columna (stack) */
+          flex-direction: column; 
           gap: 16px;
           margin-bottom: 24px;
         }
 
-        /* --- Search Bar --- */
+        /* --- Search Bar (Debajo de los botones en móvil) --- */
         .search-bar {
           display: flex;
           align-items: center;
@@ -164,11 +165,12 @@ export default function ComprasPage() {
           border: 1px solid rgba(255,255,255,0.06);
           border-radius: 12px;
           padding: 0 16px;
-          height: 48px; /* Un poco más alto para tocar fácil en móvil */
-          width: 100%; /* Móvil: Ancho completo */
+          height: 48px;
+          width: 100%;
         }
         
-        .search-icon-inline { color: #9fb4c8; margin-right: 12px; }
+        .search-icon-inline { color: #9fb4c8;
+          margin-right: 12px; }
         
         .search-input-inline { 
           flex: 1;
@@ -180,36 +182,48 @@ export default function ComprasPage() {
           width: 100%;
         }
 
-        /* --- Actions / Navigation --- */
+        /* --- Actions / Navigation (Scroll Horizontal y FIX de recorte) --- */
         .actions-right {
           display: flex;
           gap: 10px;
-          overflow-x: auto; /* Scroll horizontal habilitado para móvil */
-          padding-bottom: 8px; /* Espacio para scrollbar */
-          -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
-          scrollbar-width: none; /* Ocultar scrollbar en Firefox */
-
-          /* 2. FIX: Ajustes para mejor visualización en Android/Chrome */
-          margin-left: -16px; 
-          padding-left: 16px; 
-          padding-right: 16px; 
-          width: calc(100% + 32px); 
+          overflow-x: auto; /* Scroll horizontal habilitado */
+          padding-bottom: 8px;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          
+          /* Usamos padding del .page-container (16px) */
+          margin-left: 0;
+          padding-left: 0; 
+          padding-right: 0; 
+          width: 100%; 
         }
         
         .actions-right::-webkit-scrollbar {
-          display: none; /* Ocultar scrollbar en Chrome/Safari */
+          display: none;
         }
+        
+        /* ⭐ FIX FINAL: Espaciador invisible para garantizar que el último badge se vea completamente */
+        .actions-right::after {
+            content: "";
+            min-width: 30px; /* Aumentamos el espacio extra para scroll */
+            height: 1px;
+            display: block;
+            flex-shrink: 0;
+        }
+
 
         .icon-btn {
           position: relative;
           display: flex;
-          flex-direction: column;
+          flex-direction: column; 
           align-items: center;
           justify-content: center;
-          gap: 6px; /* Tamaño móvil ligeramente más compacto pero cómodo */
-          min-width: 68px;
-          width: 68px;
-          height: 68px;
+          gap: 6px;
+          
+          /* ⭐ AUMENTO DE TAMAÑO: Usamos el tamaño de escritorio (72px) en móvil para dar más aire */
+          min-width: 72px; 
+          width: 72px;
+          height: 72px;
           
           border-radius: 12px;
           background: rgba(255,255,255,0.02);
@@ -217,7 +231,7 @@ export default function ComprasPage() {
           color: #cfe7ff;
           cursor: pointer;
           transition: all 0.2s ease;
-          flex-shrink: 0; /* Evita que se aplasten */
+          flex-shrink: 0; 
         }
 
         .icon-btn.active { 
@@ -228,13 +242,15 @@ export default function ComprasPage() {
           transform: translateY(-2px);
         }
 
-        .icon-large { font-size: 20px; }
-        .icon-label { font-size: 11px; font-weight: 700; }
+        .icon-large { font-size: 20px;
+        }
+        .icon-label { font-size: 11px; font-weight: 700;
+        }
 
         .badge {
           position: absolute;
           top: -4px;
-          right: -4px;
+          right: 0; /* Mantenemos el FIX: Asegura que el badge no sobresalga del botón */
           min-width: 20px;
           height: 20px;
           padding: 0 4px;
@@ -247,7 +263,7 @@ export default function ComprasPage() {
           font-size: 11px;
           font-weight: 700;
           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          z-index: 10;
+          z-index: 9999; 
         }
 
         /* --- Estilos Desktop (Min-Width 768px) --- */
@@ -257,24 +273,27 @@ export default function ComprasPage() {
           }
 
           .header-row {
-            flex-direction: row; /* Vuelve a fila */
+            /* Invertimos el orden para desktop: buscador a la izquierda, botones a la derecha */
+            flex-direction: row; 
             justify-content: space-between;
             align-items: center;
           }
 
           .search-bar {
-            width: 400px; /* Ancho fijo elegante en desktop */
-            height: 42px; /* Altura más compacta para desktop */
+            order: 1; /* Coloca el buscador a la izquierda */
+            width: 400px;
+            height: 42px;
           }
 
           .actions-right {
-            overflow-x: visible; /* Quita el scroll */
+            order: 2; /* Coloca los botones a la derecha */
+            overflow-x: visible; 
             justify-content: flex-end;
-            /* Se eliminan los ajustes de margen/padding de móvil */
-            margin-left: 0; 
-            padding-left: 0; 
-            padding-right: 0; 
             width: auto; 
+          }
+          
+          .actions-right::after {
+            content: none; /* Eliminar el espaciador en desktop */
           }
 
           .icon-btn {
