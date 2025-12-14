@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '../../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
+import { Turnstile } from '@marsidev/react-turnstile' // ⬅️ IMPORTACIÓN DE TURNSTILE
 
 export default function LoginAdmin() {
   const router = useRouter()
@@ -13,8 +14,10 @@ export default function LoginAdmin() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState(null) // ⬅️ NUEVO: Estado para el token
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-admin`
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY 
 
   const pickToken = (data) => {
     if (!data) return null
@@ -24,6 +27,13 @@ export default function LoginAdmin() {
   const handleLogin = async e => {
     e.preventDefault()
     setError(null)
+
+    // ⚠️ NUEVA VALIDACIÓN: Verificar si el token de Turnstile existe
+    if (turnstileSiteKey && !turnstileToken) {
+        setError('Por favor, completa la verificación de seguridad (robot).')
+        return
+    }
+
     if (!username.trim() || !password) {
       setError('Usuario y contraseña son obligatorios')
       return
@@ -33,7 +43,13 @@ export default function LoginAdmin() {
       const resp = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
+       
+        // 🔑 Envía el token al backend para su verificación
+        body: JSON.stringify({ 
+            username: username.trim(), 
+            password,
+            turnstileToken: turnstileToken // Aquí se envía el token al servidor
+        }),
       })
 
       if (!resp.ok) {
@@ -51,6 +67,7 @@ export default function LoginAdmin() {
         return
       }
 
+    
       // Decodificar rol desde el JWT (fuente de verdad)
       let payload = null
       try {
@@ -97,6 +114,7 @@ export default function LoginAdmin() {
     <>
       <Head><title>Login Admin | Luna Streaming</title></Head>
 
+  
       <div className="canvas">
         <form className="card" onSubmit={handleLogin} noValidate>
           <button type="button" className="close" onClick={handleClose}>✕</button>
@@ -107,6 +125,7 @@ export default function LoginAdmin() {
 
           <div className="group">
             <div className="icon"><FontAwesomeIcon icon={faUser} /></div>
+        
             <input
               type="text"
               placeholder="Usuario"
@@ -114,6 +133,7 @@ export default function LoginAdmin() {
               onChange={e => setUsername(e.target.value)}
               required
               aria-label="Usuario"
+          
             />
             <span className="underline" />
           </div>
@@ -129,6 +149,7 @@ export default function LoginAdmin() {
               aria-label="Contraseña"
             />
             <button
+  
               type="button"
               className="eye-btn"
               onClick={() => setShowPassword(s => !s)}
@@ -140,7 +161,37 @@ export default function LoginAdmin() {
             <span className="underline" />
           </div>
 
-          <button type="submit" className="cta" disabled={loading}>
+          {/* ----------------------------------------------------- */}
+          {/* 🤖 WIDGET DE VALIDACIÓN DE ROBOT (Cloudflare Turnstile) */}
+          {/* ----------------------------------------------------- */}
+          {turnstileSiteKey && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '10px' }}>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                options={{
+                  theme: 'dark' // Ajusta el tema si es necesario
+                }}
+                onSuccess={(token) => {
+                  setTurnstileToken(token); // Almacena el token
+                  setError(null); 
+                }}
+                onExpire={() => setTurnstileToken(null)} 
+                onError={() => { 
+                  setTurnstileToken(null); 
+                  setError('Error en la verificación de seguridad. Intenta recargar la página.');
+                }}
+              />
+            </div>
+          )}
+          {/* ----------------------------------------------------- */}
+
+
+          <button 
+            type="submit" 
+            className="cta" 
+            // Deshabilitar si está cargando O NO hay token de Turnstile
+            disabled={loading || (turnstileSiteKey && !turnstileToken)}
+          >
             {loading ? 'Ingresando...' : 'Ingresar como Admin'}
           </button>
         </form>
@@ -170,14 +221,26 @@ export default function LoginAdmin() {
           position: relative;
           animation: rise 0.35s ease forwards;
         }
-        @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .close { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: #cfcfcf; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; transition: all 0.2s ease; }
-        .close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+        @keyframes rise { from { opacity: 0;
+          transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1);
+        } }
+        .close { position: absolute; top: 12px; right: 12px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #cfcfcf;
+          width: 32px; height: 32px; border-radius: 10px;
+          display: grid; place-items: center; cursor: pointer; transition: all 0.2s ease;
+        }
+        .close:hover { background: rgba(255, 255, 255, 0.12); color: #fff;
+        }
 
-        .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; letter-spacing: 0.2px; }
-        .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px; }
+        .title { color: #f3f3f3; font-size: 1.9rem; text-align: center; font-weight: 800; letter-spacing: 0.2px;
+        }
+        .subtitle { color: #afafaf; font-size: 0.98rem; text-align: center; margin-bottom: 6px;
+        }
 
-        .error { color: #ffb4b4; text-align: center; font-size: 0.95rem; }
+        .error { color: #ffb4b4; text-align: center; font-size: 0.95rem;
+        }
 
         .group {
           position: relative;
@@ -189,15 +252,27 @@ export default function LoginAdmin() {
           padding: 8px 10px;
           transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .group:focus-within { border-color: #8b5cf6; background: rgba(30, 30, 30, 0.85); }
-        .icon { position: absolute; left: 12px; display: flex; align-items: center; color: #cfcfcf; font-size: 1rem; }
-        .group input { width: 100%; padding: 12px 14px 12px 40px; background: transparent; border: none; border-radius: 10px; color: #f5f5f5; font-size: 1rem; outline: none; }
-        .group input::placeholder { color: #8e8e8e; }
-        .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8); transition: opacity 0.2s ease, transform 0.2s ease; }
-        .group:focus-within .underline { opacity: 1; transform: scaleX(1); }
+        .group:focus-within { border-color: #8b5cf6; background: rgba(30, 30, 30, 0.85);
+        }
+        .icon { position: absolute; left: 12px; display: flex; align-items: center; color: #cfcfcf;
+          font-size: 1rem;
+        }
+        .group input { width: 100%; padding: 12px 14px 12px 40px;
+          background: transparent; border: none; border-radius: 10px; color: #f5f5f5; font-size: 1rem; outline: none;
+        }
+        .group input::placeholder { color: #8e8e8e;
+        }
+        .underline { position: absolute; bottom: 6px; left: 40px; right: 10px; height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.8), transparent); border-radius: 2px; opacity: 0; transform: scaleX(0.8);
+          transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .group:focus-within .underline { opacity: 1;
+          transform: scaleX(1);
+        }
 
         /* Password group: reserve space for eye button */
-        .password-group { padding-right: 44px; }
+        .password-group { padding-right: 44px;
+        }
 
         .eye-btn {
           position: absolute;
@@ -213,7 +288,9 @@ export default function LoginAdmin() {
           border-radius: 8px;
           transition: background 0.12s ease, color 0.12s ease;
         }
-        .eye-btn:hover { background: rgba(255,255,255,0.04); color: #fff; }
+        .eye-btn:hover { background: rgba(255,255,255,0.04);
+          color: #fff;
+        }
 
         .cta {
           padding: 12px 16px;
@@ -226,12 +303,17 @@ export default function LoginAdmin() {
           transition: filter 0.2s ease, box-shadow 0.2s ease;
           box-shadow: 0 12px 26px rgba(34, 211, 238, 0.18);
         }
-        .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22); }
-        .cta:disabled { opacity: 0.7; cursor: not-allowed; }
+        .cta:hover { filter: brightness(1.05); box-shadow: 0 16px 30px rgba(139, 92, 246, 0.22);
+        }
+        .cta:disabled { opacity: 0.7; cursor: not-allowed;
+        }
 
         @media (max-width: 640px) {
-          .card { padding: 20px; border-radius: 16px; }
-          .title { font-size: 1.6rem; }
+          .card { padding: 20px;
+            border-radius: 16px;
+          }
+          .title { font-size: 1.6rem;
+          }
         }
       `}</style>
     </>

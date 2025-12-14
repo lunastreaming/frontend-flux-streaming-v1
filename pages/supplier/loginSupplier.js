@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import Cookies from 'js-cookie';
+import { Turnstile } from '@marsidev/react-turnstile'; // ⬅️ NUEVO: Importación de Turnstile
 
 export default function LoginSupplier() {
   const router = useRouter();
@@ -14,8 +15,10 @@ export default function LoginSupplier() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState(null); // ⬅️ NUEVO: Estado para el token
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-supplier`;
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY; // ⬅️ Clave pública del entorno
 
   const pickToken = (data) => {
     if (!data) return null;
@@ -25,6 +28,13 @@ export default function LoginSupplier() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
+    
+    // ⚠️ NUEVA VALIDACIÓN: Verificar si el token de Turnstile existe (solo si la clave está configurada)
+    if (turnstileSiteKey && !turnstileToken) {
+        setError('Por favor, completa la verificación de seguridad (robot).');
+        return;
+    }
+    
     if (!username.trim() || !password) {
       setError('Usuario y contraseña son obligatorios');
       return;
@@ -34,7 +44,12 @@ export default function LoginSupplier() {
       const resp = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
+        // 🔑 IMPORTANTE: Envía el token al backend para su verificación
+        body: JSON.stringify({ 
+            username: username.trim(), 
+            password,
+            turnstileToken: turnstileToken // Aquí se envía el token al servidor
+        }),
       });
 
       if (!resp.ok) {
@@ -51,7 +66,6 @@ export default function LoginSupplier() {
 
       // Guardar token en cookies para que el middleware lo lea
       Cookies.set('accessToken', token, { path: '/', sameSite: 'Lax' });
-
       // También puedes guardar el refresh token si lo usas
       if (data.refreshToken || data.refresh_token) {
         Cookies.set('refreshToken', data.refreshToken || data.refresh_token, { path: '/', sameSite: 'Lax' });
@@ -67,7 +81,7 @@ export default function LoginSupplier() {
       setLoading(false);
     }
   };
-
+  
   return (
     <>
       <Head><title>Login Proveedor | Luna Streaming</title></Head>
@@ -109,12 +123,42 @@ export default function LoginSupplier() {
             </button>
           </div>
 
-          <button type="submit" className="cta" disabled={loading}>
+          {/* ----------------------------------------------------- */}
+          {/* 🤖 WIDGET DE VALIDACIÓN DE ROBOT (Cloudflare Turnstile) */}
+          {/* ----------------------------------------------------- */}
+          {turnstileSiteKey && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '10px' }}>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                options={{
+                  theme: 'dark' // Ajusta el tema si es necesario
+                }}
+                onSuccess={(token) => {
+                  setTurnstileToken(token); // Almacena el token
+                  setError(null); 
+                }}
+                onExpire={() => setTurnstileToken(null)} 
+                onError={() => { 
+                  setTurnstileToken(null); 
+                  setError('Error en la verificación de seguridad. Intenta recargar la página.');
+                }}
+              />
+            </div>
+          )}
+          {/* ----------------------------------------------------- */}
+
+          <button 
+            type="submit" 
+            className="cta" 
+            // Deshabilitar si está cargando O NO hay token de Turnstile
+            disabled={loading || (turnstileSiteKey && !turnstileToken)}
+          >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
 
           <p className="back-login">
-            ¿No tienes cuenta? <span className="link" onClick={() => router.push('/supplier/registerSupplier')}>Regístrate</span>
+            ¿No tienes cuenta?
+            <span className="link" onClick={() => router.push('/supplier/registerSupplier')}>Regístrate</span>
           </p>
         </form>
       </div>

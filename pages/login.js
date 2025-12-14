@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
+import { Turnstile } from '@marsidev/react-turnstile' // ⬅️ NUEVO: Importación de Turnstile
 
 export default function Login() {
   const router = useRouter()
@@ -14,8 +15,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState(null) // ⬅️ NUEVO: Estado para el token
 
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/login-seller`
+  // Usamos directamente la variable de entorno, es la forma más limpia en Next.js
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY 
 
   const pickToken = (data) => {
     if (!data) return null
@@ -25,16 +29,30 @@ export default function Login() {
   const handleLogin = async e => {
     e.preventDefault()
     setError(null)
+    
+    // ⚠️ Validación de Turnstile
+    if (!turnstileToken) {
+      setError('Por favor, completa la verificación de seguridad.')
+      return
+    }
+
     if (!username.trim() || !password) {
       setError('Por favor ingresa tu usuario y contraseña.')
       return
     }
+    
     setLoading(true)
+    
     try {
       const resp = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
+        // 🔑 IMPORTANTE: Envía el token al backend para su verificación
+        body: JSON.stringify({ 
+          username: username.trim(), 
+          password,
+          turnstileToken: turnstileToken // Aquí se envía el token
+        }),
       })
 
       if (!resp.ok) {
@@ -55,6 +73,7 @@ export default function Login() {
 
       const data = await resp.json()
       const token = pickToken(data)
+      
       if (!token) {
         setError('Respuesta inválida del servidor: falta token')
         console.error('[Login] response data (sin token):', data)
@@ -136,12 +155,43 @@ export default function Login() {
             <span className="underline" />
           </div>
 
-          <button type="submit" className="cta" disabled={loading}>
+          {/* ----------------------------------------------------- */}
+          {/* 🤖 WIDGET DE VALIDACIÓN DE ROBOT (Cloudflare Turnstile) */}
+          {/* ----------------------------------------------------- */}
+          {turnstileSiteKey && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', marginBottom: '10px' }}>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                options={{
+                  theme: 'dark' // Ajusta el tema a 'light' si es necesario
+                }}
+                onSuccess={(token) => {
+                  setTurnstileToken(token); // Almacena el token
+                  setError(null); 
+                }}
+                onExpire={() => setTurnstileToken(null)} 
+                onError={() => { 
+                  setTurnstileToken(null); 
+                  setError('Error en la verificación de seguridad. Intenta recargar la página.');
+                }}
+              />
+            </div>
+          )}
+          {/* ----------------------------------------------------- */}
+
+
+          <button 
+            type="submit" 
+            className="cta" 
+            // ⬅️ NUEVO: Deshabilitar si está cargando o no hay token
+            disabled={loading || !turnstileToken}
+          >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
 
           <p className="back-login">
-            ¿No tienes una cuenta? <Link href="/register"><span className="link">Regístrate aquí</span></Link>
+            ¿No tienes una cuenta?
+            <Link href="/register"><span className="link">Regístrate aquí</span></Link>
           </p>
         </form>
       </div>
