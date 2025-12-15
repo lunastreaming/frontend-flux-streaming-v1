@@ -95,6 +95,7 @@ export default function StocksPage() {
     return isVisible && productName.includes(search.toLowerCase())
   })
 
+  
   const confirmToggleStatus = (stock) => {
     const currentStatus = (stock?.status ?? (stock.published ? 'active' : 'inactive'))?.toString().toLowerCase()
     const target = currentStatus === 'active' ? 'inactive' : 'active'
@@ -367,11 +368,12 @@ export default function StocksPage() {
                       <button className="btn-edit" title="Editar" onClick={() => handleEdit(s)}>
                         <FaEdit />
                       </button>
-                        {(s.status ?? '').toLowerCase() === 'inactive' && (
-    <button className="btn-delete" title="Eliminar" onClick={() => confirmRemove(s)}>
-      <FaTrashAlt />
-    </button>
-  )}
+
+                      {(s.status ?? '').toLowerCase() === 'inactive' && (
+                        <button className="btn-delete" title="Eliminar" onClick={() => confirmRemove(s)}>
+                          <FaTrashAlt />
+                        </button>
+                      )}
 
                     </div>
                   </td>
@@ -435,7 +437,7 @@ export default function StocksPage() {
           height: 38px;
           max-width: 420px;
           width: 100%;
-          margin: 0 auto;
+          margin: 0; /* Ajustado */
         }
 
         .search-icon-inline { color: #ccc; font-size: 0.85rem; margin-right: 8px; }
@@ -472,6 +474,8 @@ export default function StocksPage() {
 
         .table-wrapper {
           overflow-x: auto;
+          overflow-y: auto; /* Permite scroll vertical si la tabla es muy alta */
+          max-height: calc(100vh - 240px); /* Límite de altura para scroll vertical */
           background: rgba(22,22,22,0.6);
           border: 1px solid rgba(255,255,255,0.08);
           backdrop-filter: blur(12px);
@@ -480,7 +484,30 @@ export default function StocksPage() {
           box-shadow: 0 12px 24px rgba(0,0,0,0.4);
         }
 
-        table { width: 100%; border-collapse: separate; border-spacing: 0 12px; color: #e1e1e1; table-layout: fixed; }
+        /* Estilo para el scrollbar horizontal (Scroll Moderno) */
+        .table-wrapper::-webkit-scrollbar { height: 12px; width: 10px; }
+        .table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .table-wrapper::-webkit-scrollbar-thumb {
+          /* Usar un degradado para el look moderno */
+          background: linear-gradient(90deg, #06b6d4, #8b5cf6, #22c55e); 
+          border-radius: 999px;
+          /* El borde coincide con el fondo del wrapper para crear un efecto de margen */
+          border: 3px solid rgba(22,22,22,0.6); 
+        }
+        /* Fallback para Firefox */
+        .table-wrapper { 
+          scrollbar-width: thin; 
+          scrollbar-color: #8b5cf6 transparent; 
+        }
+
+        table { 
+          width: 100%; 
+          border-collapse: separate; 
+          border-spacing: 0 12px; 
+          color: #e1e1e1;
+          table-layout: auto; /* Cambiado de fixed a auto */
+          min-width: 1300px; /* Ancho mínimo para forzar el scroll horizontal */
+        }
 
         thead tr {
           background: rgba(30,30,30,0.8);
@@ -526,6 +553,7 @@ export default function StocksPage() {
           border-radius: 999px;
           font-size: 0.72rem;
           font-weight: 700;
+          text-transform: uppercase;
         }
         .status-badge.active { background: rgba(34,197,94,0.12); color: #4ade80; }
         .status-badge.inactive { background: rgba(239,68,68,0.12); color: #ef4444; }
@@ -561,21 +589,6 @@ export default function StocksPage() {
         }
         .url-empty { display: inline-block; width: 0; height: 0; }
 
-        @media (max-width: 980px) {
-          col:nth-child(3) { width: 120px; }
-          col:nth-child(4) { width: 120px; }
-          col:nth-child(6) { width: 80px; }
-          col:nth-child(7) { width: 64px; }
-        }
-
-        @media (max-width: 640px) {
-          table, thead, tbody, th, td, tr { display: block; }
-          thead { display: none; }
-          tbody tr { margin-bottom: 12px; }
-          td { padding: 0 12px; }
-          .row-inner { padding: 10px; }
-        }
-
         /* Paginación */
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
         .pager-info { color:#cbd5e1; }
@@ -590,6 +603,49 @@ export default function StocksPage() {
           font-weight:700;
         }
         .pager-btn:disabled { opacity:0.45; cursor:not-allowed; }
+
+
+        /* --- AJUSTES PARA TABLET (MAX-WIDTH: 980PX) --- */
+        @media (max-width: 980px) {
+          /* Ajuste de anchos de columna */
+          col:nth-child(3) { width: 120px; }
+          col:nth-child(4) { width: 120px; }
+          col:nth-child(6) { width: 80px; }
+          col:nth-child(7) { width: 64px; }
+
+          /* Adaptar Header para Tablet */
+          .header-row { flex-wrap: wrap; }
+          .search-bar { max-width: none; }
+          .btn-primary { width: 100%; margin-top: 12px; }
+        }
+
+        /* --- AJUSTES PARA VISTA MÓVIL (MAX-WIDTH: 640PX) --- */
+        @media (max-width: 640px) {
+          /* 1. Adaptabilidad del Encabezado */
+          .header-row { 
+            flex-wrap: nowrap;
+            gap: 12px; 
+            align-items: center; 
+          }
+          .search-bar { 
+            flex: 1; 
+            width: auto;
+            margin: 0; 
+          }
+          .btn-primary { 
+            width: auto; 
+            flex-shrink: 0; 
+            margin-top: 0;
+            padding: 0 10px; /* Reducir padding */
+          }
+          .btn-primary .btn-text {
+            display: none; /* Ocultar el texto del botón en móvil */
+          }
+
+          /* 2. Scroll Horizontal: Quitar estilos de apilamiento */
+          /* Importante: Mantenemos el display: table/tr/td por defecto y el scroll-x del wrapper */
+          .table-wrapper { padding: 8px; } /* Reducir padding para más espacio */
+        }
       `}</style>
     </div>
   )
