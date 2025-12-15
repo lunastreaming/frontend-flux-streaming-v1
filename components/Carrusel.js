@@ -117,8 +117,6 @@ export default function Carrusel() {
     };
   }, []);
 
-  // si quieres que un click corto en la slide haga algo (ej. mostrar controles),
-  // se puede implementar diferenciando click vs drag. Por ahora no lo hacemos.
   const handleOverlayClick = (e) => {
     // placeholder para futuras interacciones
     e.stopPropagation();
@@ -138,10 +136,8 @@ export default function Carrusel() {
                 loop
                 playsInline
                 preload="metadata"
-                // importante: dejamos pointer-events none en video para que react-slick reciba drag
                 style={{ pointerEvents: 'none' }}
               />
-              {/* overlay captura clicks cortos sin impedir arrastre */}
               <div className="media-overlay" onClick={handleOverlayClick} />
             </div>
           </div>
@@ -149,17 +145,22 @@ export default function Carrusel() {
       </Slider>
 
       <style jsx>{`
+        /*
+          DIMENSIONES ACTUALIZADAS:
+          Ancho máximo: 1500px (un poco más de 1200px)
+          Altura: 500px (para mantener la proporción 3:1 -> 1500 / 500 = 3)
+        */
         .carrusel-container {
           width: 100%;
-          max-width: 1200px;
-          height: 460px;
+          max-width: 1500px; /* Aumentado para aprovechar la alta resolución */
+          height: 500px; /* 1/3 del ancho, para proporción 3:1 (5000x1667) */
           margin: 40px auto;
           border-radius: 20px;
           overflow: hidden;
           box-shadow: 0 18px 48px rgba(0,0,0,0.55);
           position: relative;
           background-color: #0f0f10;
-          touch-action: pan-y; /* permite swipe horizontal sin conflictos en touch */
+          touch-action: pan-y;
         }
 
         .carrusel-container.grab { cursor: grab; }
@@ -194,7 +195,16 @@ export default function Carrusel() {
         .slick-next { right: 14px; }
         .slick-custom-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(139,92,246,0.9); }
 
-        @media (max-width: 768px) { .carrusel-container { height: 260px; border-radius: 12px; margin: 24px auto; } }
+        /* AJUSTE PARA MÓVILES (también manteniendo proporción 3:1, ancho 100%) */
+        @media (max-width: 768px) {
+          .carrusel-container {
+            /* 3:1 proporción: si el ancho es 700px, la altura es 233px */
+            /* Usamos una altura de 250px para mantener un buen tamaño visual en móvil */
+            height: 250px; 
+            border-radius: 12px; 
+            margin: 24px auto; 
+          }
+        }
       `}</style>
 
       <style jsx global>{`

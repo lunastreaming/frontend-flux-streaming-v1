@@ -48,15 +48,15 @@ localStorage.getItem('accessToken') : null
   }, [token])
 
   const cards = [
-    { href: '/supplier/products', title: 'Productos', icon: <FaBoxes />, desc: 'Gestiona tus catálogos y colecciones' },
-    { href: '/supplier/items', title: 'Items', icon: <FaListAlt />, desc: 'Control de unidades y SKUs' },
-    { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine />, desc: 'Resumen de ventas y métricas' },
+    { href: '/supplier/products', title: 'Productos', icon: <FaBoxes />, desc: 'Gestiona tus productos' },
+    { href: '/supplier/items', title: 'Items', icon: <FaListAlt />, desc: 'Control de stocks' },
+    { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine />, desc: 'Resumen de ventas' },
     { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList />, desc: 
- 'Revisión y fulfillment' },
-    { href: '/supplier/support', title: 'Soporte', icon: <FaHeadset />, desc: 'Tickets y comunicación con clientes' },
-    { href: '/supplier/renewal', title: 'Renewal', icon: <FaRedo />, desc: 'Renovaciones y suscripciones' },
-    { href: '/supplier/expired', title: 'Vencidas', icon: <FaHourglassEnd />, desc: 'Items o suscripciones vencidas' },
-    { href: '/supplier/wallet', title: 'Billetera', icon: <FaWallet />, desc: 'Balance, recargas y movimientos' },
+ 'Stocks a pedido' },
+    { href: '/supplier/support', title: 'Soporte', icon: <FaHeadset />, desc: 'Tickets de soporte' },
+    { href: '/supplier/renewal', title: 'Renewal', icon: <FaRedo />, desc: 'Renovaciones de stocks' },
+    { href: '/supplier/expired', title: 'Vencidas', icon: <FaHourglassEnd />, desc: 'Stocks vencidos' },
+    { href: '/supplier/wallet', title: 'Billetera', icon: <FaWallet />, desc: 'Saldo, recargas y movimientos' },
   ]
 
   return (
@@ -174,7 +174,8 @@ Luna Streaming</title>
           .container {
             width: 100%;
             padding: 20px 16px; /* Ajusta el padding lateral para dejar espacio sin desbordar */
-            margin: 12px auto 0; 
+            margin: 12px auto 0;
+            max-width: 100vw;
           }
 
           /* 💡 CORRECCIÓN ANTERIOR: Centra el contenido del encabezado */
@@ -183,7 +184,22 @@ Luna Streaming</title>
             align-items: center; 
             text-align: center;
  }
-          .grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          .grid { 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Reducimos el minmax si es necesario */
+            /* Se asegura que la rejilla no se desborde */
+            width: 100%;
+          }
+
+          .hero h1 {
+            text-align: center;
+          }
+          .lead {
+            text-align: center;
+            /* Opción: Ajustar el ancho máximo del texto lead para que no sea demasiado largo en pantallas pequeñas */
+            max-width: 90%; 
+            margin-left: auto;
+            margin-right: auto;
+          }
  }
         }
       `}</style>
