@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router' // ¡Asegúrate de que esta importación exista!
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import {
@@ -20,6 +21,12 @@ import ReembolsadoTable from '../components/tables/ReembolsadoTable'
 import PedidoTable from '../components/tables/PedidoTable'
 
 export default function ComprasPage() {
+  const router = useRouter() // Inicializar router
+
+  // --- Estados de montaje y token ---
+  const [hasMounted, setHasMounted] = useState(false)
+  
+  // --- Estados de la UI y datos ---
   const [viewFilter, setViewFilter] = useState('compras')
   const [search, setSearch] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -34,13 +41,37 @@ export default function ComprasPage() {
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
+  // 1. Detección de montaje
+  useEffect(() => { setHasMounted(true) }, [])
+
+  // 2. Verificar token y redirigir inmediatamente si no existe (Similar a Billetera.js)
   useEffect(() => {
+    if (!hasMounted) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      router.replace('/login')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMounted])
+
+  // 3. Fetcher de saldo con validación de token/401
+  useEffect(() => {
+    if (!hasMounted) return
     const fetchBalance = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
       try {
-        const token = localStorage.getItem('accessToken')
         const res = await fetch(`${BASE_URL}/api/users/me`, {
           headers: { Authorization: `Bearer ${token}` }
         })
+        
+        // Redirección por error de autorización (401)
+        if (res.status === 401) {
+          router.replace('/login')
+          return
+        }
+
         if (!res.ok) throw new Error(`Error ${res.status}`)
         const data = await res.json()
         setBalance(data.balance)
@@ -50,13 +81,25 @@ export default function ComprasPage() {
       }
     }
     fetchBalance()
-  }, [BASE_URL])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [BASE_URL, hasMounted])
 
+  // 4. Fetcher de conteos con validación de token/401
   useEffect(() => {
+    if (!hasMounted) return
     const token = localStorage.getItem('accessToken')
+    if (!token) return
+
     const fetchCount = async (key, url) => {
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+     
+        // Redirección por error de autorización (401)
+        if (res.status === 401) {
+          router.replace('/login')
+          return
+        }
+
         if (!res.ok) throw new Error()
         const data = await res.json()
         const total = Array.isArray(data)
@@ -73,12 +116,27 @@ export default function ComprasPage() {
     fetchCount('soporte', `${BASE_URL}/api/support/client/me?page=0&size=50`)
     fetchCount('resuelto', `${BASE_URL}/api/support/client/in-process?page=0&size=50`)
     fetchCount('reembolsado', `${BASE_URL}/api/stocks/refunds?page=0&size=50`)
-  }, [refreshKey, BASE_URL])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, BASE_URL, hasMounted])
 
   const handleClick = (view) => {
     setViewFilter(view)
     setRefreshKey(prev => prev + 1)
   }
+
+  // Renderizado condicional inicial
+  if (!hasMounted) {
+    return (
+      <div className="min-h-screen page-bg text-white font-inter">
+        <Navbar />
+        <main className="page-container">
+          <p>Cargando sesión...</p>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
 
   return (
     <div className="min-h-screen page-bg text-white font-inter">
@@ -90,7 +148,8 @@ export default function ComprasPage() {
           
           {/* ⭐ 1. Botones de navegación (Scroll horizontal en móvil) */}
           <div className="actions-right" role="toolbar" aria-label="Filtros de vista">
-            {[
+           {/* La función map DEBE estar entre llaves {} */}
+           {[
               { id: 'compras', label: 'Compras', icon: FaShoppingCart },
               { id: 'pedido', label: 'A pedido', icon: FaClipboardList },
               { id: 'soporte', label: 'Soporte', icon: FaLifeRing },
@@ -103,7 +162,8 @@ export default function ComprasPage() {
                 onClick={() => handleClick(item.id)}
                 title={item.label}
               >
-                <item.icon className="icon-large" />
+                {/* El componente Icon DEBE estar en mayúscula inicial */}
+                <item.icon className="icon-large" /> 
                 <div className="icon-label">{item.label}</div>
                 {counts[item.id] > 0 && <span className="badge">{counts[item.id]}</span>}
               </div>
@@ -123,6 +183,7 @@ export default function ComprasPage() {
           </div>
         </div>
 
+  
         {/* Tablas */}
         <div className="table-container">
           {viewFilter === 'compras' && (
@@ -143,8 +204,8 @@ export default function ComprasPage() {
         }
         
         .page-container { 
-          padding: 80px 16px 40px; 
-          max-width: 1200px; 
+          padding: 80px 16px 40px;
+          max-width: 1200px;
           margin: 0 auto;
           width: 100%;
         }
@@ -152,7 +213,7 @@ export default function ComprasPage() {
         /* --- Header Layout --- */
         .header-row {
           display: flex;
-          flex-direction: column; 
+          flex-direction: column;
           gap: 16px;
           margin-bottom: 24px;
         }
@@ -174,7 +235,7 @@ export default function ComprasPage() {
         
         .search-input-inline { 
           flex: 1;
-          background: transparent; 
+          background: transparent;
           border: none; 
           color: #fff; 
           outline: none; 
@@ -193,8 +254,8 @@ export default function ComprasPage() {
           
           /* Usamos padding del .page-container (16px) */
           margin-left: 0;
-          padding-left: 0; 
-          padding-right: 0; 
+          padding-left: 0;
+          padding-right: 0;
           width: 100%; 
         }
         
@@ -215,13 +276,12 @@ export default function ComprasPage() {
         .icon-btn {
           position: relative;
           display: flex;
-          flex-direction: column; 
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          
           /* ⭐ AUMENTO DE TAMAÑO: Usamos el tamaño de escritorio (72px) en móvil para dar más aire */
-          min-width: 72px; 
+          min-width: 72px;
           width: 72px;
           height: 72px;
           
@@ -231,12 +291,12 @@ export default function ComprasPage() {
           color: #cfe7ff;
           cursor: pointer;
           transition: all 0.2s ease;
-          flex-shrink: 0; 
+          flex-shrink: 0;
         }
 
         .icon-btn.active { 
           background: linear-gradient(90deg, #06b6d4, #3b82f6);
-          color: #021018; 
+          color: #021018;
           border: none; 
           box-shadow: 0 4px 12px rgba(59,130,246,0.3);
           transform: translateY(-2px);
@@ -274,26 +334,29 @@ export default function ComprasPage() {
 
           .header-row {
             /* Invertimos el orden para desktop: buscador a la izquierda, botones a la derecha */
-            flex-direction: row; 
+            flex-direction: row;
             justify-content: space-between;
             align-items: center;
           }
 
           .search-bar {
-            order: 1; /* Coloca el buscador a la izquierda */
+            order: 1;
+            /* Coloca el buscador a la izquierda */
             width: 400px;
             height: 42px;
           }
 
           .actions-right {
-            order: 2; /* Coloca los botones a la derecha */
-            overflow-x: visible; 
+            order: 2;
+            /* Coloca los botones a la derecha */
+            overflow-x: visible;
             justify-content: flex-end;
             width: auto; 
           }
           
           .actions-right::after {
-            content: none; /* Eliminar el espaciador en desktop */
+            content: none;
+            /* Eliminar el espaciador en desktop */
           }
 
           .icon-btn {
