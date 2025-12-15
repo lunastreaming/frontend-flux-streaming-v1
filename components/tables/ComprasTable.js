@@ -100,7 +100,8 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   }
 
   const fetchData = async (pageToLoad = 0) => {
-    setLoading(true); setError(null)
+    setLoading(true);
+    setError(null)
     try {
       const token = localStorage.getItem('accessToken')
       const res = await fetch(`${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`, {
@@ -170,6 +171,47 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
 
   if (loading) return <div className="info">Cargando…</div>
   if (error) return <div className="error">Error: {error}</div>
+
+  // INICIO DE LA LÓGICA AGREGADA: Mostrar imagen si no hay resultados
+  if (displayed.length === 0) {
+    return (
+      <div className="no-results">
+        <img src="/SinCompras.png" alt="No hay compras registradas" className="no-results-image" />
+        <p className="no-results-text">
+          {search ? 
+           `No se encontraron compras que coincidan con "${search}".` : 
+           'Aún no tienes compras registradas.'
+          }
+        </p>
+        <style jsx>{`
+          .no-results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+            color: #cbd5e1;
+            min-height: 400px;
+            background: rgba(22,22,22,0.6); 
+            border:1px solid rgba(255,255,255,0.06); 
+            border-radius:12px;
+          }
+          .no-results-image {
+            max-width: 600px;
+            height: auto;
+            margin-bottom: 20px;
+            opacity: 0.8;
+          }
+          .no-results-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+          }
+        `}</style>
+      </div>
+    )
+  }
+  // FIN DE LA LÓGICA AGREGADA
 
   return (
     <div className="table-wrapper">
@@ -336,36 +378,61 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
       )}
 
       <style jsx>{`
-        .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; }
-        .table-scroll { overflow:auto; border-radius:8px; }
-        table.styled-table { width:100%; border-collapse:separate; border-spacing: 0 12px; color:#e1e1e1; min-width: 980px; }
-        thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
-        thead th { padding:10px; text-align:center; font-weight:700; }
-        tbody td { padding:0; text-align:center; }
-        .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
-        .row-inner.index { justify-content:center; width:36px; height:36px; padding:0; }
-        .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .table-wrapper { overflow:hidden;
+          background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; }
+        .table-scroll { overflow:auto; border-radius:8px;
+        }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing: 0 12px; color:#e1e1e1; min-width: 980px;
+        }
+        thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem;
+        }
+        thead th { padding:10px; text-align:center; font-weight:700;
+        }
+        tbody td { padding:0; text-align:center;
+        }
+        .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px;
+        }
+        .row-inner.index { justify-content:center; width:36px; height:36px; padding:0;
+        }
+        .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
 
-        .password-cell { display:flex; align-items:center; gap:8px; }
-        .pw-btn { background:none; border:none; color:#9fb4c8; cursor:pointer; }
+        .password-cell { display:flex; align-items:center; gap:8px;
+        }
+        .pw-btn { background:none; border:none; color:#9fb4c8; cursor:pointer;
+        }
 
-        .whatsapp-cell { display:flex; align-items:center; gap:8px; }
-        .wa-btn { width:28px; height:28px; border-radius:50%; background:#25d366; color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-        .wa-number { font-size:12px; color:#cbd5e1; }
+        .whatsapp-cell { display:flex; align-items:center; gap:8px;
+        }
+        .wa-btn { width:28px; height:28px; border-radius:50%; background:#25d366; color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+        }
+        .wa-number { font-size:12px; color:#cbd5e1;
+        }
 
-        .config-cell { display:flex; align-items:center; gap:8px; }
-        .config-btn { display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e6eef7; padding:8px 12px; border-radius:8px; cursor:pointer; }
-        .config-btn:hover { background: rgba(255,255,255,0.14); }
-        .config-label { font-weight:700; font-size:12px; }
-        .renew-btn { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none; color:#fff; }
+        .config-cell { display:flex; align-items:center; gap:8px;
+        }
+        .config-btn { display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e6eef7;
+        padding:8px 12px; border-radius:8px; cursor:pointer; }
+        .config-btn:hover { background: rgba(255,255,255,0.14);
+        }
+        .config-label { font-weight:700; font-size:12px;
+        }
+        .renew-btn { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border: none; color:#fff;
+        }
 
-        .info { padding:28px; text-align:center; color:#cbd5e1; }
-        .error { padding:28px; text-align:center; color:#fca5a5; }
+        .info { padding:28px; text-align:center; color:#cbd5e1;
+        }
+        .error { padding:28px; text-align:center; color:#fca5a5;
+        }
 
-        .pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px; color:#cbd5e1; }
-        .pagination button { padding:6px 12px; border-radius:6px; border:none; cursor:pointer; }
-        .pagination-extra { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:8px; color:#cbd5e1; }
-        .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color:#fff; }
+        .pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:16px; color:#cbd5e1;
+        }
+        .pagination button { padding:6px 12px; border-radius:6px; border:none; cursor:pointer;
+        }
+        .pagination-extra { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:8px; color:#cbd5e1;
+        }
+        .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+        color:#fff; }
       `}</style>
     </div>
   )

@@ -86,8 +86,7 @@ export default function NavBarSupplier({ counts = {} }) {
           </span>
         </button>
 
-        <ul id="supplier-primary-navigation" className={`supplier-nav-items ${menuOpen ?
-          'open' : ''}`}>
+        <ul id="supplier-primary-navigation" className={`supplier-nav-items ${menuOpen ? 'open' : ''}`}>
           <li onClick={closeMenu}>
             <Link href="/supplier/products" passHref legacyBehavior>
               <a><FaBoxes /><span>Productos</span></a>
@@ -206,9 +205,13 @@ export default function NavBarSupplier({ counts = {} }) {
           display: inline-block;
           transition: transform 0.3s ease, filter 0.3s ease;
         }
-        .logo-container:hover { transform: scale(1.05);
-          filter: drop-shadow(0 0 8px #BFBFBF); }
-        .logo-image { height: 40px; object-fit: contain;
+        .logo-container:hover { 
+          transform: scale(1.05);
+          filter: drop-shadow(0 0 8px #BFBFBF);
+        }
+        .logo-image { 
+          height: 40px; 
+          object-fit: contain;
         }
 
         /* HAMBURGER */
@@ -346,16 +349,19 @@ export default function NavBarSupplier({ counts = {} }) {
 
         /* MOBILE STYLES */
         @media (max-width: 768px) {
-          .supplier-navbar { flex-direction: column;
+          .supplier-navbar { 
+            /* *** CAMBIO CLAVE 1: Fuerza al padding a incluirse dentro del 100% del ancho *** */
+            box-sizing: border-box; /* AÑADIDO PARA EVITAR DESBORDAMIENTO */
+            flex-direction: column;
             align-items: flex-start; 
-            /* CORRECCIÓN: Aumenta el padding horizontal de 12px a 16px para más espacio */
-            padding: 12px 16px; 
+            /* Ajustamos el padding a 24px para un buen margen */
+            padding: 12px 24px; /* AJUSTADO */
             gap: 12px; 
           } 
           
           .navbar-main { 
             width: 100%;
-            display: flex; 
+            display: flex;
             align-items: center; 
             justify-content: space-between; 
             gap: 12px;
@@ -363,10 +369,9 @@ export default function NavBarSupplier({ counts = {} }) {
 
           .hamburger { 
             display: inline-flex;
-            align-items: center; 
+            align-items: center;
             justify-content: center; 
-            /* Se asegura que no haya margen de escritorio en móvil */
-            margin-left: 0; 
+            margin-left: 0;
           }
 
           /* Ocultamos los items por defecto en mobile */
@@ -378,7 +383,8 @@ export default function NavBarSupplier({ counts = {} }) {
             display: flex;
             position: absolute;
             top: calc(100% + 10px);
-            right: 16px;
+            /* *** CAMBIO CLAVE 2: Aseguramos que el menú se alinee al nuevo borde (24px) *** */
+            right: 24px; /* AJUSTADO (antes 16px) */
             background: rgba(20,20,20,0.98);
             border: 1px solid rgba(255,255,255,0.04);
             border-radius: 12px;
@@ -395,10 +401,7 @@ export default function NavBarSupplier({ counts = {} }) {
           .supplier-nav-items li a { width: 100%;
           }
 
-          .logout-area { width: 100%; display: flex; justify-content: flex-end;
-          }
-
-          /* Hide desktop logout button when dropdown is used (optional) */
+          /* Se oculta el botón de logout de escritorio */
           .logout-area { display: none;
           }
           .supplier-nav-items.open .logout-button-inline { display: inline-grid;
@@ -412,7 +415,7 @@ export default function NavBarSupplier({ counts = {} }) {
         @media (min-width: 769px) {
           /* Ensure dropdown not visible on desktop */
           .supplier-nav-items.open { position: static;
-            display: flex; }
+          display: flex; }
           .logout-area { display: flex;
           }
           
