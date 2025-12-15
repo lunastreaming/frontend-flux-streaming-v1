@@ -65,7 +65,8 @@ export default function Navbar() {
       try {
         logout()
       } catch {
-        try { localStorage.removeItem('accessToken'); localStorage.removeItem('refreshToken') } catch {}
+        
+ try { localStorage.removeItem('accessToken'); localStorage.removeItem('refreshToken') } catch {}
       }
       setLoggingOut(false)
       router.push('/')
@@ -80,7 +81,8 @@ export default function Navbar() {
       <Link href="/" passHref legacyBehavior>
         <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
           <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
-        </a>
+   
+      </a>
       </Link>
 
       {/* Botón hamburger visible solo en mobile */}
@@ -92,12 +94,14 @@ export default function Navbar() {
         onClick={toggleMenu}
         type="button"
       >
-        <span className="hamburger-box" aria-hidden="true">
+     
+      <span className="hamburger-box" aria-hidden="true">
           <span className="hamburger-inner" />
         </span>
       </button>
 
-      <div className="nav-right">
+      {/* Importante: Añadir clase 'open' al contenedor nav-right */}
+      <div className={`nav-right ${menuOpen ? 'open' : ''}`}>
         <ul id="primary-navigation" className={`nav-items ${menuOpen ? 'open' : ''}`}>
           <li className="nav-item" onClick={closeMenu}>
             <Link href="/" passHref legacyBehavior>
@@ -105,7 +109,8 @@ export default function Navbar() {
                 <FaUserAlt className="nav-icon" />
                 <span className="nav-text">Inicio</span>
               </a>
-            </Link>
+        
+     </Link>
           </li>
 
           <li className="nav-item" onClick={closeMenu}>
@@ -113,7 +118,8 @@ export default function Navbar() {
               <a>
                 <FaWallet className="nav-icon" />
                 <span className="nav-text">Billetera</span>
-              </a>
+          
+     </a>
             </Link>
           </li>
 
@@ -121,7 +127,8 @@ export default function Navbar() {
             <Link href="/compras" passHref legacyBehavior>
               <a>
                 <FaShoppingCart className="nav-icon" />
-                <span className="nav-text">Compras</span>
+               
+ <span className="nav-text">Compras</span>
               </a>
             </Link>
           </li>
@@ -133,7 +140,8 @@ export default function Navbar() {
               </Link>
             </li>
           ) : (
-            <li className="nav-item" onClick={closeMenu}>
+            
+ <li className="nav-item" onClick={closeMenu}>
               <button
                 className="login-box logout"
                 onClick={handleLogout}
@@ -146,50 +154,53 @@ export default function Navbar() {
               </button>
             </li>
           )}
-        </ul>
+      
+     </ul>
       </div>
 
       <style jsx>{`
         .navbar {
           width: 100%;
-          max-width: 1200px;
+ max-width: 1200px;
           margin: 32px auto;
           padding: 16px 32px;
           /* 🚨 CAMBIO DE OPACIDAD: De 0.8 a 0.4 (más transparente) */
-          background-color: rgba(26, 26, 26, 0.4); 
-          backdrop-filter: blur(12px);
+          background-color: rgba(26, 26, 26, 0.4);
+ backdrop-filter: blur(12px);
           border-radius: 20px;
           border: 1px solid #2E2E2E;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
           display: flex;
           justify-content: space-between;
-          align-items: center;
+ align-items: center;
           flex-wrap: nowrap;
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
           gap: 16px;
-          position: relative; /* importante para posicionar el dropdown */
+          position: relative;
+ /* importante para posicionar el dropdown */
           z-index: 1000;
-          overflow: visible; /* permitir que el dropdown se muestre fuera */
+          overflow: visible;
+ /* permitir que el dropdown se muestre fuera */
         }
 
         .logo-container {
           display: inline-block;
-          transition: transform 0.4s ease, filter 0.4s ease;
+ transition: transform 0.4s ease, filter 0.4s ease;
         }
         .logo-container:hover {
           transform: scale(1.05);
-          filter: drop-shadow(0 0 8px #BFBFBF);
+ filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image {
           height: 40px;
-          object-fit: contain;
+ object-fit: contain;
         }
 
         /* HAMBURGER */
         .hamburger {
           display: none;
-          background: transparent;
+ background: transparent;
           border: none;
           padding: 8px;
           margin-left: 8px;
@@ -197,32 +208,40 @@ export default function Navbar() {
           border-radius: 8px;
           z-index: 1200;
         }
-        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25); }
-        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
+        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25);
+        }
+        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative;
+        }
         .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
           width: 28px;
-          height: 2px;
+ height: 2px;
           background-color: #E0E0E0;
           position: absolute;
           left: 0;
           transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
         }
-        .hamburger-inner { top: 50%; transform: translateY(-50%); }
-        .hamburger-inner::before { content: ''; top: -8px; }
-        .hamburger-inner::after { content: ''; top: 8px; }
-        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%; }
-        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0; }
-        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
+        .hamburger-inner { top: 50%; transform: translateY(-50%);
+        }
+        .hamburger-inner::before { content: ''; top: -8px;
+        }
+        .hamburger-inner::after { content: ''; top: 8px;
+        }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%;
+        }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0;
+        }
+        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0;
+        }
 
         .nav-right {
           display: flex;
-          align-items: center;
+ align-items: center;
           gap: 24px;
         }
 
         .nav-items {
           display: flex;
-          gap: 32px;
+ gap: 32px;
           list-style: none;
           margin: 0;
           padding: 0;
@@ -233,52 +252,52 @@ export default function Navbar() {
 
         .nav-item {
           cursor: pointer;
-          transition: all 0.3s ease;
+ transition: all 0.3s ease;
           padding: 6px 12px;
           border-radius: 12px;
         }
         .nav-item a {
           display: flex;
-          align-items: center;
+ align-items: center;
           gap: 8px;
           text-decoration: none;
         }
 
         .nav-icon {
           color: #E0E0E0;
-          font-size: 1.2rem;
+ font-size: 1.2rem;
           transition: color 0.3s ease, filter 0.3s ease;
         }
         .nav-text {
           color: #D1D1D1;
-          text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
+ text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
           transition: color 0.3s ease, text-shadow 0.3s ease;
         }
 
         .nav-item:hover {
           transform: scale(1.05);
-          background-color: rgba(255, 255, 255, 0.05);
+ background-color: rgba(255, 255, 255, 0.05);
           box-shadow: 0 0 12px rgba(191, 191, 191, 0.15);
         }
         .nav-item:hover .nav-icon {
           color: #BFBFBF;
-          filter: drop-shadow(0 0 6px rgba(191, 191, 191, 0.5));
+ filter: drop-shadow(0 0 6px rgba(191, 191, 191, 0.5));
         }
         .nav-item:hover .nav-text {
           color: #BFBFBF;
-          text-shadow: 0 0 8px rgba(191, 191, 191, 0.6);
+ text-shadow: 0 0 8px rgba(191, 191, 191, 0.6);
         }
 
         .login-box {
           display: inline-flex;
-          align-items: center;
+ align-items: center;
           gap: 10px;
           background-color: rgba(26, 26, 26, 0.6);
           border: 1px solid #2E2E2E;
           color: #D1D1D1;
           padding: 8px 16px;
           border-radius: 12px;
-          font-weight: 600;
+ font-weight: 600;
           text-decoration: none;
           box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
           transition: all 0.3s ease;
@@ -286,48 +305,67 @@ export default function Navbar() {
         }
         .login-box:hover {
           background-color: rgba(46, 46, 46, 0.6);
-          box-shadow: 0 0 12px rgba(191, 191, 191, 0.2);
+ box-shadow: 0 0 12px rgba(191, 191, 191, 0.2);
           transform: translateY(-1px);
         }
 
         .login-box.logout {
           background: linear-gradient(135deg, #ff4d6d 0%, #ff233f 100%);
-          color: #ffffff;
+ color: #ffffff;
           border: 1px solid rgba(255, 35, 63, 0.18);
           box-shadow: 0 8px 20px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
           transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
         }
         .login-box.logout:hover {
           transform: translateY(-2px);
-          box-shadow: 0 14px 30px rgba(255, 35, 63, 0.16), 0 4px 12px rgba(0,0,0,0.38);
+ box-shadow: 0 14px 30px rgba(255, 35, 63, 0.16), 0 4px 12px rgba(0,0,0,0.38);
           filter: saturate(1.05);
         }
         .login-box.logout:active {
           transform: translateY(0);
-          box-shadow: 0 8px 18px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
+ box-shadow: 0 8px 18px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
         }
 
-        .logout-icon { font-size: 1rem; color: rgba(255,255,255,0.95); }
-        .logout-text { color: #fff; font-weight: 700; }
+        .logout-icon { font-size: 1rem; color: rgba(255,255,255,0.95);
+        }
+        .logout-text { color: #fff; font-weight: 700;
+        }
 
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0;
+ transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0);
+        }
         }
 
         /* MOBILE STYLES */
         @media (max-width: 768px) {
           .navbar {
             padding: 12px 16px;
-            gap: 12px;
+ gap: 12px;
           }
 
           .hamburger {
             display: inline-flex;
-            align-items: center;
+ align-items: center;
             justify-content: center;
           }
 
+          /* Por defecto ocultamos el contenedor de escritorio (.nav-right) */
+          .nav-right {
+            display: none;
+          }
+
+          /* 🛑 CORRECCIÓN CLAVE: Al abrir, sacamos .nav-right del flujo de layout con position: absolute */
+          .nav-right.open {
+            display: block; 
+            position: absolute; /* Esto evita que interfiera con el space-between del .navbar */
+            top: 0; /* Aseguramos que se posicione desde el inicio del navbar */
+            right: 0;
+            width: 100%; /* Ocupa todo el ancho si es necesario, aunque el ul.nav-items será el que flote */
+            height: 0; /* No queremos que ocupe espacio, solo que sirva de contenedor absoluto */
+          }
+          
           /* Ocultamos los items por defecto en mobile */
           .nav-items {
             display: none;
@@ -336,9 +374,15 @@ export default function Navbar() {
           /* Cuando el menú está abierto mostramos los items en columna (dropdown absoluto) */
           .nav-items.open {
             display: flex;
+            
+            /* Usamos position: absolute para el menú desplegable (ul) */
             position: absolute;
-            top: calc(100% + 10px);
+            top: 55px; /* Ajuste manual para que baje desde el botón (la altura del navbar es aprox 40px + padding) */
+            
+            /* Anclaje a la derecha, para que coincida con el botón */
             right: 16px;
+            left: auto; 
+
             background: rgba(20,20,20,0.98);
             border: 1px solid rgba(255,255,255,0.04);
             border-radius: 12px;
@@ -349,6 +393,16 @@ export default function Navbar() {
             z-index: 1100;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           }
+          
+          /* Ajuste para que el menú salga desde el div.nav-right absoluto */
+          /* Es necesario porque el padre ahora tiene position: absolute; */
+          .nav-right.open .nav-items.open {
+              top: 55px; /* Se queda igual, pero ahora se posiciona respecto al <body> si .nav-right.open no tiene position: relative; */
+              /* Si queremos que se posicione respecto al .navbar, debemos añadir: */
+              /* .navbar { position: relative; } */
+              /* (¡Esto ya está en tu código!) */
+          }
+
 
           .nav-item {
             width: 100%;
@@ -356,14 +410,9 @@ export default function Navbar() {
             border-radius: 8px;
           }
 
-          .nav-item a { width: 100%; }
-
-          .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+          .nav-item a { width: 100%;
           }
-
+          
           /* Ajustes para que el login/logout se vea bien en mobile */
           .login-box {
             padding: 10px 12px;

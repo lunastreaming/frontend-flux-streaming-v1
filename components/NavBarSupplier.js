@@ -86,7 +86,8 @@ export default function NavBarSupplier({ counts = {} }) {
           </span>
         </button>
 
-        <ul id="supplier-primary-navigation" className={`supplier-nav-items ${menuOpen ? 'open' : ''}`}>
+        <ul id="supplier-primary-navigation" className={`supplier-nav-items ${menuOpen ?
+          'open' : ''}`}>
           <li onClick={closeMenu}>
             <Link href="/supplier/products" passHref legacyBehavior>
               <a><FaBoxes /><span>Productos</span></a>
@@ -143,7 +144,7 @@ export default function NavBarSupplier({ counts = {} }) {
             </Link>
           </li>
 
-          {/* Logout as menu item for mobile; on desktop the separate button remains visible */}
+          {/* Logout as menu item for mobile */}
           <li className="logout-item" onClick={closeMenu}>
             <button
               type="button"
@@ -205,8 +206,10 @@ export default function NavBarSupplier({ counts = {} }) {
           display: inline-block;
           transition: transform 0.3s ease, filter 0.3s ease;
         }
-        .logo-container:hover { transform: scale(1.05); filter: drop-shadow(0 0 8px #BFBFBF); }
-        .logo-image { height: 40px; object-fit: contain; }
+        .logo-container:hover { transform: scale(1.05);
+          filter: drop-shadow(0 0 8px #BFBFBF); }
+        .logo-image { height: 40px; object-fit: contain;
+        }
 
         /* HAMBURGER */
         .hamburger {
@@ -214,13 +217,15 @@ export default function NavBarSupplier({ counts = {} }) {
           background: transparent;
           border: none;
           padding: 8px;
-          margin-left: 8px;
+          margin-left: 8px; /* Este margen es para escritorio/tablet */
           cursor: pointer;
           border-radius: 8px;
           z-index: 1200;
         }
-        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25); }
-        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
+        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25);
+        }
+        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative;
+        }
         .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
           width: 28px;
           height: 2px;
@@ -229,12 +234,18 @@ export default function NavBarSupplier({ counts = {} }) {
           left: 0;
           transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
         }
-        .hamburger-inner { top: 50%; transform: translateY(-50%); }
-        .hamburger-inner::before { content: ''; top: -8px; }
-        .hamburger-inner::after { content: ''; top: 8px; }
-        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%; }
-        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0; }
-        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
+        .hamburger-inner { top: 50%; transform: translateY(-50%);
+        }
+        .hamburger-inner::before { content: ''; top: -8px;
+        }
+        .hamburger-inner::after { content: ''; top: 8px;
+        }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%;
+        }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0;
+        }
+        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0;
+        }
 
         .supplier-nav-items {
           display: flex;
@@ -269,9 +280,12 @@ export default function NavBarSupplier({ counts = {} }) {
           min-height: 40px;
         }
 
-        .supplier-nav-items li:hover { transform: translateY(-3px); background-color: rgba(255,255,255,0.04); }
-        .supplier-nav-items li:hover svg { color: #BFBFBF; filter: drop-shadow(0 0 6px rgba(191,191,191,0.4)); }
-        .supplier-nav-items li:hover span { color: #BFBFBF; }
+        .supplier-nav-items li:hover { transform: translateY(-3px); background-color: rgba(255,255,255,0.04);
+        }
+        .supplier-nav-items li:hover svg { color: #BFBFBF; filter: drop-shadow(0 0 6px rgba(191,191,191,0.4));
+        }
+        .supplier-nav-items li:hover span { color: #BFBFBF;
+        }
 
         .badge {
           position: absolute;
@@ -307,8 +321,10 @@ export default function NavBarSupplier({ counts = {} }) {
           transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
           box-shadow: 0 8px 18px rgba(255,77,77,0.14);
         }
-        .logout-button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(255,77,77,0.2); }
-        .logout-button svg { width: 18px; height: 18px; }
+        .logout-button:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(255,77,77,0.2);
+        }
+        .logout-button svg { width: 18px; height: 18px;
+        }
 
         .logout-button-inline {
           display: inline-grid;
@@ -322,19 +338,40 @@ export default function NavBarSupplier({ counts = {} }) {
           cursor: pointer;
         }
 
-        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+          overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0;
+          transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
         /* MOBILE STYLES */
         @media (max-width: 768px) {
-          .supplier-navbar { flex-direction: column; align-items: flex-start; padding: 12px; gap: 12px; }
-          .navbar-main { width: 100%; display: flex; align-items: center; gap: 12px; }
+          .supplier-navbar { flex-direction: column;
+            align-items: flex-start; 
+            /* CORRECCIÓN: Aumenta el padding horizontal de 12px a 16px para más espacio */
+            padding: 12px 16px; 
+            gap: 12px; 
+          } 
+          
+          .navbar-main { 
+            width: 100%;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 12px;
+          }
 
-          .hamburger { display: inline-flex; align-items: center; justify-content: center; }
+          .hamburger { 
+            display: inline-flex;
+            align-items: center; 
+            justify-content: center; 
+            /* Se asegura que no haya margen de escritorio en móvil */
+            margin-left: 0; 
+          }
 
           /* Ocultamos los items por defecto en mobile */
-          .supplier-nav-items { display: none; }
+          .supplier-nav-items { display: none;
+          } 
 
           /* Dropdown absoluto */
           .supplier-nav-items.open {
@@ -353,23 +390,36 @@ export default function NavBarSupplier({ counts = {} }) {
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           }
 
-          .supplier-nav-items li { width: 100%; padding: 10px 12px; border-radius: 8px; }
-          .supplier-nav-items li a { width: 100%; }
+          .supplier-nav-items li { width: 100%; padding: 10px 12px; border-radius: 8px;
+          }
+          .supplier-nav-items li a { width: 100%;
+          }
 
-          .logout-area { width: 100%; display: flex; justify-content: flex-end; }
+          .logout-area { width: 100%; display: flex; justify-content: flex-end;
+          }
 
           /* Hide desktop logout button when dropdown is used (optional) */
-          .logout-area { display: none; }
-          .supplier-nav-items.open .logout-button-inline { display: inline-grid; }
+          .logout-area { display: none;
+          }
+          .supplier-nav-items.open .logout-button-inline { display: inline-grid;
+          }
 
           /* If you prefer the menu to be inline (push content down) instead of absolute,
-             replace .supplier-nav-items.open rules with position: static; width: 100%; */
+             replace .supplier-nav-items.open rules with position: static;
+             width: 100%; */
         }
 
         @media (min-width: 769px) {
           /* Ensure dropdown not visible on desktop */
-          .supplier-nav-items.open { position: static; display: flex; }
-          .logout-area { display: flex; }
+          .supplier-nav-items.open { position: static;
+            display: flex; }
+          .logout-area { display: flex;
+          }
+          
+          /* Oculta el ítem de logout INLINE en escritorio para prevenir duplicados */
+          .logout-item { 
+            display: none !important;
+          }
         }
       `}</style>
     </nav>

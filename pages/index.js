@@ -821,8 +821,14 @@ justify-content:center;
   }
   .btn-primary[aria-disabled="true"] { opacity: 0.95; cursor: not-allowed; }
 
-  .btn-primary.in-stock { background: linear-gradient(90deg, var(--accent-1), #06b6d4);
-color: #fff; }
+.btn-primary.in-stock { 
+    /* Gradiente Cian (#06B6D4) a Verde Esmeralda (#10B981) */
+    background: linear-gradient(90deg, #06B6D4, #10B981);
+    /* Color de texto oscuro para alto contraste (#021018) */
+    color: #021018; 
+    /* Mismo peso de fuente que el modal */
+    font-weight: 900;
+}
   .btn-primary.out-stock {
     background: linear-gradient(90deg, rgba(255,240,240,0.02), rgba(255,240,240,0.01));
     color: var(--red-stock); border:1px solid rgba(239,68,68,0.08);

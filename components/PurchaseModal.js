@@ -81,7 +81,8 @@ const selectStyles = {
   }),
   option: (base, state) => ({
     ...base,
-    backgroundColor: state.isFocused ? '#232323' : '#131313',
+    backgroundColor: state.isFocused ?
+      '#232323' : '#131313',
     color: '#F0F0F0',
     fontSize: '0.88rem',
   }),
@@ -112,24 +113,27 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
   const [loadingCountries, setLoadingCountries] = useState(true)
 
   useEffect(() => {
-  try {
-    setLoadingCountries(true)
-    const mapped = countriesData
-      .map(c => ({
-        label: `${c.flag ? c.flag + ' ' : ''}${c.name} (+${c.dial})`,
-        value: c.code,
-        name: c.name,
-        dial: String(c.dial).replace(/\D/g, ''),
-        flag: c.flag || null
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-    setCountries(mapped)
-    const defaultCountry = mapped.find(c => c.name.toLowerCase().includes('peru')) || mapped[0]
-    setSelectedCountry(defaultCountry)
-  } finally {
-    setLoadingCountries(false)
-  }
-}, [])
+    try {
+      setLoadingCountries(true)
+      const mapped = countriesData
+        .map(c => ({
+          label: `${c.flag ?
+            c.flag + ' ' : ''}${c.name} (+${c.dial})`,
+          value: c.code,
+          name: c.name,
+          dial: String(c.dial).replace(/\D/g, ''),
+          flag: c.flag ||
+            null
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      setCountries(mapped)
+      const defaultCountry = mapped.find(c => c.name.toLowerCase().includes('peru')) ||
+        mapped[0]
+      setSelectedCountry(defaultCountry)
+    } finally {
+      setLoadingCountries(false)
+    }
+  }, [])
 
 
   // Estado para modal de términos
@@ -164,7 +168,8 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
     }
 
     // 2) Si viene envuelto: { product: { ... } }
-    if (p.product && (p.product.id || p.product.name || p.product.salePrice)) {
+    if (p.product && (p.product.id ||
+      p.product.name || p.product.salePrice)) {
       const pr = p.product
       return {
         ...pr,
@@ -202,9 +207,6 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
 
   const resolvedProduct = resolveProduct(product)
 
-  // console.log('PurchaseModal prop product:', product) // descomenta para depurar
-  // console.log('PurchaseModal resolvedProduct:', resolvedProduct) // descomenta para depurar
-
   const validateFields = () => {
     if (!customerName.trim()) return 'Ingresa el nombre del cliente'
     if (!customerPhone.trim()) return 'Ingresa el celular'
@@ -236,26 +238,28 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         return
       }
 
-// normalizar número con país seleccionado
-const localDigits = customerPhone.replace(/\D/g, '')
-const fullPhone = `+${String(selectedCountry.dial).replace(/\D/g, '')}${localDigits}`
+      // normalizar número con país seleccionado
+      const localDigits = customerPhone.replace(/\D/g, '')
+      const fullPhone = `+${String(selectedCountry.dial).replace(/\D/g, '')}${localDigits}`
 
-const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/purchase`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  body: JSON.stringify({
-    clientName: customerName.trim(),
-    clientPhone: fullPhone,   // 👈 ahora envías el número completo
-    password: password.trim()
-  })
-})
+      const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          clientName: customerName.trim(),
+          clientPhone: fullPhone,
+          password: password.trim()
+        })
+      })
 
       if (!res.ok) {
-        const contentType = res.headers.get('content-type') || ''
+        const contentType = res.headers.get('content-type') ||
+          ''
         let serverMsg = ''
         if (contentType.includes('application/json')) {
           const json = await res.json().catch(() => null)
-          serverMsg = json?.message || json?.error || ''
+          serverMsg = json?.message ||
+            json?.error || ''
         } else {
           serverMsg = await res.text().catch(() => '')
         }
@@ -291,13 +295,16 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   }
 
-  const price = resolvedProduct?.salePrice ?? resolvedProduct?.price ?? null
+  const price = resolvedProduct?.salePrice ??
+    resolvedProduct?.price ?? null
   const insufficient = price != null && balance != null && Number(balance) < Number(price)
 
   // Extraer campos de términos
-  const termsText = resolvedProduct?.terms ?? ''
+  const termsText = resolvedProduct?.terms ??
+    ''
   const productDetail = resolvedProduct?.productDetail ?? ''
-  const requestDetail = resolvedProduct?.requestDetail ?? ''
+  const requestDetail = resolvedProduct?.requestDetail ??
+    ''
 
   const hasAnyTerms = Boolean(
     (termsText && termsText.trim()) ||
@@ -305,9 +312,32 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
     (requestDetail && requestDetail.trim())
   )
 
+  const scrollbarStyles = `
+    .custom-dark-scrollbar::-webkit-scrollbar {
+      width: 8px; /* Ancho del scrollbar vertical */
+      height: 8px; /* Altura del scrollbar horizontal */
+    }
+    
+    .custom-dark-scrollbar::-webkit-scrollbar-track {
+      background: #071026; /* Fondo de la pista (similar al fondo del modal) */
+    }
+    
+    .custom-dark-scrollbar::-webkit-scrollbar-thumb {
+      background: #3b82f6; /* Pulgar azul/gris para contraste */
+      border-radius: 10px;
+      border: 2px solid #071026; /* Borde para visualmente hacerlo más delgado */
+    }
+    
+    .custom-dark-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #546e7a; /* Color al pasar el ratón */
+    }
+  `
+
   return (
     <div style={backdrop}>
-      <div role="dialog" aria-modal="true" style={card}>
+      {/* Aplicamos max-height y overflowY: 'auto' al card principal */}
+      <style>{scrollbarStyles}</style>
+      <div role="dialog" aria-modal="true" style={card} className="custom-dark-scrollbar">
         <button onClick={onClose} aria-label="Cerrar" style={closeBtn}>✕</button>
 
         <div style={content}>
@@ -342,31 +372,34 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
               />
             </div>
             <div style={formRow}>
-  <label style={label}>Celular</label>
-  <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8, alignItems: 'center' }}>
-    <Select
-      options={countries}
-      value={selectedCountry}
-      onChange={opt => setSelectedCountry(opt)}
-      placeholder={loadingCountries ? '...' : 'País'}
-      isDisabled={loadingCountries}
-      components={{ Option: OptionWithFlag, SingleValue: SingleValueWithFlag }}
-      styles={selectStyles}
-    />
-    <input
-      type="tel"
-      value={customerPhone}
-      onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-      style={input}
-      placeholder="Celular"
-    />
-  </div>
-</div>
+              <label style={label}>Celular</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8, alignItems: 'center' }}>
+                <Select
+                  options={countries}
+                  value={selectedCountry}
+                  onChange={opt => setSelectedCountry(opt)}
+                  placeholder={loadingCountries ?
+                    '...' : 'País'}
+                  isDisabled={loadingCountries}
+                  components={{ Option: OptionWithFlag, SingleValue: SingleValueWithFlag }}
+                  styles={selectStyles}
+                />
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                  style={input}
+                  placeholder="Celular"
+                />
+              </div>
+            </div>
             <div style={formRow}>
-              <label style={label}>Password</label>
+              <label
+                style={label}>Password</label>
               <div style={passwordWrap}>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ?
+                    'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ ...input, paddingRight: 40 }}
@@ -375,9 +408,11 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
                   style={eyeBtn}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ?
+                    'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ?
+                    '🙈' : '👁️'}
                 </button>
               </div>
             </div>
@@ -385,25 +420,36 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
           </div>
 
           <div style={infoBox}>
-            <div style={{ fontSize: 13, color: '#9FB4C8', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: '#9FB4C8', textAlign: 'center'
+            }}>
               Confirma la compra solo si estás de acuerdo con el cargo correspondiente.
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center', marginTop: 6 }}>
+          {/* LÍNEA 1: Términos y condiciones (centrado) */}
+          <div style={termsWrapper}>
             <button onClick={() => setTermsOpen(true)} style={termsBtn} type="button">
               Términos y condiciones
             </button>
-
-            <button onClick={onClose} style={secondaryBtn} disabled={loading}>Cerrar</button>
-            <button
-              onClick={handleConfirm}
-              style={confirmBtn(insufficient || loading)}
-              disabled={loading || insufficient}
-            >
-              {loading ? 'Procesando...' : 'Confirmar compra'}
-            </button>
           </div>
+
+          {/* LÍNEA 2: Cerrar (izq) y Confirmar (der) */}
+          <div style={actionsWrapper}>
+            <button onClick={onClose} style={secondaryBtn} disabled={loading}>Cerrar</button>
+
+            <div style={confirmBtnWrap}>
+              <button
+                onClick={handleConfirm}
+                style={confirmBtn(insufficient || loading)}
+                disabled={loading ||
+                  insufficient}
+              >
+                {loading ?
+                  'Procesando...' : 'Confirmar compra'}
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -416,9 +462,10 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
               <button onClick={() => setTermsOpen(false)} aria-label="Cerrar términos" style={termsClose}>✕</button>
             </header>
 
-            <div style={termsContent}>
+            <div style={termsContent} className="custom-dark-scrollbar">
               {!hasAnyTerms ? (
-                <p style={{ color: '#9FB4C8' }}>No hay términos o detalles disponibles para este producto.</p>
+                <p style={{ color: '#9FB4C8' }}>No
+                  hay términos o detalles disponibles para este producto.</p>
               ) : (
                 <>
                   {termsText && termsText.trim() && (
@@ -453,7 +500,9 @@ const res = await fetch(`${BASE_URL}/api/stocks/products/${resolvedProduct.id}/p
       )}
 
     </div>
+    
   )
+  
 }
 /* ===== estilos (inline objects) ===== */
 
@@ -468,9 +517,12 @@ const backdrop = {
   padding: '20px'
 }
 
+// CAMBIO CLAVE: Permite Scroll si el contenido es muy largo.
 const card = {
   width: '100%',
   maxWidth: 680,
+  maxHeight: '90vh', // Altura máxima del 90% del viewport
+  overflowY: 'auto', // Habilita el scroll vertical
   background: 'linear-gradient(180deg, #071026 0%, #081426 100%)',
   color: '#EDF2F7',
   borderRadius: 16,
@@ -488,7 +540,8 @@ const closeBtn = {
   border: 'none',
   color: '#9CA3AF',
   fontSize: 18,
-  cursor: 'pointer'
+  cursor: 'pointer',
+  zIndex: 10 // Asegura que el botón de cerrar sea clickeable sobre el scroll
 }
 
 const content = { display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center', textAlign: 'center' }
@@ -525,13 +578,15 @@ const insufficientBanner = {
   marginTop: 12,
   background: 'linear-gradient(90deg, rgba(252,165,165,0.06), rgba(252,165,165,0.04))',
   color: '#FCA5A5',
-  padding: '10px 14px',
+  padding:
+    '10px 14px',
   borderRadius: 10,
   fontWeight: 800,
   width: '100%',
   textAlign: 'center',
   border: '1px solid rgba(252,165,165,0.08)'
 }
+
 
 const formBox = {
   width: '100%',
@@ -563,7 +618,8 @@ const input = {
   padding: '12px 14px',
   borderRadius: 10,
   border: '1px solid rgba(255,255,255,0.08)',
-  background: 'rgba(255,255,255,0.02)',
+  background:
+    'rgba(255,255,255,0.02)',
   color: '#E6EEF7',
   outline: 'none',
   fontSize: 14,
@@ -604,7 +660,27 @@ const infoBox = {
   justifyContent: 'center'
 }
 
-const actions = { display: 'flex', gap: 12, justifyContent: 'center', marginTop: 6, width: '100%' }
+// ESTILOS DE BOTONES MODIFICADOS PARA LA RESPONSIVIDAD (2 LÍNEAS)
+const termsWrapper = {
+  width: '100%',
+  display: 'flex',
+  justifyContent: 'center', // Centra el botón de Términos
+  marginTop: 6,
+  marginBottom: 12, // Espacio antes de la siguiente línea de botones
+}
+
+const actionsWrapper = {
+  width: '100%',
+  display: 'flex',
+  gap: 12,
+  justifyContent: 'space-between', // Distribuye los botones
+}
+
+const confirmBtnWrap = {
+  display: 'flex',
+  flexGrow: 1, // Permite que el botón de Confirmar crezca
+  minWidth: 120, // Asegura un tamaño mínimo
+}
 
 const secondaryBtn = {
   padding: '12px 16px',
@@ -621,13 +697,16 @@ const confirmBtn = (disabled) => ({
   padding: '12px 16px',
   borderRadius: 10,
   background: disabled
-    ? 'linear-gradient(90deg, #94A3B8, #6B7280)'
+    ?
+    'linear-gradient(90deg, #94A3B8, #6B7280)'
     : 'linear-gradient(90deg, #06B6D4, #10B981)',
-  color: disabled ? '#E6EEF7' : '#021018',
+  color: disabled ?
+    '#E6EEF7' : '#021018',
   fontWeight: 900,
   border: 'none',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  minWidth: 220
+  cursor: disabled ?
+    'not-allowed' : 'pointer',
+  width: '100%', // Para que ocupe todo el ancho de confirmBtnWrap
 })
 
 const termsBtn = {
@@ -721,5 +800,6 @@ const termsCloseBtn = {
   border: 'none',
   cursor: 'pointer'
 }
+
 
 const errorText = { color: '#FCA5A5', textAlign: 'center', fontWeight: 700 }
