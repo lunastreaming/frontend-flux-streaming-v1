@@ -397,14 +397,15 @@ export default function Home() {
                 let showStockPill = hasStock;
 
                 if (isInactiveForRequest) {
-                    // 1. A Solicitud + Proveedor Inactivo
+                    // 1. A Solicitud + Proveedor Inactivo (Botón Naranja Bloqueado con Tooltip)
                     buttonTitle = "No se puede comprar este producto porque el proveedor no se encuentra activo";
                     buttonAction = () => {}; 
                     buttonDisabled = true;
-                    buttonClass += ' in-stock disabled-opaque'; // Mantiene apariencia 'Comprar' pero deshabilitado
+                    // Clase específica para el estilo naranja de botón inactivo
+                    buttonClass += ' disabled-provider-inactive-btn'; 
                     showStockPill = false; 
                 } else if (!p.isOnRequest && !hasStock) {
-                    // 2. Entrega Inmediata + Sin Stock
+                    // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
                     buttonText = 'SIN STOCK';
                     buttonAction = () => {}; 
                     buttonDisabled = true;
@@ -624,7 +625,10 @@ padding: 6px 12px;
 color: #D1D1D1; min-height: 100vh;
   }
   .hero {
-    max-width: 1200px; margin: 36px auto 12px; padding: 40px 28px;
+    max-width: 1200px; 
+    /* 💡 CAMBIO: Reducir margen superior de 36px a 20px */
+    margin: 20px auto 12px; 
+    padding: 40px 28px;
 border-radius: 16px;
     /* Glassmorphism */
     background: rgba(13, 13, 13, 0.7); 
@@ -833,10 +837,11 @@ text-overflow: ellipsis; white-space: nowrap; overflow: hidden; display: block; 
     border: 1px solid rgba(49, 201, 80, 0.3);
   }
   
+  /* 💡 CAMBIO: Color naranja/ámbar para el estado inactivo (Durmiendo) */
   .provider-status-tag.status-inactive {
-    background: rgba(239, 68, 68, 0.15); /* Fondo rojo tenue */
-    color: #EF4444; /* Texto rojo */
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(251, 191, 36, 0.15); /* Fondo naranja tenue (Amber 400) */
+    color: #FBBF24; /* Texto naranja */
+    border: 1px solid rgba(251, 191, 36, 0.3);
   }
   
   .status-emoji {
@@ -878,14 +883,19 @@ justify-content:center;
     width: 100%; letter-spacing: 0.02em;
   }
 
-  /* 💡 NUEVO ESTILO: Botón de COMPRAR deshabilitado por Proveedor Inactivo */
-  .btn-primary.in-stock.disabled-opaque[aria-disabled="true"] {
-    opacity: 0.6; /* Reduce la opacidad para indicar que está inactivo */
+  /* 💡 CAMBIO: Botón de COMPRAR deshabilitado por Proveedor Inactivo (Naranja/Ámbar) */
+  .btn-primary.disabled-provider-inactive-btn[aria-disabled="true"] {
+    /* Gradiente Naranja/Ámbar */
+    background: linear-gradient(90deg, #F97316, #FBBF24); /* Naranja 600 a Ámbar 400 */
+    color: #021018; /* Texto oscuro para alto contraste */
+    border: none; 
+    opacity: 1;
     cursor: not-allowed; 
-    /* Asegura que no haya efectos hover o transformaciones */
-    pointer-events: auto; /* Necesario para que el 'title' funcione */
+    pointer-events: auto; /* Mantiene el cursor activo para el tooltip (title) */
+    font-weight: 900;
   }
-  .btn-primary.in-stock.disabled-opaque[aria-disabled="true"]:hover {
+  /* Anular efecto hover para el estado inactivo */
+  .btn-primary.disabled-provider-inactive-btn[aria-disabled="true"]:hover {
     transform: none;
     box-shadow: none;
   }
