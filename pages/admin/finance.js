@@ -96,6 +96,7 @@ export default function AdminTransactionsPage() {
     const tt = String(t ?? '').toLowerCase()
     if (tt === 'recharge') return 'Recarga'
     if (tt === 'withdrawal') return 'Retiro'
+    if (tt === 'transfer') return 'Transferencia'
     if (tt === 'chargeback' || tt === 'rechargeback' || tt === 'extorno') return 'Extorno'
     return t ?? '—'
   }
@@ -188,15 +189,6 @@ export default function AdminTransactionsPage() {
             />
           </div>
 
-          <div className="header-actions">
-            <button
-              className="btn-action"
-              onClick={() => setPage(p => p)}
-              title="Refrescar"
-            >
-              <FaRedoAlt />
-            </button>
-          </div>
         </div>
 
         {banner && (
@@ -334,10 +326,10 @@ export default function AdminTransactionsPage() {
 
         table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1000px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
-        thead th { padding:10px; text-align:left; font-weight:700; vertical-align:middle; white-space:nowrap; }
+        thead th { padding:10px; text-align:center; font-weight:700; vertical-align:middle; white-space:nowrap; }
 
         tbody td { padding:0; vertical-align:middle; }
-        .row-inner { display:flex; align-items:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
+        .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
         .row-inner.index { justify-content:center; width:36px; height:36px; padding:0; }
         .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
         .no-wrap { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

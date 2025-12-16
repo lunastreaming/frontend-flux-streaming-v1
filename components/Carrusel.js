@@ -69,13 +69,15 @@ export default function Carrusel() {
     beforeChange: (current, next) => {
       const cur = videoRefs.current[current];
       if (cur && !cur.paused) {
-        try { cur.pause(); cur.currentTime = 0; } catch (_) {}
+        try { cur.pause(); cur.currentTime = 0;
+        } catch (_) {}
       }
     },
     afterChange: (index) => {
       const v = videoRefs.current[index];
       if (v) {
-        try { v.currentTime = 0; v.muted = true; v.play().catch(() => {}); } catch (_) {}
+        try { v.currentTime = 0; v.muted = true;
+        v.play().catch(() => {}); } catch (_) {}
       }
     },
   };
@@ -108,7 +110,6 @@ export default function Carrusel() {
     el.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
-
     return () => {
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
@@ -116,7 +117,7 @@ export default function Carrusel() {
       window.removeEventListener('pointercancel', onPointerCancel);
     };
   }, []);
-
+  
   const handleOverlayClick = (e) => {
     // placeholder para futuras interacciones
     e.stopPropagation();
@@ -147,13 +148,19 @@ export default function Carrusel() {
       <style jsx>{`
         /*
           DIMENSIONES ACTUALIZADAS:
-          Ancho máximo: 1500px (un poco más de 1200px)
-          Altura: 500px (para mantener la proporción 3:1 -> 1500 / 500 = 3)
+          Se elimina la altura fija y se usa 'aspect-ratio: 3 / 1' para que el carrusel
+          siempre mantenga la proporción 3:1 tanto en PC como en móvil,
+          evitando el espacio negro innecesario.
         */
         .carrusel-container {
           width: 100%;
           max-width: 1500px; /* Aumentado para aprovechar la alta resolución */
-          height: 500px; /* 1/3 del ancho, para proporción 3:1 (5000x1667) */
+          
+          /* --- INICIO DEL CAMBIO CLAVE --- */
+          /* Eliminar height: 500px; y usar aspect-ratio 3:1 */
+          aspect-ratio: 3 / 1; 
+          /* --- FIN DEL CAMBIO CLAVE --- */
+          
           margin: 40px auto;
           border-radius: 20px;
           overflow: hidden;
@@ -166,7 +173,8 @@ export default function Carrusel() {
         .carrusel-container.grab { cursor: grab; }
         .carrusel-container.grabbing { cursor: grabbing; }
 
-        .slide-wrap { width: 100%; height: 100%; display: flex !important; align-items: center; justify-content: center; position: relative; }
+        .slide-wrap { width: 100%; height: 100%; display: flex !important; align-items: center;
+          justify-content: center; position: relative; }
         .media-frame { width: 100%; height: 100%; position: relative; }
 
         .carrusel-media {
@@ -190,20 +198,26 @@ export default function Carrusel() {
           background: transparent;
         }
 
-        .slick-custom-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 50; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(10,10,10,0.55); color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease; box-shadow: 0 6px 18px rgba(8,8,10,0.45); }
+        .slick-custom-arrow { position: absolute; top: 50%;
+          transform: translateY(-50%); z-index: 50; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(10,10,10,0.55); color: #fff; font-size: 24px;
+          display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease; box-shadow: 0 6px 18px rgba(8,8,10,0.45);
+        }
         .slick-prev { left: 14px; }
         .slick-next { right: 14px; }
         .slick-custom-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(139,92,246,0.9); }
 
-        /* AJUSTE PARA MÓVILES (también manteniendo proporción 3:1, ancho 100%) */
+        /* AJUSTE PARA MÓVILES */
         @media (max-width: 768px) {
           .carrusel-container {
-            /* 3:1 proporción: si el ancho es 700px, la altura es 233px */
-            /* Usamos una altura de 250px para mantener un buen tamaño visual en móvil */
-            height: 250px; 
+            /* aspect-ratio ya controla la altura (3:1). Solo ajustamos el margen y radio. */
             border-radius: 12px; 
-            margin: 24px auto; 
+            /* --- INICIO DEL CAMBIO CLAVE EN MÓVIL --- */
+            /* Se reduce el margen vertical (de 24px a 12px) para cerrar el hueco. */
+            margin: 12px auto; 
+            /* --- FIN DEL CAMBIO CLAVE EN MÓVIL --- */
           }
+          /* Podrías querer hacer las flechas más pequeñas en móvil, por ejemplo: */
+          /* .slick-custom-arrow { width: 36px; height: 36px; font-size: 20px; } */
         }
       `}</style>
 
