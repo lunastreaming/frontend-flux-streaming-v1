@@ -350,7 +350,7 @@ export default function AdminSoldsPage() {
                           {/* CELDA: TIPO DE OPERACIÓN */}
                           <td>
                             <div className="row-inner center-inner">
-                              {formatStatusToType(r.status)}
+                             {r.status ?? '—'}
                             </div>
                           </td>
 
@@ -388,7 +388,7 @@ export default function AdminSoldsPage() {
                               ) : (
                                 <span style={{ fontSize: '0.8rem', color: '#86efac' }}>
                                   {/* Muestra "Reembolso Confirmado" o "SOPORTE" */}
-                                  {formatStatusToType(r.status)}
+                                  {r.status ?? '—'}
                                 </span>
                               )}
                             </div>
