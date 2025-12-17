@@ -478,7 +478,7 @@ localStorage.getItem('accessToken') : null
         getAuthToken={getAuthToken}
         baseUrl={apiBase}
         settingsPath="/api/settings"
-        searchEndpoint="/api/users/search-by-phone"
+        searchEndpoint="/api/users/search"
         transferEndpoint="/api/wallet/admin/transfer-to-user"
         onSuccess={onTransferSuccess}
       />

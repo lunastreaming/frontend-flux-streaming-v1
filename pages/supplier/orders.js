@@ -296,22 +296,22 @@ export default function OrdersPage() {
                         {/* URL en texto plano */}
                         <td><div className="row-inner">{r.url ?? ''}</div></td>
                         <td><div className="row-inner">{r.numeroPerfil ?? r.numberProfile ?? ''}</div></td>
-                        <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
+                        <td><div className="row-inner">{r.buyerUsername ?? ''}</div></td>
 
                         {/* Celular cliente: ícono primero y número al costado */}
                         <td>
                           <div className="row-inner phone-cell">
-                            {r.clientPhone && (
-                              <button
-                                className="wa-btn"
-                                title={`WhatsApp cliente ${r.clientPhone}`}
-                                onClick={() => openWhatsAppToClient(r.clientPhone, r.clientName ?? r.buyerUsername, r.productName)}
-                                aria-label={`WhatsApp cliente ${r.clientPhone}`}
-                              >
-                                <FaWhatsapp />
-                              </button>
-                            )}
-                            <span className="client-phone">{r.clientPhone ?? ''}</span>
+{r.buyerUsernamePhone && (
+    <button
+        className="wa-btn"
+        title={`WhatsApp cliente ${r.buyerUsernamePhone}`}
+        onClick={() => openWhatsAppToClient(r.buyerUsernamePhone, r.buyerUsername, r.productName)}
+        aria-label={`WhatsApp cliente ${r.buyerUsernamePhone}`}
+    >
+        <FaWhatsapp />
+    </button>
+)}
+                           <span className="client-phone">{r.buyerUsernamePhone ?? ''}</span>
                           </div>
                         </td>
 

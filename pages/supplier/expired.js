@@ -379,7 +379,7 @@ const formatDateLocal = (v) => {
           open={confirmOpen}
           onCancel={() => { setConfirmOpen(false); setSelectedStock(null) }}
           onConfirm={handleDeleteConfirm}
-          message={`¿Desea eliminar el stock ${selectedStock?.id}?`}
+          message={`¿Desea eliminar el ${selectedStock?.productName} ${selectedStock?.username} del ID ${selectedStock?.id}?`}
         />
       )}
 

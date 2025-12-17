@@ -9,7 +9,7 @@ export default function TransferToUserModal({
   sourceItem = null,
   getAuthToken,
   baseUrl = '',
-  searchEndpoint = '/api/users/search-by-phone',
+  searchEndpoint = '/api/users/search',
   onSuccess = null
 }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -32,7 +32,7 @@ export default function TransferToUserModal({
       return
     }
     searchDebounce.current = setTimeout(() => {
-      searchUsersByPhone(searchQuery.trim())
+      searchUsers(searchQuery.trim())
     }, 320)
     return () => {
       if (searchDebounce.current) clearTimeout(searchDebounce.current)
@@ -138,6 +138,30 @@ const computeFeeAndTotal = (grossStr) => {
     }
   }
 
+  async function searchUsers(q) { // <-- CAMBIO DE NOMBRE: searchUsersByPhone -> searchUsers
+    if (!q || q.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearchLoading(true)
+    setSearchResults([])
+    try {
+      const token = typeof getAuthToken === 'function' ?
+await getAuthToken() : null
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const url = `${safeBase}${searchEndpoint}?q=${encodeURIComponent(q)}&limit=10`
+      const res = await axios.get(url, { headers, withCredentials: !token })
+      setSearchResults(Array.isArray(res.data) ? res.data : [])
+    } catch (err) {
+      console.error('searchUsers error', err) // <-- CAMBIO: Se actualiza el mensaje de error
+      setSearchResults([])
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
   const handleSelectUser = (u) => {
     setSelectedUser(u)
   }
@@ -200,18 +224,18 @@ const { fee, total } = computeFeeAndTotal(transferAmount)
             )}
 
             <label className="label">
-              Buscar usuario por celular
+              Buscar usuario por celular o nombre de usuario
               <div className="search-row">
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Ej. 923, +51923, 923117777"
                   className="input"
-                  aria-label="Buscar usuario por celular"
+                  aria-label="Buscar usuario por celular o nombre de usuario"
                 />
                 <button
                   className="btn-icon"
-                  onClick={() => searchUsersByPhone(searchQuery)}
+                  onClick={() => searchUsers(searchQuery)}
                   disabled={searchLoading}
                   aria-label="Buscar"
                 >

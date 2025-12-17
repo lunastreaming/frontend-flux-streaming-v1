@@ -263,15 +263,21 @@ buyerUsernamePhone: stock?.buyerUsernamePhone ?? t.buyerUsernamePhone ?? '',
     )
   })
 
-const openWhatsAppToVendor = (vendorPhone, vendorName, productName, username) => {
+// La definición de la función (cerca de la línea 333 en el código fuente)
+const openWhatsAppToVendor = (vendorPhone, vendorName, productName, username, password) => {
   const raw = String(vendorPhone ?? '').replace(/[^\d+]/g, '')
   const name = vendorName ?? ''
   const product = productName ?? ''
-  const user = username ?? '' // renombrada localmente si quieres normalizar
+  const user = username ?? '' 
+  const pass = password ?? '' // Usar la nueva variable 'pass'
+  
+  // *** TU NUEVO MENSAJE CON LA CONTRASEÑA ***
   const message = `Hola ${name} 👋🏻
-🫴He generado un pedido *${product}*🫴
+🫴Haz generado un soporte *${product}*🫴
 Usuario: ${user} 👻
-Enviar captura del error para poder ayudarte☺️`
+Contraseña: ${pass}
+Enviar captura del error para poder ayudarte`
+  
   const encoded = encodeURIComponent(message)
   if (!raw) {
     window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
@@ -489,7 +495,7 @@ Enviar captura del error para poder ayudarte☺️`
                             <button
                               className="wa-btn"
                               title={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
-                              onClick={() => openWhatsAppToVendor(r.buyerUsernamePhone , r.buyerUsername, r.productName, r.username)}
+                              onClick={() => openWhatsAppToVendor(r.buyerUsernamePhone , r.buyerUsername, r.productName, r.username, r.password)}
                               aria-label={`WhatsApp vendedor ${r.buyerUsernamePhone  ?? ''}`}
                             >
                               <FaWhatsapp />
