@@ -4,9 +4,10 @@ import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
 import AdminPasswordModal from '../../components/AdminPasswordModal'
+import AdminPhoneModal from '../../components/AdminPhoneModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan, FaPen
 } from 'react-icons/fa'
 
 export default function AdminSuppliersPage() {
@@ -25,6 +26,15 @@ export default function AdminSuppliersPage() {
   const pageSize = 30
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
+
+  const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
+
+const openPhoneModal = (userId, username, currentPhone) => {
+  setPhoneModal({ open: true, userId, username, currentPhone })
+}
+const closePhoneModal = () => {
+  setPhoneModal({ open: false, userId: null, username: null, currentPhone: '' })
+}
 
   const [confirmData, setConfirmData] = useState({
     open: false,
@@ -279,7 +289,26 @@ export default function AdminSuppliersPage() {
                             <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                             <td>{u.name ?? u.username ?? '-'}</td>
                             <td>{u.username ?? '-'}</td>
-                            <td>{u.phone ?? u.celular ?? '-'}</td>
+                           <td>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    {u.phone ?? u.celular ?? '-'}
+    <button 
+      onClick={() => openPhoneModal(u.id, u.username || u.phone, u.phone)}
+      style={{ 
+        background: 'rgba(255,255,255,0.05)', 
+        border: 'none', 
+        color: '#06b6d4', 
+        cursor: 'pointer', 
+        padding: '4px',
+        borderRadius: '4px',
+        display: 'flex'
+      }}
+      title="Editar celular"
+    >
+      <FaPen size={14} />
+    </button>
+  </div>
+</td>
                             <td className="mono">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '-')}</td>
                             <td>{canTransfer ? 'SI' : 'NO'}</td>
                             <td>{statusBadge(currentStatus)}</td>
@@ -395,6 +424,18 @@ export default function AdminSuppliersPage() {
         username={pwdModal.username}
         onClose={closePasswordModal}
         onSuccess={() => { closePasswordModal(); fetchSuppliers(page); }}
+      />
+
+      <AdminPhoneModal
+        open={phoneModal.open}
+        userId={phoneModal.userId}
+        username={phoneModal.username}
+        currentPhone={phoneModal.currentPhone}
+        onClose={closePhoneModal}
+        onSuccess={() => {
+          closePhoneModal();
+          fetchUsers(page); // Esto refresca la lista automáticamente 
+        }}
       />
 
       <style jsx>{`

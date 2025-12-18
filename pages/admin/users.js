@@ -4,9 +4,10 @@ import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
 import AdminPasswordModal from '../../components/AdminPasswordModal'
+import AdminPhoneModal from '../../components/AdminPhoneModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen
 } from 'react-icons/fa'
 
 export default function AdminUsersPage() {
@@ -27,6 +28,15 @@ export default function AdminUsersPage() {
   const pageSize = 30                 // 30 por página (server-side)
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
+
+  const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
+
+const openPhoneModal = (userId, username, currentPhone) => {
+  setPhoneModal({ open: true, userId, username, currentPhone })
+}
+const closePhoneModal = () => {
+  setPhoneModal({ open: false, userId: null, username: null, currentPhone: '' })
+}
 
   const [confirmData, setConfirmData] = useState({
     open: false,
@@ -274,7 +284,26 @@ export default function AdminUsersPage() {
                           <tr key={u.id ?? idx}>
                             <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                             <td>{u.username ?? '-'}</td>
-                            <td>{u.phone ?? u.celular ?? '-'}</td>
+                            <td>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    {u.phone ?? u.celular ?? '-'}
+    <button 
+      onClick={() => openPhoneModal(u.id, u.username || u.phone, u.phone)}
+      style={{ 
+        background: 'rgba(255,255,255,0.05)', 
+        border: 'none', 
+        color: '#06b6d4', 
+        cursor: 'pointer', 
+        padding: '4px',
+        borderRadius: '4px',
+        display: 'flex'
+      }}
+      title="Editar celular"
+    >
+      <FaPen size={14} />
+    </button>
+  </div>
+</td>
                             <td>{u.role ?? '-'}</td>
                             <td className="mono">
                               {typeof u.balance === 'number'
@@ -418,6 +447,18 @@ export default function AdminUsersPage() {
         username={pwdModal.username}
         onClose={closePasswordModal}
         onSuccess={() => { closePasswordModal(); fetchUsers(page); }}
+      />
+
+      <AdminPhoneModal
+        open={phoneModal.open}
+        userId={phoneModal.userId}
+        username={phoneModal.username}
+        currentPhone={phoneModal.currentPhone}
+        onClose={closePhoneModal}
+        onSuccess={() => {
+          closePhoneModal();
+          fetchUsers(page); // Esto refresca la lista automáticamente 
+        }}
       />
 
       <style jsx>{`
