@@ -143,7 +143,7 @@ export default function AdminNavBar() {
           transition: transform 0.3s ease, filter 0.3s ease;
         }
         .logo-container:hover { transform: scale(1.05); filter: drop-shadow(0 0 8px #BFBFBF); }
-        .logo-image { height: 60px; object-fit: contain; }
+        .logo-image { height: 80px; object-fit: contain; }
 
         /* HAMBURGER */
         .hamburger {

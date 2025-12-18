@@ -193,7 +193,7 @@ export default function Navbar() {
  filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image {
-          height: 60px;
+          height: 80px;
  object-fit: contain;
         }
 
