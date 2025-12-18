@@ -210,7 +210,7 @@ export default function NavBarSupplier({ counts = {} }) {
           filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image { 
-          height: 40px; 
+          height: 60px; 
           object-fit: contain;
         }
 
