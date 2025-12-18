@@ -341,9 +341,18 @@ export default function Navbar() {
         /* MOBILE STYLES */
         @media (max-width: 768px) {
           .navbar {
-            padding: 12px 16px;
- gap: 12px;
-          }
+    width: 92%; /* Deja un pequeño margen a los lados para que no toque los bordes */
+    margin: 10px auto; 
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .nav-right.open {
+    /* Elimina el width: 100% de aquí si solo lo usas para el dropdown */
+    position: absolute;
+    right: 0;
+    top: 100%; /* Para que el menú despliegue justo debajo del navbar */
+  }
 
           .hamburger {
             display: inline-flex;
