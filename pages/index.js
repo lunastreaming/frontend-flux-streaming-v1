@@ -215,6 +215,7 @@ export default function Home() {
           id: productWrapper.id,
           name: productWrapper.name,
           salePrice: productWrapper.salePrice,
+          salePriceSoles: productWrapper.salePriceSoles,
           renewalPrice: productWrapper.renewalPrice,
           providerName: productWrapper.providerName,
           categoryId: productWrapper.categoryId,
@@ -494,26 +495,33 @@ export default function Home() {
                       )}
                       {/* 💡 FIN: Estado del Proveedor */}
 
-                      {/* 💡 INICIO: Nueva estructura de Precios y Renovación */}
-                      <div className="price-wrapper">
-                        {/* Línea 1: Precio de Venta (Centrado) */}
-                        <div className="sale-price-badge">
-                          <span className="price-prefix">VENTA:</span> {formatPrice(p.salePrice)}
-                        </div>
+                      <div className="price-wrapper dual-price">
+  <div className="sale-price-container">
+    {/* Precio en Dólares */}
+    <div className="sale-price-badge usd">
+      <span className="price-prefix">USD</span> {formatPrice(p.salePrice)} 
+    </div>
+    
+    {/* Precio en Soles (Nuevo campo del backend) */}
+    {p.salePriceSoles && (
+      <div className="sale-price-badge pen">
+        <span className="price-prefix">PEN</span> S/ {p.salePriceSoles}
+      </div>
+    )}
+  </div>
 
-                        {/* Línea 2: Estado de Renovación (Booleano) */}
-                        <div className={`renewal-status-tag ${p.isRenewable ? 'is-renewable' : 'not-renewable'}`}>
-                          {p.isRenewable ? (
-                            <>
-                              {/* Usamos RENOVABLE: y el precio si es renovable */}
-                              <span className="renewal-prefix">RENOVABLE:</span> {formatPrice(p.renewalPrice)}
-                            </>
-                          ) : (
-                            /* Si NO es renovable, solo mostramos el texto */
-                            <span>NO RENOVABLE</span>
-                          )}
-                        </div>
-                      </div>
+  {/* Estado de Renovación */}
+  <div className={`renewal-status-tag ${p.isRenewable ? 'is-renewable' : 'not-renewable'}`}>
+    {p.isRenewable ? (
+      <>
+        <span className="renewal-prefix">RENOVABLE:</span> {formatPrice(p.renewalPrice)}
+      </>
+    ) : (
+      <span>NO RENOVABLE</span> 
+    )}
+  </div>
+</div>
+
                       {/* 💡 FIN: Nueva estructura de Precios y Renovación */}
 
 
@@ -763,7 +771,7 @@ text-transform: uppercase;
   .stock-cat-name { flex: 1; text-align: center; }
 
   .product-media { width:100%; aspect-ratio: 4/3; background: #0b0b0b; display:flex;
-align-items:center; justify-content:center; overflow:hidden; }
+align-items:center; justify-content:center; overflow:hidden; position: relative; overflow: hidden;}
   .product-media img { width:100%; height:100%; object-fit:cover; }
   .product-media.placeholder { background: linear-gradient(135deg,#1f2937,#111827); min-height: 140px;
 }
@@ -916,6 +924,22 @@ justify-content:center;
     width: 100%; letter-spacing: 0.02em;
   }
 
+  .price-soles-tag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  background: rgba(16, 185, 129, 0.9); /* Un verde esmeralda semi-transparente */
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
   /* 💡 CAMBIO: Botón de COMPRAR deshabilitado por Proveedor Inactivo (Naranja/Ámbar) */
   .btn-primary.disabled-provider-inactive-btn[aria-disabled="true"] {
     /* Gradiente Naranja/Ámbar */
@@ -947,6 +971,64 @@ border-radius: 999px;
   @keyframes shimmer { 0% { background-position: -200% 0;
 } 100% { background-position: 200% 0; } }
   .empty { color: var(--muted); padding: 20px; text-align: center;
+}
+
+/* Contenedor principal de precios */
+.price-wrapper.dual-price {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Fila de los dos badges */
+.sale-price-container {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap; /* Para que en móviles muy pequeños no se corten */
+}
+
+/* Ajuste al badge existente  */
+.sale-price-badge {
+  padding: 4px 10px;
+  border-radius: 8px; /* Un poco más cuadrado para optimizar espacio */
+  font-weight: 800;
+  font-size: 0.95rem; /* Reducimos ligeramente el tamaño para que quepan dos */
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Diferenciación por colores sutiles */
+.sale-price-badge.usd {
+  background: rgba(6, 182, 212, 0.15); /* Cian tenue */
+  color: #06b6d4;
+}
+
+.sale-price-badge.pen {
+  /* Fondo púrpura muy suave */
+  background: rgba(168, 85, 247, 0.15); 
+  /* Texto Púrpura vibrante */
+  color: #a855f7; 
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.sale-price-badge.pen .price-prefix {
+  background: #a855f7;
+  color: #fff;
+}
+/* Prefijos (USD/PEN) */
+.price-prefix {
+  font-size: 0.65rem;
+  margin-right: 5px;
+  opacity: 0.8;
+  letter-spacing: 0.05em;
+  background: rgba(255,255,255,0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
 }
 
   /* modal */
