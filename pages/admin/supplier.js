@@ -1,4 +1,3 @@
-// pages/admin/supplier.js
 import { useEffect, useMemo, useState } from 'react'
 import Head from 'next/head'
 import AdminNavBar from '../../components/AdminNavBar'
@@ -12,44 +11,34 @@ import {
 
 export default function AdminSuppliersPage() {
   const { ensureValidAccess } = useAuth()
-  const API_BASE_RAW = process.env.NEXT_PUBLIC_API_URL || ''
-  const API_BASE = API_BASE_RAW.replace(/\/+$/, '')
+  
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE = rawApiBase.replace(/\/+$/, '')
   const PROVIDERS_ENDPOINT = `${API_BASE}/api/users/providers`
 
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Búsqueda y paginación (server-side)
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1) // UI 1-based
+  const [page, setPage] = useState(1) 
   const pageSize = 30
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
 
   const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
-
-const openPhoneModal = (userId, username, currentPhone) => {
-  setPhoneModal({ open: true, userId, username, currentPhone })
-}
-const closePhoneModal = () => {
-  setPhoneModal({ open: false, userId: null, username: null, currentPhone: '' })
-}
-
-  const [confirmData, setConfirmData] = useState({
-    open: false,
-    userId: null,
-    username: null,
-    action: null, // 'verify' | 'disable' | 'delete' | 'transfer'
-    message: '',
-    loading: false,
-    canTransfer: null
+  const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
+  const [confirmData, setConfirmData] = useState({ 
+    open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null 
   })
 
-  // Estado para el modal de cambio de contraseña
-  const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
-
-  useEffect(() => { fetchSuppliers(page) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Debounce para búsqueda
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchSuppliers(1)
+    }, 500)
+    return () => clearTimeout(delayDebounceFn)
+  }, [query])
 
   const getAuthToken = async () => {
     try {
@@ -62,7 +51,6 @@ const closePhoneModal = () => {
     return null
   }
 
-  // Server-side pagination: trae proveedores del backend ya ordenados y paginados
   const fetchSuppliers = async (uiPage = 1) => {
     setLoading(true)
     setError(null)
@@ -71,507 +59,237 @@ const closePhoneModal = () => {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      // Backend usa 0-based; UI usa 1-based
       const zeroPage = Math.max(0, (uiPage ?? 1) - 1)
-      const url = `${PROVIDERS_ENDPOINT}?page=${zeroPage}&size=${pageSize}`
+      let url = `${PROVIDERS_ENDPOINT}?page=${zeroPage}&size=${pageSize}`
+      if (query.trim()) {
+        url += `&search=${encodeURIComponent(query.trim())}`
+      }
+
       const res = await fetch(url, {
         method: 'GET',
         headers,
         credentials: token ? 'omit' : 'include'
       })
+
       const text = await res.text().catch(() => null)
-      if (!res.ok) {
-        const msg = text && text.length ? text : `Error ${res.status}`
-        throw new Error(msg)
-      }
+      if (!res.ok) throw new Error(text || `Error ${res.status}`)
+      
       const payload = text ? JSON.parse(text) : null
-      // Esperamos Page<UserSummary> { content, totalElements, totalPages, number, size }
       const content = Array.isArray(payload?.content) ? payload.content : []
+      
       setSuppliers(content)
       setTotalElements(Number(payload?.totalElements ?? content.length))
       setTotalPages(Number(payload?.totalPages ?? 1))
-      // Ajustar la UI page según respuesta .number (0-based)
-      const respNumber = Number(payload?.number ?? zeroPage)
-      setPage(respNumber + 1)
+      setPage(uiPage) 
     } catch (err) {
-      console.error('Error fetching suppliers:', err)
       setError('No se pudo cargar la lista de proveedores')
       setSuppliers([])
-      setTotalElements(0)
-      setTotalPages(1)
-      setPage(1)
     } finally {
       setLoading(false)
     }
-  }
-
-  // Filtrado en el cliente sobre la página actual (no altera paginación del backend)
-  const filtered = useMemo(() => {
-    if (!query) return suppliers
-    const q = query.trim().toLowerCase()
-    return suppliers.filter(u =>
-      String(u.id ?? '').toLowerCase().includes(q) ||
-      (u.name || u.username || '').toLowerCase().includes(q) ||
-      (u.username || '').toLowerCase().includes(q) ||
-      (u.phone || '').toLowerCase().includes(q)
-    )
-  }, [suppliers, query])
-
-  const statusBadge = (status) => {
-    if (!status) return <span className="status unknown">-</span>
-    if (status === 'active') return <span className="status active">Activo</span>
-    return <span className="status inactive">Inactivo</span>
-  }
-
-  // Abre modal de confirmación para acciones (incluye transfer)
-  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null, canTransfer = null) => {
-    const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
-
-    let message = ''
-    if (action === 'verify') {
-      message = `Vas a activar al proveedor ${username}. ¿Deseas continuar?`
-    } else if (action === 'disable') {
-      message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
-    } else if (action === 'delete') {
-      message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`
-    } else if (action === 'transfer') {
-      message = canTransfer
-        ? `Vas a deshabilitar la capacidad de transferir del proveedor ${username}. ¿Deseas continuar?`
-        : `Vas a habilitar la capacidad de transferir del proveedor ${username}. ¿Deseas continuar?`
-    } else {
-      message = `Confirmar acción ${action} para proveedor ${username}.`
-    }
-
-    setConfirmData({ open: true, userId, username, action, message, loading: false, canTransfer })
   }
 
   const callEndpoint = async (url, opts = {}, requireAuth = true) => {
     opts.headers = opts.headers || { 'Content-Type': 'application/json' }
     const token = await getAuthToken()
-    if (requireAuth) {
-      if (token) opts.headers['Authorization'] = `Bearer ${token}`
-      else console.warn('callEndpoint: no token found, request will use cookies')
-    }
-    if (requireAuth && token) opts.credentials = opts.credentials ?? 'omit'
-    else opts.credentials = opts.credentials ?? 'include'
-
+    if (requireAuth && token) opts.headers['Authorization'] = `Bearer ${token}`
+    opts.credentials = (requireAuth && token) ? 'omit' : 'include'
     const res = await fetch(url, opts)
     const text = await res.text().catch(() => null)
-    if (!res.ok) {
-      const msg = text && text.length ? text : `Error ${res.status}`
-      throw new Error(msg)
-    }
+    if (!res.ok) throw new Error(text || `Error ${res.status}`)
     try { return text ? JSON.parse(text) : null } catch (_) { return text }
+  }
+
+  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null, canTransfer = null) => {
+    const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
+    
+    let message = ''
+    if (action === 'verify') message = `Vas a activar al proveedor ${username}. ¿Deseas continuar?`
+    else if (action === 'disable') message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
+    else if (action === 'delete') message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`
+    else if (action === 'transfer') {
+      message = canTransfer 
+        ? `Vas a deshabilitar la capacidad de transferir del proveedor ${username}.`
+        : `Vas a habilitar la capacidad de transferir del proveedor ${username}.`
+    }
+    
+    setConfirmData({ open: true, userId, username, action, message, loading: false, canTransfer })
   }
 
   const handleConfirm = async () => {
     const { userId, action } = confirmData
-    if (!userId || !action) {
-      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
-      return
-    }
+    if (!userId || !action) return
     setConfirmData(prev => ({ ...prev, loading: true }))
-    setLoading(true)
     try {
-      if (action === 'verify') {
-        const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
-        await callEndpoint(url, { method: 'PATCH' }, true)
-      } else if (action === 'disable') {
-        const url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
-        await callEndpoint(url, { method: 'PATCH' }, true)
-      } else if (action === 'delete') {
-        const url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`
-        await callEndpoint(url, { method: 'DELETE' }, true)
-      } else if (action === 'transfer') {
-        const url = `${API_BASE}/api/admin/users/${encodeURIComponent(userId)}/enable-transfer`
-        await callEndpoint(url, { method: 'PATCH' }, true)
-      } else {
-        const url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`
-        await callEndpoint(url, { method: 'POST', body: JSON.stringify({}) }, true)
-      }
-      // Refrescar la página actual desde el backend
+      let url = '', method = 'PATCH'
+      if (action === 'verify') url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`
+      else if (action === 'disable') url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
+      else if (action === 'delete') { url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`; method = 'DELETE' }
+      else if (action === 'transfer') url = `${API_BASE}/api/admin/users/${encodeURIComponent(userId)}/enable-transfer`
+      
+      await callEndpoint(url, { method })
       await fetchSuppliers(page)
       setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
     } catch (err) {
-      console.error(`handleConfirm error for ${action} ${userId}:`, err)
-      setError(err.message || 'Ocurrió un error en la acción')
+      setError(err.message || 'Error en la acción')
       setConfirmData(prev => ({ ...prev, loading: false }))
-    } finally {
-      setLoading(false)
     }
   }
 
-  const handleCancelConfirm = () => {
-    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null })
-  }
-
-  // Abrir / cerrar modal de contraseña
-  const openPasswordModal = (userId, username) => {
-    setPwdModal({ open: true, userId, username })
-  }
-  const closePasswordModal = () => {
-    setPwdModal({ open: false, userId: null, username: null })
-  }
-
-  // Navegación de paginación (server-side)
-  const goPrev = () => {
-    const next = Math.max(1, page - 1)
-    if (next !== page) fetchSuppliers(next)
-  }
-  const goNext = () => {
-    const next = Math.min(totalPages, page + 1)
-    if (next !== page) fetchSuppliers(next)
-  }
-  const refresh = () => fetchSuppliers(page)
+  const goPrev = () => { if (page > 1) fetchSuppliers(page - 1) }
+  const goNext = () => { if (page < totalPages) fetchSuppliers(page + 1) }
 
   return (
     <>
       <Head><title>Proveedores | Admin</title></Head>
-
-      <div className="min-h-screen text-white font-inter">
+      <div className="admin-container">
         <AdminNavBar />
-
-        <main className="max-w-7xl mx-auto px-6 py-8">
-          <header className="mb-6 flex items-center justify-between gap-4">
+        <main className="admin-content">
+          <header className="content-header">
             <div>
-              <h1 className="text-2xl font-bold">Proveedores</h1>
-              <p className="text-sm text-gray-400">Lista de proveedores y acciones administrativas</p>
+              <h1 className="title">Proveedores</h1>
+              <p className="subtitle">Gestión de proveedores y transferencias</p>
             </div>
-            <div className="header-actions">
-              <button className="btn-refresh" onClick={refresh} aria-label="Refrescar">
-                <FaSyncAlt />
-              </button>
-            </div>
+            <button className="btn-refresh" onClick={() => fetchSuppliers(page)}>
+              <FaSyncAlt className={loading ? 'animate-spin' : ''} />
+            </button>
           </header>
 
-          <section className="search-row">
-            <div className="search-box" role="search">
-              <FaSearch className="icon" />
-              <input
-                placeholder="Buscar por id, name, username o celular..."
-                value={query}
-                onChange={(e) => { setQuery(e.target.value) }}
-                aria-label="Buscar proveedores"
-              />
+          <section className="controls-row">
+            <div className="search-container">
+              <div className="search-box">
+                <FaSearch className="icon" />
+                <input 
+                  placeholder="Buscar por nombre, username o celular..." 
+                  value={query} 
+                  onChange={(e) => setQuery(e.target.value)} 
+                />
+              </div>
+            </div>
+            <div className="modern-pager">
+              <div className="pager-info">Total: <span className="total-badge">{totalElements}</span></div>
+              <div className="pager-actions">
+                <button onClick={goPrev} disabled={page === 1 || loading} className="pager-btn">Anterior</button>
+                <div className="page-indicator">{page} <span>/</span> {totalPages}</div>
+                <button onClick={goNext} disabled={page === totalPages || loading} className="pager-btn">Siguiente</button>
+              </div>
             </div>
           </section>
 
-          <section className="table-wrap">
-            {loading ? (
-              <div className="loading">Cargando proveedores...</div>
-            ) : error ? (
-              <div className="error">{error}</div>
-            ) : (
-              <>
-                <div className="table-scroll">
-                  <table className="users-table" role="table" aria-label="Tabla de proveedores">
-                    <thead>
-                      <tr>
-                        <th>No.</th>
-                        <th>Name</th>
-                        <th>Username</th>
-                        <th>Celular</th>
-                        <th>Balance</th>
-                        <th>Transfiere</th>
-                        <th>Activo</th>
-                        <th>Acciones</th>
+          <section className="table-container">
+            {error && <div className="error-message">{error}</div>}
+            <div className="table-wrapper">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>No.</th><th>Nombre</th><th>Username</th><th>Celular</th><th>Balance</th><th>Transfer</th><th>Estado</th><th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suppliers.map((u, idx) => {
+                    const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'))
+                    const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer)
+                    const isDeletable = String(currentStatus).toLowerCase() === 'inactive'
+                    return (
+                      <tr key={u.id}>
+                        <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
+                        <td className="bold">{u.name || u.username || '-'}</td>
+                        <td>{u.username || '-'}</td>
+                        <td>
+                          <div className="phone-cell">
+                            {u.phone || '-'}
+                            <button onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} className="edit-phone"><FaPen size={11} /></button>
+                          </div>
+                        </td>
+                        <td className="mono highlight">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '0.00')}</td>
+                        <td className="bold">{canTransfer ? 'SÍ' : 'NO'}</td>
+                        <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'Activo' : 'Inactivo'}</span></td>
+                        <td className="actions-cell">
+                          <div className="actions">
+                            <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus)} className={currentStatus === 'active' ? 'btn-disable' : 'btn-verify'} title={currentStatus === 'active' ? 'Inhabilitar' : 'Activar'}><FaCheck /></button>
+                            <button onClick={() => setPwdModal({ open: true, userId: u.id, username: u.username })} title="Contraseña"><FaKey /></button>
+                            <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'transfer', canTransfer)} className={canTransfer ? 'btn-transfer-on' : 'btn-transfer-off'} title="Transferencia">{canTransfer ? <FaExchangeAlt /> : <FaBan />}</button>
+                            <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable} title="Eliminar"><FaTrash /></button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((u, idx) => {
-                        const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'))
-                        const actionLabel = currentStatus === 'active' ? 'Inhabilitar' : 'Verificar'
-                        const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer)
-                        const isDeletable = String(currentStatus).toLowerCase() === 'inactive'
-                        return (
-                          <tr key={u.id ?? idx}>
-                            {/* correlativo: basado en page/pageSize + idx */}
-                            <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
-                            <td>{u.name ?? u.username ?? '-'}</td>
-                            <td>{u.username ?? '-'}</td>
-                           <td>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    {u.phone ?? u.celular ?? '-'}
-    <button 
-      onClick={() => openPhoneModal(u.id, u.username || u.phone, u.phone)}
-      style={{ 
-        background: 'rgba(255,255,255,0.05)', 
-        border: 'none', 
-        color: '#06b6d4', 
-        cursor: 'pointer', 
-        padding: '4px',
-        borderRadius: '4px',
-        display: 'flex'
-      }}
-      title="Editar celular"
-    >
-      <FaPen size={14} />
-    </button>
-  </div>
-</td>
-                            <td className="mono">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '-')}</td>
-                            <td>{canTransfer ? 'SI' : 'NO'}</td>
-                            <td>{statusBadge(currentStatus)}</td>
-                            <td>
-                              <div className="actions">
-                                <button
-                                  title={actionLabel}
-                                  onClick={() => requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus)}
-                                  aria-label={`${actionLabel} proveedor ${u.id}`}
-                                  className={currentStatus === 'active' ? 'disable-btn' : 'verify-btn'}
-                                >
-                                  <FaCheck />
-                                </button>
-
-                                <button
-                                  title="Password"
-                                  onClick={() => openPasswordModal(u.id, u.username ?? u.phone ?? String(u.id))}
-                                  aria-label={`Reset password ${u.id}`}
-                                >
-                                  <FaKey />
-                                </button>
-
-                                {/* Transfer toggle: habilitar/deshabilitar según canTransfer */}
-                                <button
-                                  title={canTransfer ? 'Deshabilitar transferencia' : 'Habilitar transferencia'}
-                                  onClick={() =>
-                                    requestConfirmAction(
-                                      u.id,
-                                      u.username ?? u.phone ?? String(u.id),
-                                      currentStatus,
-                                      'transfer',
-                                      canTransfer
-                                    )
-                                  }
-                                  aria-label={`Transfer capability ${u.id}`}
-                                  className={canTransfer ? 'transfer-enabled' : 'transfer-disabled'}
-                                >
-                                  {canTransfer ? <FaExchangeAlt /> : <FaBan />}
-                                </button>
-
-                                {/* Delete button: enabled only when status === 'inactive' */}
-                                <button
-                                  title={isDeletable ? 'Eliminar' : 'No disponible (usuario activo)'}
-                                  onClick={() => { if (isDeletable) requestConfirmAction(u.id, u.username ?? u.phone ?? String(u.id), currentStatus, 'delete') }}
-                                  className={isDeletable ? 'danger' : 'danger disabled'}
-                                  aria-label={`Eliminar ${u.id}`}
-                                  disabled={!isDeletable}
-                                >
-                                  <FaTrash />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      {filtered.length === 0 && (
-                        <tr><td colSpan="8" className="empty">No se encontraron proveedores</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="pager-container">
-                  <div className="pager-info">
-                    Página {page} de {totalPages} • Mostrando {filtered.length} registros (de {totalElements} totales)
-                  </div>
-                  <div className="pager-controls" role="navigation" aria-label="Paginación">
-                    <button onClick={goPrev} disabled={page === 1}>Anterior</button>
-                    <span className="pager-page"> {page} / {totalPages} </span>
-                    <button onClick={goNext} disabled={page === totalPages}>Siguiente</button>
-                  </div>
-                </div>
-              </>
-            )}
+                    )
+                  })}
+                </tbody>
+              </table>
+              {suppliers.length === 0 && !loading && <div className="empty-text">No se encontraron resultados.</div>}
+            </div>
+            {loading && <div className="loading-overlay">Cargando datos...</div>}
           </section>
         </main>
       </div>
 
-      <ConfirmModal
-        open={confirmData.open}
-        title={
-          confirmData.action === 'verify'
-            ? 'Confirmar activación'
-            : confirmData.action === 'disable'
-            ? 'Confirmar inhabilitación'
-            : confirmData.action === 'delete'
-            ? 'Confirmar eliminación'
-            : confirmData.action === 'transfer'
-            ? (confirmData.canTransfer ? 'Deshabilitar transferencia' : 'Habilitar transferencia')
-            : 'Confirmar acción'
-        }
-        message={confirmData.message}
-        confirmText={
-          confirmData.action === 'verify'
-            ? 'Activar'
-            : confirmData.action === 'disable'
-            ? 'Inhabilitar'
-            : confirmData.action === 'delete'
-            ? 'Eliminar'
-            : confirmData.action === 'transfer'
-            ? (confirmData.canTransfer ? 'Deshabilitar' : 'Habilitar')
-            : 'Confirmar'
-        }
-        cancelText="Cancelar"
-        onConfirm={handleConfirm}
-        onCancel={handleCancelConfirm}
-        loading={confirmData.loading}
-      />
-
-      <AdminPasswordModal
-        open={pwdModal.open}
-        userId={pwdModal.userId}
-        username={pwdModal.username}
-        onClose={closePasswordModal}
-        onSuccess={() => { closePasswordModal(); fetchSuppliers(page); }}
-      />
-
-      <AdminPhoneModal
-        open={phoneModal.open}
-        userId={phoneModal.userId}
-        username={phoneModal.username}
-        currentPhone={phoneModal.currentPhone}
-        onClose={closePhoneModal}
-        onSuccess={() => {
-          closePhoneModal();
-          fetchUsers(page); // Esto refresca la lista automáticamente 
-        }}
-      />
-
       <style jsx>{`
-        .search-row { margin-bottom: 12px; display:flex; gap:12px; align-items:center; }
-        .search-box { display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.02); padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.03); }
-        .search-box input { background: transparent; border: 0; outline: none; color: #e6e6e6; width: 380px; min-width: 160px; font-size: 0.95rem; }
-        .search-box .icon { color:#9aa0a6 }
+        .admin-container { min-height: 100vh; font-family: 'Inter', sans-serif; color: #fff; }
+        .admin-content { max-width: 100%; padding: 2rem; }
+        .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .title { font-size: 1.875rem; font-weight: 700; margin: 0; }
+        .subtitle { color: #9aa0a6; font-size: 0.875rem; margin: 0.25rem 0 0; }
 
-        .table-wrap {
-          margin-top: 8px;
-          display: flex;
-          justify-content: center;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .table-scroll {
-          max-width: 100%;
-          overflow-x: auto;
-          border-radius: 10px;
-        }
+        .controls-row { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.05); }
+        .search-container { width: 100%; }
+        .search-box { display: flex; align-items: center; gap: 0.75rem; background: rgba(0,0,0,0.2); padding: 0.75rem 1rem; border-radius: 0.625rem; border: 1px solid rgba(255,255,255,0.1); }
+        .search-box input { background: transparent; border: none; outline: none; color: #fff; width: 100%; font-size: 16px; }
+        .search-box .icon { color: #555; }
 
-        table.users-table {
-          table-layout: fixed;
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 980px;
-          margin: 0 auto;
-        }
+        .modern-pager { display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; gap: 0.5rem; }
+        .pager-info { font-size: 0.85rem; color: #9aa0a6; }
+        .total-badge { background: #06b6d4; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
+        .pager-actions { display: flex; align-items: center; background: rgba(255,255,255,0.03); padding: 0.25rem; border-radius: 0.625rem; border: 1px solid rgba(255,255,255,0.1); }
+        .pager-btn { background: transparent; border: none; color: #fff; padding: 0.5rem 0.875rem; cursor: pointer; font-size: 0.8rem; border-radius: 0.375rem; transition: 0.2s; }
+        .pager-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+        .pager-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .page-indicator { padding: 0 1rem; font-weight: 700; border-left: 1px solid #333; border-right: 1px solid #333; font-size: 0.9rem; }
 
-        th, td {
-          padding: 12px 10px;
-          text-align: center; /* CENTRAR CELDAS */
-          border-bottom: 1px solid rgba(255,255,255,0.03);
-          font-size: 0.95rem;
-          color: #d7d7d7;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        thead th { background: rgba(255,255,255,0.02); font-weight:800; color:#fff; position: sticky; top: 0; backdrop-filter: blur(6px); }
-
-        thead th:nth-child(1), tbody td:nth-child(1) { width: 6%; }
-        thead th:nth-child(2), tbody td:nth-child(2) { width: 16%; } /* Name */
-        thead th:nth-child(3), tbody td:nth-child(3) { width: 16%; } /* Username */
-        thead th:nth-child(4), tbody td:nth-child(4) { width: 14%; } /* Phone */
-        thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; } /* Balance */
-        thead th:nth-child(6), tbody td:nth-child(6) { width: 10%; } /* Transfiere */
-        thead th:nth-child(7), tbody td:nth-child(7) { width: 10%; } /* Activo */
-        thead th:nth-child(8), tbody td:nth-child(8) { width: 20%; max-width: 360px; vertical-align: top; padding-right: 8px; overflow: hidden; } /* Acciones */
-
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
-
-        .actions {
-          display: flex;
-          flex-wrap: nowrap;
-          gap: 8px;
-          justify-content: center; /* CENTRAR BOTONES */
-          align-items: center;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          max-width: 100%;
+        @media (min-width: 768px) {
+          .controls-row { flex-direction: row; justify-content: space-between; }
+          .search-container { max-width: 400px; }
+          .modern-pager { width: auto; justify-content: flex-end; }
         }
 
-        .actions button {
-          display: inline-grid;
-          place-items: center;
-          min-width: 34px;
-          width: 34px;
-          height: 34px;
-          padding: 0;
-          border-radius: 8px;
-          background: rgba(255,255,255,0.02);
-          border: 0;
-          color: #d1d1d1;
-          cursor: pointer;
-          transition: transform .12s ease, background .12s ease, opacity .12s ease;
-          font-size: 14px;
-          white-space: nowrap;
-        }
-        .actions button:hover { transform: translateY(-2px); background: rgba(255,255,255,0.04); }
-        .actions button.danger { background: linear-gradient(90deg,#ef4444,#f97316); color: #fff; }
+        .table-container { width: 100%; position: relative; }
+        .table-wrapper { width: 100%; overflow-x: auto; background: rgba(255,255,255,0.01); border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.05); }
+        .users-table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1000px; }
+        th { padding: 1rem; background: rgba(255,255,255,0.03); color: #9aa0a6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; text-align: center; }
+        
+        .bold { font-weight: 600; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mono { font-family: ui-monospace, monospace; }
+        .highlight { color: #22d3ee; }
+        .phone-cell { display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+        .edit-phone { background: none; border: none; color: #06b6d4; cursor: pointer; padding: 0.25rem; }
+        
+        .actions-cell { text-align: center; }
+        .actions { display: flex; gap: 0.5rem; justify-content: center; align-items: center; }
+        .actions button { width: 2.125rem; height: 2.125rem; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; border: none; background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; transition: 0.2s; }
+        .actions button:hover:not(:disabled) { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
+        
+        .btn-verify { background: #10b981 !important; color: #000 !important; }
+        .btn-disable { background: #f59e0b !important; color: #000 !important; }
+        .btn-transfer-on { background: #3b82f6 !important; color: #fff !important; }
+        .btn-transfer-off { background: #6b7280 !important; color: #fff !important; }
+        .btn-danger { color: #f87171 !important; }
+        .btn-danger.disabled { opacity: 0.15; cursor: not-allowed; }
 
-        /* Disabled variant for delete button */
-        .actions button.danger.disabled {
-          background: linear-gradient(90deg, rgba(239,68,68,0.18), rgba(249,115,22,0.12));
-          color: rgba(255,255,255,0.6);
-          cursor: not-allowed;
-          transform: none;
-          opacity: 0.6;
-        }
+        .status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem; display: inline-block; min-width: 80px; text-align: center; }
+        .status.active { background: linear-gradient(90deg, #34d399, #10b981); color: #04261a; }
+        .status.inactive { background: linear-gradient(90deg, #fecaca, #f87171); color: #2b0404; }
 
-        .verify-btn { background: linear-gradient(90deg,#06b6d4,#10b981); color:#07101a; }
-        .disable-btn { background: linear-gradient(90deg,#f97316,#ef4444); color:#fff; }
-
-        /* Transfer buttons */
-        .transfer-enabled {
-          background: linear-gradient(90deg,#06b6d4,#3b82f6);
-          color: #07101a;
-        }
-        .transfer-disabled {
-          background: linear-gradient(90deg,#9ca3af,#6b7280);
-          color: #ffffff;
-        }
-
-        .loading, .empty { color:#9aa0a6; padding: 18px; text-align:center; }
-        .error { color:#fecaca; padding: 10px; background: rgba(239,68,68,0.06); border-radius:8px; margin-bottom:8px; }
-
-        .status { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.85rem; color:#07101a; }
-        .status.active { background: linear-gradient(90deg,#34d399,#10b981); color:#04261a; }
-        .status.inactive { background: linear-gradient(90deg,#fecaca,#f87171); color:#2b0404; }
-        .status.unknown { background: rgba(255,255,255,0.03); color:#d7d7d7; }
-
-        .pager-container {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          align-items: center;
-          justify-content: center;
-          margin-top: 8px;
-          color: #9aa0a6;
-          font-size: 0.95rem;
-        }
-        .pager-info { text-align: center; }
-        .pager-controls { display:flex; gap:10px; align-items:center; }
-        .pager-controls button { padding:6px 10px; border-radius:8px; border:0; background: rgba(255,255,255,0.02); color:#d1d1d1; cursor:pointer; }
-        .pager-page { font-weight:700; color:#fff; }
-
-        .btn-refresh { width:40px; height:40px; display:inline-grid; place-items:center; border-radius:10px; border:0; background: rgba(255,255,255,0.03); color:#d1d1d1; cursor:pointer; }
-
-        @media (max-width: 920px) {
-          table.users-table { min-width: 900px; }
-          .search-box input { width: 100%; }
-          thead th:nth-child(8), tbody td:nth-child(8) { max-width: 300px; width: 26%; }
-          thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; }
-        }
+        .loading-overlay { padding: 4rem; text-align: center; color: #06b6d4; font-weight: 700; }
+        .empty-text { padding: 3rem; text-align: center; color: #555; font-style: italic; }
+        .btn-refresh { background: none; border: none; color: #9aa0a6; cursor: pointer; font-size: 1.25rem; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+
+      <ConfirmModal {...confirmData} onConfirm={handleConfirm} onCancel={() => setConfirmData({ ...confirmData, open: false })} />
+      <AdminPasswordModal {...pwdModal} onClose={() => setPwdModal({ open: false })} />
+      <AdminPhoneModal {...phoneModal} onClose={() => setPhoneModal({ open: false })} onSuccess={() => { setPhoneModal({ open: false }); fetchSuppliers(page); }} />
     </>
   )
 }
