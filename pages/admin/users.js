@@ -199,7 +199,7 @@ export default function AdminUsersPage() {
       <>
         <a
           href={`https://wa.me/${u.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-            `Hola ${u.username || ''}👋🏻\n` +
+            `Hola ${u.username || ''}\n` +
             `Se ha registrado en la LUNA PLATAFORMAS,\n` +
             `¿Desea afiliarse?\n` +
             `por el módico pago de S/.25.00 o $8.00\n\n` +

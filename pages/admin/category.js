@@ -157,6 +157,13 @@ export default function CategoryPage() {
     setConfirmData({ id: null, name: '', action: '', newStatus: '' })
   }
 
+  const getOptimizedUrl = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  // Insertamos f_auto (formato) y q_auto (calidad)
+  // También añadimos w_200 porque tus miniaturas son pequeñas (96x56px) 
+  return url.replace('/upload/', '/upload/f_auto,q_auto,w_200/');
+};
+
   const cancelAction = () => {
     setConfirmData({ id: null, name: '', action: '', newStatus: '' })
   }
@@ -210,14 +217,15 @@ export default function CategoryPage() {
                       <tr key={cat.id} className="body-row">
                         <td className="td">{cat.id}</td>
                         <td className="td">
-                          {cat.imageUrl ? (
-                            <div className="img-wrap">
-                              <img src={cat.imageUrl} alt={cat.name} className="img" />
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 italic">Sin imagen</span>
-                          )}
-                        </td>
+  {cat.imageUrl ? (
+    <div className="img-wrap">
+      {/* Aplicamos la función aquí */}
+      <img src={getOptimizedUrl(cat.imageUrl)} alt={cat.name} className="img" />
+    </div>
+  ) : (
+    <span className="text-gray-400 italic">Sin imagen</span>
+  )}
+</td>
                         <td className="td">{cat.name}</td>
                         <td className="td text-gray-300">{cat.description || '—'}</td>
                         <td className="td">

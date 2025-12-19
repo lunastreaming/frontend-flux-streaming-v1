@@ -6,6 +6,13 @@ import Footer from '../components/Footer'
 import PurchaseModal from '../components/PurchaseModal'
 import { useAuth } from '../context/AuthProvider'
 
+const getOptimizedUrl = (url, width = 600) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  // Limpiamos cualquier transformación previa que pudiera existir en la BD
+  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
+  return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+};
+
 export default function Home() {
   const [imagenActiva, setImagenActiva] = useState(null)
   const [zoomActivo, setZoomActivo] = useState(false)
@@ -41,6 +48,24 @@ export default function Home() {
   const rawBase = process.env.NEXT_PUBLIC_API_URL || ''
   const BASE = rawBase.replace(/\/+$/, '')
   const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
+
+  const getOptimizedUrl = (url, width = 600) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  
+  // Limpia cualquier transformación previa para evitar errores de duplicación
+  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
+
+  const abrirModal = (url) => {
+  // Aquí usamos 1000 para que la imagen se vea grande y nítida
+  setImagenActiva(getOptimizedUrl(url, 1000))
+  setZoomActivo(false)
+}
+  
+  // f_auto: formato automático (WebP/AVIF)
+  // q_auto: calidad automática
+  // w_XXX: redimensión al ancho específico
+  return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+};
 
   // cargar saldo del usuario al montar
   useEffect(() => {
@@ -323,10 +348,14 @@ export default function Home() {
                           aria-pressed={selectedCategory === cat.id}
                         >
                           {cat.image ? (
-                              <img src={cat.image} alt={cat.name} loading="lazy" />
-                            ) : (
-                              <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
-                            )}
+  <img 
+    src={getOptimizedUrl(cat.image, 200)} // <--- Aquí aplicas el helper
+    alt={cat.name} 
+    loading="lazy" 
+  />
+) : (
+  <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
+)}
                         </button>
                         <span className="circle-name">{cat.name}</span>
                       </div>
@@ -428,10 +457,14 @@ export default function Home() {
 
                     <div className="product-media">
                       {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} loading="lazy" />
-                      ) : (
-                        <div className="product-media placeholder" />
-                      )}
+  <img 
+    src={getOptimizedUrl(p.imageUrl, 500)} 
+    alt={p.name} 
+    loading="lazy" 
+  />
+) : (
+  <div className="product-media placeholder" />
+)}
                     </div>
 
                     <div className="product-body">

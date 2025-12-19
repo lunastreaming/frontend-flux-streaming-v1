@@ -45,6 +45,17 @@ export default function ProductsPage() {
     return { Authorization: `Bearer ${token}` }
   }
 
+  const getOptimizedUrl = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+
+  // Limpiamos cualquier transformación previa para evitar duplicados
+  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
+
+  // Aplicamos: Formato automático, Calidad automática y 
+  // Ancho de 200px (suficiente para el contenedor de 80px de la tabla)
+  return baseUrl.replace('/upload/', '/upload/f_auto,q_auto,w_200/');
+};
+
   const fetchProducts = async () => {
     try {
       const headers = getAuthHeaders()
@@ -394,17 +405,19 @@ export default function ProductsPage() {
                       <div className="row-inner td-name" title={p.name}>{p.name}</div>
                     </td>
 
-                    <td>
-                      <div className="row-inner">
-                        {p.imageUrl ? (
-                          <div className="img-wrap">
-                            <img src={p.imageUrl} alt={p.name} className="img" />
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic">Sin imagen</span>
-                        )}
-                      </div>
-                    </td>
+                    // Localiza este bloque en tu archivo products.txt
+<td>
+  <div className="row-inner">
+    {p.imageUrl ? (
+      <div className="img-wrap">
+        {/* Cambio: Aplicamos el helper aquí */}
+        <img src={getOptimizedUrl(p.imageUrl)} alt={p.name} className="img" />
+      </div>
+    ) : (
+      <span className="text-gray-400 italic">Sin imagen</span>
+    )}
+  </div>
+</td>
 
                     <td>
                       <div className="row-inner td-info">
