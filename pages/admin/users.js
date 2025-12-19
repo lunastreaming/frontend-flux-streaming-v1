@@ -6,7 +6,7 @@ import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp
 } from 'react-icons/fa'
 
 export default function AdminUsersPage() {
@@ -194,11 +194,42 @@ export default function AdminUsersPage() {
                         <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="bold">{u.username || '-'}</td>
                         <td>
-                          <div className="phone-cell">
-                            {u.phone || '-'}
-                            <button onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} className="edit-phone"><FaPen size={11} /></button>
-                          </div>
-                        </td>
+  <div className="phone-cell">
+    {u.phone ? (
+      <>
+        <a
+          href={`https://wa.me/${u.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+            `Hola ${u.username || ''}👋🏻\n` +
+            `Se ha registrado en la LUNA PLATAFORMAS,\n` +
+            `¿Desea afiliarse?\n` +
+            `por el módico pago de S/.25.00 o $8.00\n\n` +
+            `Medios de pago\n\n` +
+            `JOSUE R. SOMOCURCIO\n` +
+            `-YAPE o PLIN : 935 769 255\n` +
+            `-BINANCE : 1025532462\n` +
+            `-PAYPAL: randu.sq@gmail.com\n\n` +
+            `ENVIAR CAPTURA PARA LA ACTIVACIÒN`
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="whatsapp-btn-link"
+          title="Enviar mensaje de bienvenida"
+        >
+          <FaWhatsapp size={20} />
+        </a>
+        <span className="phone-number">{u.phone}</span>
+      </>
+    ) : (
+      '-'
+    )}
+    <button 
+      onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} 
+      className="edit-phone"
+    >
+      <FaPen size={11} />
+    </button>
+  </div>
+</td>
                         <td>
   <span className="role-tag">
     {roleLabels[u.role?.toLowerCase()] || u.role}
@@ -328,7 +359,11 @@ export default function AdminUsersPage() {
         .mono { font-family: ui-monospace, monospace; }
         .bold { font-weight: 600; }
         .highlight { color: #22d3ee; }
-        .phone-cell { display: flex; align-items: center; gap: 0.5rem; }
+        .phone-cell { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.5rem; 
+}
         .edit-phone { background: none; border: none; color: #06b6d4; cursor: pointer; padding: 0.25rem; }
         
         .actions { display: flex; gap: 0.5rem; justify-content: center; align-items: center;}
@@ -344,6 +379,44 @@ export default function AdminUsersPage() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.whatsapp-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #25d366;
+  text-decoration: none;
+  font-family: ui-monospace, monospace;
+  transition: opacity 0.2s;
+}
+
+.whatsapp-btn-link {
+  color: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s;
+  padding: 2px;
+}
+
+.whatsapp-btn-link:hover {
+  transform: scale(1.2); /* Aumenta ligeramente al pasar el mouse */
+  opacity: 0.9;
+}
+
+.whatsapp-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.phone-number {
+  font-family: ui-monospace, monospace;
+  color: #fff;
+}
+
+.whatsapp-icon {
+  font-size: 1.1rem;
 }
 
 /* Ajuste fino para el paginador en móviles muy pequeños */
