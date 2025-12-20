@@ -1031,6 +1031,37 @@ border-radius: 999px;
   color: #fff;
 }
 
+/* Reemplaza o añade esto en los estilos de index.txt */
+
+.categories-container {
+  overflow-x: auto;
+  scrollbar-width: thin; /* Fallback para Firefox [cite: 114] */
+  scrollbar-color: #8b5cf6 transparent; /* Color para Firefox [cite: 114] */
+}
+
+/* Scrollbar para Chrome, Safari y Edge (Webkit) */
+.categories-container::-webkit-scrollbar {
+  height: 12px; /* Grosor definido en Products  */
+}
+
+.categories-container::-webkit-scrollbar-track {
+  background: transparent; /* Fondo transparente [cite: 111] */
+}
+
+.categories-container::-webkit-scrollbar-thumb {
+  /* Gradiente moderno: Cian -> Violeta -> Verde [cite: 112] */
+  background: linear-gradient(90deg, #06b6d4, #8b5cf6, #22c55e); 
+  border-radius: 999px; /* Forma de píldora  */
+  
+  /* Borde sólido que genera el efecto de margen visual  */
+  border: 3px solid rgba(22, 22, 22, 0.6); 
+}
+
+/* Efecto opcional para mejorar la interacción */
+.categories-container::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.1);
+}
+
   /* modal */
   .modal {
     position: fixed; top: 0; left: 0; width: 100vw;

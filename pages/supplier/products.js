@@ -317,197 +317,180 @@ export default function ProductsPage() {
         />
 
         {/* El wrapper maneja el scroll horizontal en pantallas pequeñas */}
-        <div className="table-wrapper">
-          <table>
-            <colgroup>
-              <col style={{ width: '40px' }} />
-              <col style={{ width: '70px' }} />
-              <col />
-              <col style={{ width: '100px' }} />
-              <col />
-              <col style={{ width: '60px' }} />
-              <col style={{ width: '80px' }} />
-              <col style={{ width: '80px' }} />
-              <col style={{ width: '90px' }} />
-              <col style={{ width: '90px' }} />
-              <col style={{ width: '90px' }} />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '120px' }} />
-            </colgroup>
+<div className="table-wrapper">
+  <table>
+    <colgroup>
+      {/* 15 columnas en total basadas en tu orden solicitado */}
+      <col style={{ width: '40px' }} /> {/* # */}
+      <col style={{ width: '70px' }} /> {/* Stock */}
+      <col />                          {/* Nombre */}
+      <col style={{ width: '100px' }} />{/* Imagen */}
+      <col />                          {/* Info */}
+      <col style={{ width: '60px' }} /> {/* Días */}
+      <col style={{ width: '80px' }} /> {/* Venta (USD) */}
+      <col style={{ width: '80px' }} /> {/* Renovación (USD) */}
+      <col style={{ width: '90px' }} /> {/* Renovable */}
+      <col style={{ width: '90px' }} /> {/* A solicitud */}
+      <col style={{ width: '90px' }} /> {/* Publicado */}
+      <col style={{ width: '100px' }} />{/* Inicio */}
+      <col style={{ width: '100px' }} />{/* Fin */}
+      <col style={{ width: '100px' }} />{/* Días publicados */}
+      <col style={{ width: '120px' }} />{/* Config */}
+    </colgroup>
 
-            <thead>
-              <tr className="thead-row">
-                <th>#</th>
-                <th>Stock</th>
-                <th>Nombre</th>
-                <th>Imagen</th>
-                <th>Info</th>
-                <th>Días</th>
-                <th>Venta (USD)</th>
-                <th>Renovación (USD)</th>
-                <th>Renovable</th>
-                <th>A solicitud</th>
-                <th>Publicado</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Días publicados</th>
-                <th>Config</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => {
-                const publishStart = normalizeDateOnly(p.publish_start ?? p.publishStart ?? p.publishStart)
-                const publishEnd = normalizeDateOnly(p.publish_end ?? p.publishEnd ?? p.publishEnd)
-                const daysPublished = p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? p.days_published ?? null
+    <thead>
+      <tr className="thead-row">
+        <th>#</th>
+        <th>Stock</th>
+        <th>Nombre</th>
+        <th>Imagen</th>
+        <th>Info</th>
+        <th>Días</th>
+        <th>Venta (USD)</th>
+        <th>Renovación (USD)</th>
+        <th>Renovable</th>
+        <th>A solicitud</th>
+        <th>Publicado</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th>Días publicados</th>
+        <th>Config</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      {filtered.map((p, i) => {
+        // Variables de ayuda para fechas y días
+        const publishStart = normalizeDateOnly(p.publish_start ?? p.publishStart);
+        const publishEnd = normalizeDateOnly(p.publish_end ?? p.publishEnd);
+        const daysPublished = p.daysRemaining ?? p.days_remaining ?? p.daysPublished ?? '—';
+        
+        const stockCount = Number(p.stock ?? 0);
+        const stockLabel = stockCount > 1 ? 'STOCKS' : 'STOCK';
 
-                const hasTerms = !!(p.terms && String(p.terms).trim())
-                const hasProductDetail = !!(p.productDetail && String(p.productDetail).trim())
-                const hasRequestDetail = !!(p.requestDetail && String(p.requestDetail).trim())
+        return (
+          <tr key={p.id}>
+            {/* 1. #  */}
+            <td><div className="row-inner">{i + 1}</div></td>
 
-                const stockCount = Number(p.stock ?? 0)
-          
-                const stockLabel = stockCount > 1 ? 'stocks' : 'stock'
-                const hasStock = stockCount > 0
+            {/* 2. Stock */}
+            <td>
+              <div className="row-inner stock-cell vertical">
+                <div className="stock-icon-wrap"><FaBoxes className="stock-icon" /></div>
+                <div className={`stock-number ${stockCount > 0 ? (stockCount > 1 ? 'green' : 'single') : 'empty'}`}>
+                  {stockCount}
+                </div>
+                <div className={`stock-label ${stockCount > 0 ? 'label-active' : 'label-empty'}`}>{stockLabel}</div>
+              </div>
+            </td>
 
-                // Only allow delete when product is NOT active
-                const isDeletable = !Boolean(p.active)
+            {/* 3. Nombre*/}
+            <td><div className="row-inner td-name" title={p.name}>{p.name}</div></td>
 
-                // Show Renew when product is active now OR when it is expired (backend may set active=false)
-                const shouldShowRenew = Boolean(p.isActiveNow) || Boolean(p.isExpired)
+            {/* 4. Imagen*/}
+            <td>
+              <div className="row-inner">
+                {p.imageUrl ? (
+                  <div className="img-wrap"><img src={getOptimizedUrl(p.imageUrl)} alt={p.name} className="img" /></div>
+                ) : (
+                  <span className="text-gray-400 italic">Sin imagen</span>
+                )}
+              </div>
+            </td>
 
-                return (
-                  <tr key={p.id}>
-                    <td> 
-                      <div className="row-inner">{i + 1}</div>
-                    </td>
+            {/* 5. Info*/}
+            <td>
+              <div className="row-inner td-info">
+                <div className="info-buttons">
+                  {p.terms && <button className="info-btn" onClick={() => openInfoModal('Términos', p.terms)}>Términos</button>}
+                  {p.productDetail && <button className="info-btn" onClick={() => openInfoModal('Detalle', p.productDetail)}>Detalle</button>}
+                  {p.requestDetail && <button className="info-btn" onClick={() => openInfoModal('Solicitud', p.requestDetail)}>Solicitud</button>}
+                  {!p.terms && !p.productDetail && !p.requestDetail && <span className="muted">—</span>}
+                </div>
+              </div>
+            </td>
 
-                    <td>
-                      <div
-                        className={`row-inner stock-cell vertical`}
-                        title={stockCount + ' ' + stockLabel}
-                        aria-label={`${stockCount} ${stockLabel}`}
-                      >
-                        <div className="stock-icon-wrap">
-                          <FaBoxes className="stock-icon" />
-                        </div>
-                        <div className={`stock-number ${hasStock ? (stockCount > 1 ? 'green' : 'single') : 'empty'}`}>
-                          {stockCount}
-                        </div>
-                        <div className={`stock-label ${hasStock ? 'label-active' : 'label-empty'}`}>
-                          {stockLabel.toUpperCase()}
-                        </div>
-                      </div>
-                    </td>
+            {/* 6. Días*/}
+            <td><div className="row-inner">{p.days ?? '—'}</div></td>
 
-                    <td>
-                      <div className="row-inner td-name" title={p.name}>{p.name}</div>
-                    </td>
+            {/* 7. Venta (USD)*/}
+            <td><div className="row-inner">{formatPrice(p.salePrice)}</div></td>
 
-                    // Localiza este bloque en tu archivo products.txt
-<td>
-  <div className="row-inner">
-    {p.imageUrl ? (
-      <div className="img-wrap">
-        {/* Cambio: Aplicamos el helper aquí */}
-        <img src={getOptimizedUrl(p.imageUrl)} alt={p.name} className="img" />
-      </div>
-    ) : (
-      <span className="text-gray-400 italic">Sin imagen</span>
+            {/* 8. Renovación (USD)*/}
+            <td><div className="row-inner">{formatPrice(p.renewalPrice)}</div></td>
+
+            {/* 9. Renovable*/}
+            <td><div className="row-inner">
+              <span className={`status-badge ${p.isRenewable ? 'active' : 'inactive'}`}>{p.isRenewable ? 'SÍ' : 'NO'}</span>
+            </div></td>
+
+            {/* 10. A solicitud*/}
+            <td><div className="row-inner">
+              <span className={`status-badge ${p.isOnRequest ? 'active' : 'inactive'}`}>{p.isOnRequest ? 'SÍ' : 'NO'}</span>
+            </div></td>
+
+            {/* 11. Publicado*/}
+            <td><div className="row-inner">
+              <span className={`status-badge ${p.active ? 'active' : 'inactive'}`}>{p.active ? 'SÍ' : 'NO'}</span>
+            </div></td>
+
+            {/* 12. Inicio*/}
+            <td><div className="row-inner no-wrap">{publishStart ?? '—'}</div></td>
+
+            {/* 13. Fin*/}
+            <td><div className="row-inner no-wrap">{publishEnd ?? '—'}</div></td>
+
+            {/* 14. Días publicados */}
+            <td><div className="row-inner no-wrap">{daysPublished}</div></td>
+
+            {/* 15. Config*/}
+            {/* 15. Config */}
+<td className="td-config">
+  <div className="row-inner actions">
+    {/* Botón Publicar: Se muestra si el producto NO está activo y NO ha expirado (es nuevo) */}
+    {!p.isActiveNow && !p.isExpired && (
+      <button 
+        className="btn-action" 
+        title="Publicar" 
+        onClick={() => openPublishModal(p)}
+      >
+        <FaUpload />
+      </button>
     )}
+
+    {/* Botón Renovar: Se muestra si el producto está activo actualmente O si ya expiró */}
+    {(p.isActiveNow || p.isExpired) && (
+      <button 
+        className="btn-action" 
+        title="Renovar" 
+        onClick={() => openRenewModal(p)}
+      >
+        <FaRedoAlt />
+      </button>
+    )}
+
+    {/* Botón Editar (Siempre visible) */}
+    <button className="btn-edit" title="Editar" onClick={() => handleEdit(p)}>
+      <FaEdit />
+    </button>
+
+    {/* Botón Eliminar: Solo habilitado si el producto NO está activo */}
+    <button 
+       className={!p.active ? 'btn-delete' : 'btn-delete disabled'}
+       disabled={p.active}
+       title={p.active ? "No se puede eliminar un producto activo" : "Eliminar"}
+       onClick={() => !p.active && handleDelete(p)}
+    >
+      <FaTrashAlt />
+    </button>
   </div>
 </td>
-
-                    <td>
-                      <div className="row-inner td-info">
-                        <div className="info-buttons">
-                          {hasTerms && (
-                            <button className="info-btn" onClick={() => openInfoModal('Términos y condiciones', p.terms)}>Términos</button>
-                          )}
-                          {hasProductDetail && (
-                            <button className="info-btn" onClick={() => openInfoModal('Detalle del producto', p.productDetail)}>Detalle</button>
-                          )}
-                          {hasRequestDetail && (
-                            <button className="info-btn" onClick={() => openInfoModal('Detalle de la solicitud', p.requestDetail)}>Solicitud</button>
-                          )}
-                          {!hasTerms && !hasProductDetail && !hasRequestDetail && (
-                            <span className="muted">—</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">{p.days ?? '—'}</div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">{formatPrice(p.salePrice)}</div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">{formatPrice(p.renewalPrice)}</div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">
-                        <span className={`status-badge ${p.isRenewable ? 'active' : 'inactive'}`}>{p.isRenewable ? 'SÍ' : 'NO'}</span>
-                      </div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">
-                        <span className={`status-badge ${p.isOnRequest ? 'active' : 'inactive'}`}>{p.isOnRequest ? 'SÍ' : 'NO'}</span>
-                      </div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner">
-                        <span className={`status-badge ${p.active ? 'active' : 'inactive'}`}>{p.active ? 'SÍ' : 'NO'}</span>
-                      </div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner no-wrap" title={publishStart ?? ''}>{publishStart ?? '—'}</div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner no-wrap" title={publishEnd ?? ''}>{publishEnd ?? '—'}</div>
-                    </td>
-
-                    <td>
-                      <div className="row-inner no-wrap" title={daysPublished == null ? '' : String(daysPublished)}>{daysPublished == null ? '—' : String(daysPublished)}</div>
-                    </td>
-
-                    <td className="td-config">
-                      <div className="row-inner actions">
-                        {!shouldShowRenew ? (
-                          <button className="btn-action" title="Publicar" onClick={() => openPublishModal(p)}><FaUpload /></button>
-                        ) : (
-                          <button className="btn-action" title={p.isExpired ? 'Reactivar / Renovar' : 'Renovar'} onClick={() => openRenewModal(p)}><FaRedoAlt /></button>
-                        )}
-                        <button className="btn-edit" title="Editar" onClick={() => handleEdit(p)}><FaEdit /></button>
-
-                        {/* Delete button: disabled when product is active */}
-                        <button
-                          className={isDeletable ? 'btn-delete' : 'btn-delete disabled'}
-                          title={isDeletable ? 'Eliminar' : 'No disponible (producto activo)'}
-                          onClick={() => { if (isDeletable) handleDelete(p) }}
-                          aria-label={`Eliminar ${p.id}`}
-                          disabled={!isDeletable}
-                          aria-disabled={!isDeletable}
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          </tr>
+        )
+      })}
+    </tbody>
+  </table>
+</div>
 
         <ConfirmModal
           open={confirmOpen}
