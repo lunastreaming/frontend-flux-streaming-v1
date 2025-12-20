@@ -307,7 +307,7 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
                 <div style={styles.dropInner}>
                   <FaCloudUploadAlt size={36} color="#6b7280" />
                   <div style={{ marginTop: 8, color: '#6b7280' }}>{uploading ? 'Subiendo imagen…' : 'Arrastra o selecciona una imagen'}</div>
-                  <input type="file" onChange={handleFileInput} style={styles.fileInput} id="fileInput" accept="image/jpeg, image/png, image/webp" />
+                  <input type="file" onChange={handleFile} style={styles.fileInput} id="fileInput" accept="image/jpeg, image/png, image/webp" />
                 </div>
               </div>
 
