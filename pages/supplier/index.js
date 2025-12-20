@@ -49,7 +49,7 @@ localStorage.getItem('accessToken') : null
 
   const cards = [
     { href: '/supplier/products', title: 'Productos', icon: <FaBoxes />, desc: 'Gestiona tus productos' },
-    { href: '/supplier/items', title: 'Items', icon: <FaListAlt />, desc: 'Control de stocks' },
+    { href: '/supplier/stocks', title: 'Stocks', icon: <FaListAlt />, desc: 'Control de stocks' },
     { href: '/supplier/sales', title: 'Ventas', icon: <FaChartLine />, desc: 'Resumen de ventas' },
     { href: '/supplier/orders', title: 'Órdenes', icon: <FaClipboardList />, desc: 
  'Stocks a pedido' },
