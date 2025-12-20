@@ -197,110 +197,86 @@ const PAGE_SIZE = 50;
   }, [BASE])
 
   // fetch productos (adaptado a ProductWithStockCountResponse)
-  useEffect(() => { fetchProducts() }, [selectedCategory])
-async function fetchProducts() {
-    setProdLoading(true)
-    setProdError(null)
-    try {
-      // 1. Construcción de la URL con parámetros de paginación y búsqueda
-      const baseUrl = selectedCategory
-        ? joinApi(`/api/categories/products/${selectedCategory}/active`)
-        : joinApi('/api/categories/products/active')
-      
-      // Se asume que la API acepta 'page', 'size' y 'name' como query params
-      const url = `${baseUrl}?page=${currentPage}&size=${PAGE_SIZE}&name=${encodeURIComponent(searchTerm || '')}`
+  useEffect(() => {
+  // Debounce: espera 400ms después de que el usuario deje de escribir
+  const delayDebounceFn = setTimeout(() => {
+    fetchProducts();
+  }, 400);
 
-      const fetchProducts = async () => {
+  return () => clearTimeout(delayDebounceFn);
+}, [searchTerm, currentPage, selectedCategory]);
+
+async function fetchProducts() {
   setProdLoading(true);
+  setProdError(null);
+  
   try {
-    // Fíjate en el parámetro &query=${searchTerm}
-    const url = `${baseUrl}/products/active?page=${currentPage}&size=50&query=${encodeURIComponent(searchTerm)}`;
+    // 1. Determinar el endpoint base (si hay categoría seleccionada o no) [cite: 21, 22]
+    const baseEndpoint = selectedCategory
+      ? `/api/categories/products/${selectedCategory}/active`
+      : '/api/categories/products/active';
     
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    // 2. Construir la URL con 'query' para búsqueda y parámetros de paginación [cite: 22, 23]
+    const url = joinApi(`${baseEndpoint}?page=${currentPage}&size=${PAGE_SIZE}&query=${encodeURIComponent(searchTerm || '')}`);
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
     const data = await res.json();
-    
-    setProducts(data.content || []);
-    setTotalPages(data.totalPages || 0); // Importante para que la paginación sepa cuántas páginas hay
-  } catch (error) {
-    console.error("Error:", error);
+
+    // 3. Extraer el array de resultados según la estructura de la respuesta (Paginada o Lista) [cite: 28, 29]
+    let raw = [];
+    if (Array.isArray(data)) {
+      raw = data;
+      setTotalPages(1);
+    } else if (data?.content && Array.isArray(data.content)) {
+      raw = data.content;
+      setTotalPages(data.totalPages || 0);
+    } else if (data?.items && Array.isArray(data.items)) {
+      raw = data.items;
+      setTotalPages(data.totalPages || 0);
+    } else {
+      raw = [];
+      setTotalPages(0);
+    }
+
+    // 4. Normalización de los datos para el renderizado de las Cards [cite: 30, 31, 35, 36, 37, 38]
+    const normalized = raw.map((item) => {
+      const productWrapper = item.product ?? item;
+      
+      // Cálculo de stock disponible [cite: 31, 34]
+      const availableStockCount = typeof item.availableStockCount === 'number'
+        ? item.availableStockCount
+        : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
+
+      return {
+        id: productWrapper.id,
+        name: productWrapper.name,
+        salePrice: productWrapper.salePrice,
+        salePriceSoles: productWrapper.salePriceSoles,
+        renewalPrice: productWrapper.renewalPrice,
+        providerName: productWrapper.providerName,
+        categoryId: productWrapper.categoryId,
+        categoryName: productWrapper.categoryName,
+        imageUrl: productWrapper.imageUrl,
+        stock: Number(availableStockCount),
+        fullProduct: productWrapper,
+        isOnRequest: productWrapper.isOnRequest ?? false,
+        isRenewable: productWrapper.isRenewable ?? false,
+        providerStatus: productWrapper.providerStatus ?? null,
+      };
+    });
+
+    setProducts(normalized);
+  } catch (err) {
+    console.error('Error cargando productos:', err);
+    setProdError('No se pudieron cargar los productos');
+    setProducts([]);
+    setTotalPages(0);
   } finally {
     setProdLoading(false);
   }
-};
-      
-      const res = await fetch(url)
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}`) 
-      const data = await res.json()
-
-      let raw = []
-      // 2. Extraer el array de productos y el total de páginas según la estructura de la respuesta
-      if (Array.isArray(data)) {
-        raw = data
-        setTotalPages(1) // Si es array plano, solo hay 1 página
-      } else if (data?.content && Array.isArray(data.content)) {
-        raw = data.content
-        setTotalPages(data.totalPages || 0)
-      } else if (data?.items && Array.isArray(data.items)) {
-        raw = data.items
-        setTotalPages(data.totalPages || 0)
-      } else if (data?.rows && Array.isArray(data.rows)) {
-        raw = data.rows
-        setTotalPages(data.totalPages || 0)
-      } else {
-        console.warn('[fetchProducts] respuesta no contiene array reconocido', data)
-        raw = []
-        setTotalPages(0)
-      }
-
-      // 3. Normalización de los datos (Mantiene tu lógica original)
-      const normalized = raw.map((item) => {
-        const productWrapper = item.product ?? item
-        const availableStockCount = typeof item.availableStockCount === 'number'
-          ? item.availableStockCount
-          : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : null)
-
-        const inlineStockResponses = Array.isArray(item.stockResponses)
-          ? item.stockResponses
-          : Array.isArray(productWrapper.stockResponses)
-            ? productWrapper.stockResponses
-            : (Array.isArray(productWrapper.stocks) ? productWrapper.stocks : [])
-
-        const stockCount = availableStockCount != null
-          ? Number(availableStockCount)
-          : (Array.isArray(inlineStockResponses) ? inlineStockResponses.length : 0)
-
-        return {
-          id: productWrapper.id,
-          name: productWrapper.name,
-          salePrice: productWrapper.salePrice,
-          salePriceSoles: productWrapper.salePriceSoles,
-          renewalPrice: productWrapper.renewalPrice,
-          providerName: productWrapper.providerName,
-          categoryId: productWrapper.categoryId,
-          categoryName: productWrapper.categoryName,
-          imageUrl: productWrapper.imageUrl,
-          stockResponses: inlineStockResponses,
-          stock: stockCount,
-          fullProduct: productWrapper,
-          isOnRequest: productWrapper.isOnRequest ?? false,
-          isRenewable: productWrapper.isRenewable ?? false,
-          providerStatus: productWrapper.providerStatus ?? null,
-        }
-      })
-
-      setProducts(normalized)
-    } catch (err) {
-      console.error('Error cargando productos:', err)
-      setProdError('No se pudieron cargar los productos')
-      setProducts([])
-      setTotalPages(0)
-    } finally {
-      setProdLoading(false)
-    }
-  }
+}
 
   const moneyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
