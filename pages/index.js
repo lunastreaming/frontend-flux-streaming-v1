@@ -168,13 +168,21 @@ const PAGE_SIZE = 50;
 
         if (!mounted) return
         const normalized = Array.isArray(data)
-          ? data.map((c, i) => ({
-            id: c.id ?? c._id ?? i,
-            name: c.name ?? c.title ?? 'Sin nombre',
-            image: c.image ?? c.imageUrl ?? c.thumbnail ?? null,
-            status: (c.status ?? c.state ?? c.active ?? null)
-          }))
-          : []
+  ? data.map((c, i) => {
+      const rawImg = c.image ?? c.imageUrl ?? c.thumbnail ?? null;
+      // Optimizamos la imagen de la categoría
+      const optimizedImg = (typeof rawImg === 'string' && rawImg.includes('cloudinary.com'))
+        ? rawImg.replace('/upload/', '/upload/f_auto,q_auto/')
+        : rawImg;
+
+      return {
+        id: c.id ?? c._id ?? i,
+        name: c.name ?? c.title ?? 'Sin nombre',
+        image: optimizedImg,
+        status: (c.status ?? c.state ?? c.active ?? null)
+      };
+    })
+  : []
 
         const onlyActive = normalized.filter(c => {
           const s = (c.status ?? '').toString().toLowerCase()
@@ -249,6 +257,11 @@ async function fetchProducts() {
         ? item.availableStockCount
         : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
 
+        const rawUrl = productWrapper.imageUrl;
+const optimizedUrl = (typeof rawUrl === 'string' && rawUrl.includes('cloudinary.com'))
+  ? rawUrl.replace('/upload/', '/upload/f_auto,q_auto/')
+  : rawUrl;
+
       return {
         id: productWrapper.id,
         name: productWrapper.name,
@@ -258,7 +271,7 @@ async function fetchProducts() {
         providerName: productWrapper.providerName,
         categoryId: productWrapper.categoryId,
         categoryName: productWrapper.categoryName,
-        imageUrl: productWrapper.imageUrl,
+        imageUrl: optimizedUrl,
         stock: Number(availableStockCount),
         fullProduct: productWrapper,
         isOnRequest: productWrapper.isOnRequest ?? false,
