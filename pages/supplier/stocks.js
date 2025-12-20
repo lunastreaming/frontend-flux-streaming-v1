@@ -145,6 +145,22 @@ export default function StocksPage() {
           </div>
         </div>
 
+        {/* --- PAGINACIÓN SUPERIOR --- */}
+        <div className="pagination-wrapper" style={{ marginBottom: '16px' }}>
+          <div className="pagination-info">
+            Mostrando <b>{stocks.length}</b> de <b>{totalElements}</b> registros
+          </div>
+          <div className="pagination-controls">
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.max(0, prev - 1))} disabled={page === 0}>
+              <FaChevronLeft /> Anterior
+            </button>
+            <span className="page-indicator">Página <b>{page + 1}</b> de <b>{totalPages}</b></span>
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))} disabled={page >= totalPages - 1}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
+        </div>
+
         <div className="table-wrapper"> 
           <table> 
             <thead>
@@ -195,27 +211,17 @@ export default function StocksPage() {
           </table>
         </div>
 
-        {/* --- NUEVO SISTEMA DE PAGINACIÓN --- */}
-        <div className="pagination-wrapper">
+        {/* --- PAGINACIÓN INFERIOR --- */}
+        <div className="pagination-wrapper" style={{ marginTop: '24px' }}>
           <div className="pagination-info">
             Mostrando <b>{stocks.length}</b> de <b>{totalElements}</b> registros
           </div>
           <div className="pagination-controls">
-            <button 
-              className="btn-pagination" 
-              onClick={() => setPage(prev => Math.max(0, prev - 1))}
-              disabled={page === 0}
-            >
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.max(0, prev - 1))} disabled={page === 0}>
               <FaChevronLeft /> Anterior
             </button>
-            <span className="page-indicator">
-              Página <b>{page + 1}</b> de <b>{totalPages}</b>
-            </span>
-            <button 
-              className="btn-pagination" 
-              onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
-              disabled={page >= totalPages - 1}
-            >
+            <span className="page-indicator">Página <b>{page + 1}</b> de <b>{totalPages}</b></span>
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))} disabled={page >= totalPages - 1}>
               Siguiente <FaChevronRight />
             </button>
           </div>
@@ -237,62 +243,33 @@ export default function StocksPage() {
         .search-bar { flex: 1; display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0 12px; height: 38px; max-width: 420px; }
         .search-input-inline { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.85rem; outline: none; } 
         .header-actions { display: flex; gap: 12px; } 
-        
         .btn-primary, .btn-bulk { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; } 
         .btn-primary { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #22c55e 100%); color: #000; } 
         .btn-bulk { background: #22c55e; color: #000; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); } 
         .btn-primary:hover, .btn-bulk:hover { transform: scale(1.02); } 
-
         .table-wrapper { overflow-x: auto; background: rgba(22,22,22,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; backdrop-filter: blur(12px); } 
         table { width: 100%; border-collapse: separate; border-spacing: 0 12px; min-width: 1300px; }
         thead th { padding: 10px; text-align: left; color: #cfcfcf; font-size: 0.72rem; text-transform: uppercase; }
-        
         .row-inner { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(22,22,22,0.6); border-radius: 12px; min-height: 36px; color: #fff; font-size: 0.85rem; }
         .td-name { font-weight: 700; color: #fff; } 
         .url-text { color: #ccc; } 
-        
         .status-badge { padding: 6px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
         .status-badge.active { background: rgba(34,197,94,0.12); color: #4ade80; }
         .status-badge.inactive { background: rgba(239,68,68,0.12); color: #ef4444; }
-
         .actions { display: flex; gap: 8px; } 
         .btn-action, .btn-edit, .btn-delete { padding: 8px; border-radius: 8px; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; } 
         .btn-action { background: linear-gradient(135deg, #06b6d4, #8b5cf6); color: #000; } 
         .btn-edit { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
         .btn-delete { background: linear-gradient(135deg, #ef4444, #f87171); color: #fff; }
-
-        /* Estilos Paginación */
-        .pagination-wrapper { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: center; 
-          margin-top: 24px; 
-          padding: 16px; 
-          background: rgba(255,255,255,0.03); 
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.05);
-        }
+        .pagination-wrapper { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
         .pagination-info { font-size: 0.85rem; color: #999; }
         .pagination-info b { color: #fff; }
         .pagination-controls { display: flex; align-items: center; gap: 16px; }
-        .btn-pagination { 
-          background: rgba(255,255,255,0.05); 
-          border: 1px solid rgba(255,255,255,0.1);
-          color: #fff; 
-          padding: 8px 16px; 
-          border-radius: 8px; 
-          display: flex; 
-          align-items: center; 
-          gap: 8px;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
+        .btn-pagination { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
         .btn-pagination:hover:not(:disabled) { background: rgba(255,255,255,0.12); border-color: #8b5cf6; }
         .btn-pagination:disabled { opacity: 0.3; cursor: not-allowed; }
         .page-indicator { font-size: 0.85rem; color: #999; }
         .page-indicator b { color: #8b5cf6; }
-
         @media (max-width: 640px) {
           .btn-text { display: none; } 
           .btn-primary, .btn-bulk { padding: 0; width: 38px; justify-content: center; border-radius: 10px; }
