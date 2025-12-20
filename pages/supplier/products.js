@@ -45,15 +45,12 @@ export default function ProductsPage() {
     return { Authorization: `Bearer ${token}` }
   }
 
-  const getOptimizedUrl = (url) => {
-  if (!url || !url.includes('cloudinary.com')) return url;
-
-  // Limpiamos cualquier transformación previa para evitar duplicados
-  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
-
-  // Aplicamos: Formato automático, Calidad automática y 
-  // Ancho de 200px (suficiente para el contenedor de 80px de la tabla)
-  return baseUrl.replace('/upload/', '/upload/f_auto,q_auto,w_200/');
+const getOptimizedUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('res.cloudinary.com')) {
+    return url.replace('/upload/', '/upload/f_auto,q_auto,w_200/');
+  }
+  return url;
 };
 
   const fetchProducts = async () => {
@@ -391,7 +388,7 @@ export default function ProductsPage() {
             <td>
               <div className="row-inner">
                 {p.imageUrl ? (
-                  <div className="img-wrap"><img src={getOptimizedUrl(p.imageUrl)} alt={p.name} className="img" /></div>
+                  <div className="img-wrap"><img src={getOptimizedUrl(p.imageUrl)} alt={p.name} className="product-img" /></div>
                 ) : (
                   <span className="text-gray-400 italic">Sin imagen</span>
                 )}

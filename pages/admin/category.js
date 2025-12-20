@@ -158,10 +158,9 @@ export default function CategoryPage() {
   }
 
   const getOptimizedUrl = (url) => {
-  if (!url || !url.includes('cloudinary.com')) return url;
-  // Insertamos f_auto (formato) y q_auto (calidad)
-  // También añadimos w_200 porque tus miniaturas son pequeñas (96x56px) 
-  return url.replace('/upload/', '/upload/f_auto,q_auto,w_200/');
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  // Aplicamos auto-formato, auto-calidad y un ancho pequeño de 150px para la tabla
+  return url.replace('/upload/', '/upload/f_auto,q_auto,w_150/');
 };
 
   const cancelAction = () => {
@@ -220,7 +219,7 @@ export default function CategoryPage() {
   {cat.imageUrl ? (
     <div className="img-wrap">
       {/* Aplicamos la función aquí */}
-      <img src={getOptimizedUrl(cat.imageUrl)} alt={cat.name} className="img" />
+      <img src={getOptimizedUrl(cat.imageUrl)} alt={cat.name} className="cat-img" />
     </div>
   ) : (
     <span className="text-gray-400 italic">Sin imagen</span>

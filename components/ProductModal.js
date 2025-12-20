@@ -82,10 +82,22 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
     e.stopPropagation()
   }
 
-  const handleFileInput = (e) => {
-    const file = e.target.files?.[0]
-    if (file) handleImageUpload(file)
+  const handleFile = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // --- NUEVA VALIDACIÓN ---
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    alert("Solo se permiten imágenes estáticas (JPG, PNG, WEBP). Los GIFs y Videos no están permitidos.");
+    return;
   }
+  // ------------------------
+
+  setUploading(true);
+  setError(null);
+  // ... resto del código
+};
 
   const handleImageUpload = async (file) => {
     setUploading(true)
@@ -295,13 +307,20 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
                 <div style={styles.dropInner}>
                   <FaCloudUploadAlt size={36} color="#6b7280" />
                   <div style={{ marginTop: 8, color: '#6b7280' }}>{uploading ? 'Subiendo imagen…' : 'Arrastra o selecciona una imagen'}</div>
-                  <input type="file" accept="image/*" onChange={handleFileInput} style={styles.fileInput} />
+                  <input type="file" onChange={handleFileInput} style={styles.fileInput} id="fileInput" accept="image/jpeg, image/png, image/webp" />
                 </div>
               </div>
 
               {form.imageUrl ? (
                 <div style={styles.previewBox}>
-                  <img src={form.imageUrl} alt="Preview" style={styles.previewImg} />
+                  <img 
+  src={form.imageUrl.includes('cloudinary.com') 
+    ? form.imageUrl.replace('/upload/', '/upload/f_auto,q_auto,w_400/') 
+    : form.imageUrl
+  } 
+  alt="Preview" 
+  style={styles.previewImg} 
+/>
                   <div style={styles.previewActions}>
                     <button type="button" onClick={() => setForm(prev => ({ ...prev, imageUrl: '' }))} style={styles.removeBtn}>Eliminar imagen</button>
                   </div>
