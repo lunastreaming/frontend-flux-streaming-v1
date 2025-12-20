@@ -6,11 +6,35 @@ import Footer from '../components/Footer'
 import PurchaseModal from '../components/PurchaseModal'
 import { useAuth } from '../context/AuthProvider'
 
-const getOptimizedUrl = (url, width = 600) => {
-  if (!url || !url.includes('cloudinary.com')) return url;
-  // Limpiamos cualquier transformación previa que pudiera existir en la BD
-  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
-  return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+// DEFINE ESTO FUERA DE LA FUNCIÓN HOME (Arriba del todo o abajo del todo del archivo)
+// --- UBICACIÓN: Después de los imports o al final del archivo ---
+const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination-wrapper">
+      <button 
+        className="pagination-btn" 
+        disabled={currentPage === 0} 
+        onClick={() => { 
+          setCurrentPage(prev => prev - 1); 
+          window.scrollTo({ top: 400, behavior: 'smooth' }); 
+        }}
+      >
+        Anterior
+      </button>
+      <span className="pagination-info">Página {currentPage + 1} de {totalPages}</span>
+      <button 
+        className="pagination-btn" 
+        disabled={currentPage >= totalPages - 1} 
+        onClick={() => { 
+          setCurrentPage(prev => prev + 1); 
+          window.scrollTo({ top: 400, behavior: 'smooth' }); 
+        }}
+      >
+        Siguiente
+      </button>
+    </div>
+  );
 };
 
 export default function Home() {
@@ -23,6 +47,14 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [catLoading, setCatLoading] = useState(true)
   const [catError, setCatError] = useState(null)
+
+  //Paginado
+
+  // Dentro de Home()
+const [currentPage, setCurrentPage] = useState(0);
+const [searchTerm, setSearchTerm] = useState('');
+const [totalPages, setTotalPages] = useState(0);
+const PAGE_SIZE = 50;
 
   // productos
   const [products, setProducts] = useState([])
@@ -60,7 +92,7 @@ export default function Home() {
   setImagenActiva(getOptimizedUrl(url, 1000))
   setZoomActivo(false)
 }
-  
+
   // f_auto: formato automático (WebP/AVIF)
   // q_auto: calidad automática
   // w_XXX: redimensión al ancho específico
@@ -166,41 +198,70 @@ export default function Home() {
 
   // fetch productos (adaptado a ProductWithStockCountResponse)
   useEffect(() => { fetchProducts() }, [selectedCategory])
-  async function fetchProducts() {
+async function fetchProducts() {
     setProdLoading(true)
     setProdError(null)
     try {
-      const url = selectedCategory
+      // 1. Construcción de la URL con parámetros de paginación y búsqueda
+      const baseUrl = selectedCategory
         ? joinApi(`/api/categories/products/${selectedCategory}/active`)
         : joinApi('/api/categories/products/active')
+      
+      // Se asume que la API acepta 'page', 'size' y 'name' como query params
+      const url = `${baseUrl}?page=${currentPage}&size=${PAGE_SIZE}&name=${encodeURIComponent(searchTerm || '')}`
+
+      const fetchProducts = async () => {
+  setProdLoading(true);
+  try {
+    // Fíjate en el parámetro &query=${searchTerm}
+    const url = `${baseUrl}/products/active?page=${currentPage}&size=50&query=${encodeURIComponent(searchTerm)}`;
+    
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    setProducts(data.content || []);
+    setTotalPages(data.totalPages || 0); // Importante para que la paginación sepa cuántas páginas hay
+  } catch (error) {
+    console.error("Error:", error);
+  } finally {
+    setProdLoading(false);
+  }
+};
+      
       const res = await fetch(url)
       
       if (!res.ok) throw new Error(`HTTP ${res.status}`) 
       const data = await res.json()
 
       let raw = []
+      // 2. Extraer el array de productos y el total de páginas según la estructura de la respuesta
       if (Array.isArray(data)) {
         raw = data
-      } else if (Array.isArray(data?.content)) {
+        setTotalPages(1) // Si es array plano, solo hay 1 página
+      } else if (data?.content && Array.isArray(data.content)) {
         raw = data.content
-      } else if (Array.isArray(data?.items)) {
+        setTotalPages(data.totalPages || 0)
+      } else if (data?.items && Array.isArray(data.items)) {
         raw = data.items
-      } else if (Array.isArray(data?.rows)) {
+        setTotalPages(data.totalPages || 0)
+      } else if (data?.rows && Array.isArray(data.rows)) {
         raw = data.rows
+        setTotalPages(data.totalPages || 0)
       } else {
-        console.warn('[fetchProducts] respuesta no contiene array en content/items/rows', data)
+        console.warn('[fetchProducts] respuesta no contiene array reconocido', data)
         raw = []
+        setTotalPages(0)
       }
 
-      // Normalizar respuesta nueva/antigua:
+      // 3. Normalización de los datos (Mantiene tu lógica original)
       const normalized = raw.map((item) => {
-        // si viene la forma { product: {...}, availableStockCount: N }
         const productWrapper = item.product ?? item
         const availableStockCount = typeof item.availableStockCount === 'number'
           ? item.availableStockCount
           : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : null)
 
-        // posible lista histórica de stockResponses
         const inlineStockResponses = Array.isArray(item.stockResponses)
           ? item.stockResponses
           : Array.isArray(productWrapper.stockResponses)
@@ -219,20 +280,14 @@ export default function Home() {
           renewalPrice: productWrapper.renewalPrice,
           providerName: productWrapper.providerName,
           categoryId: productWrapper.categoryId,
-
           categoryName: productWrapper.categoryName,
           imageUrl: productWrapper.imageUrl,
-          // conservamos stockResponses por compatibilidad si existieran
           stockResponses: inlineStockResponses,
-          // stock ahora proviene de availableStockCount cuando esté presente
           stock: stockCount,
-          // <-- guardamos el objeto product completo para usar en el modal
           fullProduct: productWrapper,
           isOnRequest: productWrapper.isOnRequest ?? false,
-          // 💡 NUEVO: Añadimos la propiedad isRenewable
           isRenewable: productWrapper.isRenewable ?? false,
-          // 💡 ESTADO DEL PROVEEDOR (CAMBIO SOLICITADO)
-          providerStatus: productWrapper.providerStatus ?? null, 
+          providerStatus: productWrapper.providerStatus ?? null,
         }
       })
 
@@ -241,6 +296,7 @@ export default function Home() {
       console.error('Error cargando productos:', err)
       setProdError('No se pudieron cargar los productos')
       setProducts([])
+      setTotalPages(0)
     } finally {
       setProdLoading(false)
     }
@@ -390,6 +446,24 @@ export default function Home() {
               <h3>{selectedCategory ? `Productos en la categoría` : 'Todos los productos activos'}</h3>
               <p className="muted">{prodLoading ? 'Cargando productos...' : (prodError ? prodError : `${products.length} resultados`)}</p>
             </div>
+            {/* BUSCADOR CENTRALIZADO */}
+          {/* BUSCADOR CON DISEÑO MEJORADO */}
+<div className="search-container">
+      <div className="search-wrapper">
+        <div className="search-glass-effect"></div>
+        <span className="search-icon-main">🔍</span>
+        <input 
+          type="text" 
+          placeholder="Busca servicios, categorías o proveedores..." 
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(0); // Reinicia a página 1 al buscar
+          }}
+          className="search-input-modern"
+        />
+      </div>
+    </div>
             <div className="legend">
               <div className="legend-item">
                 <span className="legend-dot blue"></span>
@@ -400,6 +474,13 @@ export default function Home() {
                 <span>ENTREGA INMEDIATA</span>
               </div>
             </div>
+
+            {/* PAGINACIÓN SUPERIOR */}
+          <PaginationControls 
+  currentPage={currentPage} 
+  totalPages={totalPages} 
+  setCurrentPage={setCurrentPage} 
+/>
             <div className="cards-grid">
               {prodLoading && Array.from({ length: 8 }).map((_, i) => (
                 <article className="product-card skeleton" key={`psk-${i}`} />
@@ -562,6 +643,12 @@ export default function Home() {
                 )
 
               })}
+              {/* PAGINACIÓN INFERIOR */}
+          <PaginationControls 
+  currentPage={currentPage} 
+  totalPages={totalPages} 
+  setCurrentPage={setCurrentPage} 
+/>
             </div>
           </div>
         </section>
@@ -1035,8 +1122,8 @@ border-radius: 999px;
 
 .categories-container {
   overflow-x: auto;
-  scrollbar-width: thin; /* Fallback para Firefox [cite: 114] */
-  scrollbar-color: #8b5cf6 transparent; /* Color para Firefox [cite: 114] */
+  scrollbar-width: thin; /* Fallback para Firefox */
+  scrollbar-color: #8b5cf6 transparent; /* Color para Firefox*/
 }
 
 /* Scrollbar para Chrome, Safari y Edge (Webkit) */
@@ -1045,11 +1132,11 @@ border-radius: 999px;
 }
 
 .categories-container::-webkit-scrollbar-track {
-  background: transparent; /* Fondo transparente [cite: 111] */
+  background: transparent; /* Fondo transparente*/
 }
 
 .categories-container::-webkit-scrollbar-thumb {
-  /* Gradiente moderno: Cian -> Violeta -> Verde [cite: 112] */
+  /* Gradiente moderno: Cian -> Violeta -> Verde */
   background: linear-gradient(90deg, #06b6d4, #8b5cf6, #22c55e); 
   border-radius: 999px; /* Forma de píldora  */
   
@@ -1134,6 +1221,144 @@ white-space: normal;
 }
     .circle-item-wrap { width:72px; }
   }
+
+/* Estilos para el Buscador */
+.search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 40px 0;
+    padding: 0 20px;
+  }
+
+  .search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    z-index: 1;
+  }
+
+  .search-glass-effect {
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(90deg, var(--accent-1), #9333ea);
+    border-radius: 16px;
+    z-index: -1;
+    opacity: 0.3;
+    filter: blur(8px);
+    transition: opacity 0.3s ease;
+  }
+
+  .search-wrapper:focus-within .search-glass-effect {
+    opacity: 0.8;
+    filter: blur(12px);
+  }
+
+  .search-input-modern {
+    width: 100%;
+    padding: 18px 50px 18px 55px;
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    color: #fff;
+    font-size: 1.1rem;
+    font-family: 'Poppins', sans-serif;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .search-input-modern:focus {
+    background: rgba(15, 15, 15, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .search-icon-main {
+    position: absolute;
+    left: 20px;
+    color: var(--accent-1);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #aaa;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .search-clear:hover {
+    background: var(--accent-1);
+    color: #000;
+  }
+
+  /* Ajuste para móviles */
+  @media (max-width: 480px) {
+    .search-input-modern {
+      font-size: 0.95rem;
+      padding: 15px 45px 15px 45px;
+    }
+    .search-icon-main {
+      left: 15px;
+    }
+  }
+
+.search-input {
+  width: 100%;
+  max-width: 500px;
+  padding: 12px 20px;
+  background: rgba(13, 13, 13, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  border-color: var(--accent-1);
+}
+
+/* Estilos para la Paginación */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.pagination-btn {
+  background: var(--bg-surface-strong);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 `}</style>
 
       <style jsx global>{`
