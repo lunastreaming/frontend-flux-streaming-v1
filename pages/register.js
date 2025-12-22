@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import Select, { components } from 'react-select'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 // 🚨 CAMBIO: Se añade faExclamationTriangle para el Error Box
-import { faUser, faLock, faHashtag, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import countriesData from '../data/countries.json' // Ajusta la ruta si necesitas
 
@@ -176,7 +176,6 @@ export default function Register() {
       password,
       phone,
       role: 'seller',
-      referrerCode: refCode?.trim() || null,
     }
 
     try {
@@ -350,17 +349,6 @@ export default function Register() {
             <span className="underline" />
           </div>
           {showFieldError('phone') && <div id="phone-error" className="field-error">{errors.phone}</div>}
-
-          <div className="group">
-            <div className="icon"><FontAwesomeIcon icon={faHashtag} /></div>
-            <input
-              type="text"
-              placeholder="Código de referencia"
-              value={refCode}
-              onChange={e => setRefCode(e.target.value)}
-            />
-            <span className="underline" />
-          </div>
 
           <button 
             type="submit" 
