@@ -258,12 +258,10 @@ export default function OrdersPage() {
                     <th>Password</th>
                     <th>URL</th>
                     <th>Nº Perfil</th>
-                    <th>Cliente</th>
-                    <th>Celular cliente</th>
+                    <th>DISTRIBUIDOR</th>
+                    <th>Celular Distribuidor</th>
                     <th>Pin</th>
                     <th>Refund</th>
-                    <th>Proveedor</th>
-                    <th>Celular proveedor</th>
                     <th>Configuraciones</th>
                   </tr>
                 </thead>
@@ -304,9 +302,9 @@ export default function OrdersPage() {
 {r.buyerUsernamePhone && (
     <button
         className="wa-btn"
-        title={`WhatsApp cliente ${r.buyerUsernamePhone}`}
+        title={`WhatsApp Distribuidor ${r.buyerUsernamePhone}`}
         onClick={() => openWhatsAppToClient(r.buyerUsernamePhone, r.buyerUsername, r.productName)}
-        aria-label={`WhatsApp cliente ${r.buyerUsernamePhone}`}
+        aria-label={`WhatsApp Distribuidor ${r.buyerUsernamePhone}`}
     >
         <FaWhatsapp />
     </button>
@@ -318,8 +316,6 @@ export default function OrdersPage() {
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
                         {/* Refund: mostrar amount del backend */}
                         <td><div className="row-inner">{formatAmount(r.amount)}</div></td>
-                        <td><div className="row-inner">{r.providerName ?? ''}</div></td>
-                        <td><div className="row-inner">{r.providerPhone ?? ''}</div></td>
                         {/* Configuraciones */}
                         <td>
                           <div className="row-inner config-cell">
