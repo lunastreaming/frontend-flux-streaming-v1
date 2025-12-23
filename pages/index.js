@@ -1351,26 +1351,68 @@ white-space: normal;
 
 /* Estilos para la Paginación */
 .pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-  margin: 20px 0;
-}
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin: 40px 0;
+    padding: 20px;
+  }
 
 .pagination-btn {
-  background: var(--bg-surface-strong);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-}
+    background: rgba(13, 13, 13, 0.8);
+    /* Borde neón sutil por defecto */
+    border: 1px solid rgba(0, 242, 255, 0.3);
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 25px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pagination-btn:not(:disabled) {
+    animation: neon-pulse 3s infinite alternate;
+  }
+
+  @keyframes neon-pulse {
+    from { box-shadow: 0 0 5px rgba(0, 242, 255, 0.2); }
+    to { box-shadow: 0 0 12px rgba(0, 242, 255, 0.4); }
+  }
+
+  .pagination-btn:not(:disabled):hover {
+    /* Efecto neón intenso al pasar el mouse */
+    border-color: #00f2ff;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.5), inset 0 0 5px rgba(0, 242, 255, 0.2);
+    transform: translateY(-3px);
+    color: #00f2ff;
+  }
 
 .pagination-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .pagination-info {
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 16px;
+    border-radius: 20px;
+    /* Un pequeño detalle neón en el texto de la página */
+    border-left: 2px solid #7000ff;
+    border-right: 2px solid #00ff88;
+  }
 
 //container categories
 @keyframes rotate-gradient {
