@@ -20,18 +20,20 @@ const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
           window.scrollTo({ top: 400, behavior: 'smooth' }); 
         }}
       >
-        Anterior
+        <span className="pagination-btn-inner">Anterior</span>
       </button>
+      
       <span className="pagination-info">Página {currentPage + 1} de {totalPages}</span>
+      
       <button 
         className="pagination-btn" 
         disabled={currentPage >= totalPages - 1} 
         onClick={() => { 
-          setCurrentPage(prev => prev + 1); 
+          setCurrentPage(prev => prev - 1 + 2); // prev + 1
           window.scrollTo({ top: 400, behavior: 'smooth' }); 
         }}
       >
-        Siguiente
+        <span className="pagination-btn-inner">Siguiente</span>
       </button>
     </div>
   );
@@ -1352,29 +1354,43 @@ white-space: normal;
 /* Estilos para la Paginación */
 .pagination-wrapper {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end; /* Mueve todo a la derecha */
     align-items: center;
     gap: 20px;
-    margin: 40px 0;
-    padding: 20px;
+    margin-top: 60px; /* Mucha más separación de las cards */
+    margin-bottom: 40px;
+    padding-right: 10px; /* Espacio respecto al borde de la pantalla */
+    width: 100%;
   }
 
 .pagination-btn {
-    background: rgba(13, 13, 13, 0.8);
-    /* Borde neón sutil por defecto */
-    border: 1px solid rgba(0, 242, 255, 0.3);
-    border-radius: 12px;
+    position: relative;
+    background: #0d0d0d;
     color: #fff;
-    padding: 10px 25px;
-    font-weight: 600;
-    font-family: 'Poppins', sans-serif;
+    padding: 12px 28px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    position: relative;
-    overflow: hidden;
+    border: none;
+    transition: all 0.3s ease;
+    
+    /* EFECTO BORDE NEÓN */
+    padding: 2px; /* Espacio para el borde */
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88);
+    background-size: 200% auto;
+    animation: neon-flow-border 3s linear infinite;
+  }
+
+  /* Capa interna para el botón para que el texto sea legible */
+  .pagination-btn-inner {
+    background: #0d0d0d;
+    padding: 10px 25px;
+    border-radius: 10px;
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .pagination-btn:not(:disabled) {
@@ -1386,32 +1402,30 @@ white-space: normal;
     to { box-shadow: 0 0 12px rgba(0, 242, 255, 0.4); }
   }
 
-  .pagination-btn:not(:disabled):hover {
-    /* Efecto neón intenso al pasar el mouse */
-    border-color: #00f2ff;
-    box-shadow: 0 0 15px rgba(0, 242, 255, 0.5), inset 0 0 5px rgba(0, 242, 255, 0.2);
-    transform: translateY(-3px);
-    color: #00f2ff;
+.pagination-btn:not(:disabled):hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
+    filter: brightness(1.2);
   }
 
 .pagination-btn:disabled {
-    opacity: 0.3;
+    filter: grayscale(1);
+    opacity: 0.4;
     cursor: not-allowed;
-    border-color: rgba(255, 255, 255, 0.1);
+    animation: none;
+    background: #333;
   }
 
-  .pagination-info {
-    color: #fff;
+.pagination-info {
     font-family: 'Poppins', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 300;
-    letter-spacing: 1px;
+    color: #00f2ff; /* Color neón cian */
+    font-weight: 600;
+    font-size: 1rem;
+    text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
     background: rgba(255, 255, 255, 0.05);
-    padding: 8px 16px;
-    border-radius: 20px;
-    /* Un pequeño detalle neón en el texto de la página */
-    border-left: 2px solid #7000ff;
-    border-right: 2px solid #00ff88;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid rgba(112, 0, 255, 0.3);
   }
 
 //container categories
