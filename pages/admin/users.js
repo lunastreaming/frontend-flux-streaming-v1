@@ -6,7 +6,7 @@ import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp, FaWallet
 } from 'react-icons/fa'
 
 export default function AdminUsersPage() {
@@ -25,6 +25,8 @@ export default function AdminUsersPage() {
   const pageSize = 30                 
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
+
+  const [depositModal, setDepositModal] = useState({ open: false, userId: null, username: null, amount: '' });
 
   const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
   const [confirmData, setConfirmData] = useState({ open: false, userId: null, username: null, action: null, message: '', loading: false })
@@ -53,6 +55,45 @@ export default function AdminUsersPage() {
     if (typeof window !== 'undefined') return localStorage.getItem('accessToken')
     return null
   }
+
+  // 2. Modifica handleConfirm para incluir la lógica de 'deposit'
+const handleConfirm2 = async () => {
+  const { userId, action } = confirmData;
+  if (!userId || !action) return;
+  
+  setConfirmData(prev => ({ ...prev, loading: true }));
+  try {
+    let url = '', method = 'POST', body = undefined;
+
+    if (action === 'deposit') {
+      // Usamos el endpoint administrativo definido
+      url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
+      method = 'POST';
+      body = JSON.stringify({ 
+        userId: userId, 
+        amount: parseFloat(depositModal.amount) 
+      });
+    } 
+    // ... resto de tus condiciones (verify, disable, delete)
+    else if (action === 'verify') { 
+        url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`; 
+        method = 'PATCH'; 
+    }
+    // ...
+    
+    await callEndpoint(url, { 
+      method, 
+      body: body || (method === 'POST' ? JSON.stringify({}) : undefined) 
+    });
+    
+    await fetchUsers(page);
+    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
+    setDepositModal({ open: false, userId: null, username: null, amount: '' }); // Limpiar modal de monto
+  } catch (err) {
+    setError(err.message || 'Error en la acción');
+    setConfirmData(prev => ({ ...prev, loading: false }));
+  }
+};
 
   const fetchUsers = async (uiPage = 1) => {
     setLoading(true)
@@ -113,25 +154,90 @@ export default function AdminUsersPage() {
     setConfirmData({ open: true, userId, username, action, message, loading: false })
   }
 
-  const handleConfirm = async () => {
-    const { userId, action } = confirmData
-    if (!userId || !action) return
-    setConfirmData(prev => ({ ...prev, loading: true }))
-    try {
-      let url = '', method = 'POST'
-      if (action === 'verify') { url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`; method = 'PATCH' }
-      else if (action === 'disable') { url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`; method = 'PATCH' }
-      else if (action === 'delete') { url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`; method = 'DELETE' }
-      else { url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}` }
-      
-      await callEndpoint(url, { method, body: method === 'POST' ? JSON.stringify({}) : undefined })
-      await fetchUsers(page)
-      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false })
-    } catch (err) {
-      setError(err.message || 'Error en la acción')
-      setConfirmData(prev => ({ ...prev, loading: false }))
+const handleConfirm = async () => {
+  const { userId, action, username } = confirmData;
+  if (!userId || !action) return;
+
+  setConfirmData(prev => ({ ...prev, loading: true }));
+
+  try {
+    let url = '';
+    let method = 'POST'; // Por defecto para la mayoría de acciones personalizadas
+    let body = undefined;
+
+    // --- Lógica Nueva: Depósito Administrativo ---
+    if (action === 'deposit') {
+      url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
+      method = 'POST';
+      body = JSON.stringify({ 
+        userId: userId, 
+        amount: parseFloat(depositModal.amount) 
+      });
+    } 
+    // --- Lógica Existente: Cambios de Estado ---
+    else if (action === 'verify') { 
+      url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`;
+      method = 'PATCH';
+    } 
+    else if (action === 'disable') { 
+      url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`;
+      method = 'PATCH';
+    } 
+    // --- Lógica Existente: Eliminación ---
+    else if (action === 'delete') { 
+      url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`;
+      method = 'DELETE';
+    } 
+    // --- Otros (discount, incentive, referrals) ---
+    else { 
+      url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`;
     }
+
+    // Ejecución de la petición usando tu función auxiliar callEndpoint
+    await callEndpoint(url, { 
+      method, 
+      body: body || (method === 'POST' ? JSON.stringify({}) : undefined)
+    });
+
+    // Refrescar la tabla en la página actual
+    await fetchUsers(page);
+
+    // Limpiar estados y cerrar modales
+    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
+    
+    // Si fue un depósito, reseteamos el modal de monto
+    if (action === 'deposit') {
+      setDepositModal({ open: false, userId: null, username: null, amount: '' });
+    }
+
+  } catch (err) {
+    // Manejo de errores basado en tu implementación actual
+    setError(err.message || 'Error en la acción');
+    setConfirmData(prev => ({ ...prev, loading: false }));
   }
+};
+
+const requestDeposit = (userId, username) => {
+  setDepositModal({ open: true, userId, username, amount: '' });
+};
+
+const proceedToConfirmDeposit = () => {
+  if (!depositModal.amount || parseFloat(depositModal.amount) <= 0) {
+    alert("Por favor ingrese un monto válido");
+    return;
+  }
+  
+  // Cerramos el modal de monto y abrimos el ConfirmModal existente
+  setConfirmData({
+    open: true,
+    userId: depositModal.userId,
+    username: depositModal.username,
+    action: 'deposit',
+    message: `¿Estás seguro de transferir $. ${depositModal.amount} al usuario ${depositModal.username}? Este saldo se creará administrativamente.`,
+    loading: false
+  });
+  setDepositModal(prev => ({ ...prev, open: false }));
+};
 
   const goPrev = () => { if (page > 1) fetchUsers(page - 1) }
   const goNext = () => { if (page < totalPages) fetchUsers(page + 1) }
@@ -245,6 +351,13 @@ export default function AdminUsersPage() {
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'discount')}><FaTag /></button>
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'incentive')}><FaGift /></button>
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'referrals')}><FaUserFriends /></button>
+                            <button 
+        onClick={() => requestDeposit(u.id, u.username)} 
+        title="Transferencia Administrativa"
+        style={{ color: '#22d3ee' }}
+    >
+        <FaWallet />
+    </button>
                             <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable}><FaTrash /></button>
                           </div>
                         </td>
@@ -259,6 +372,35 @@ export default function AdminUsersPage() {
           </section>
         </main>
       </div>
+
+      {depositModal.open && (
+  <div className="modal-overlay-transfer">
+    <div className="modal-content-transfer">
+      <h3 className="modal-title-transfer">Transferir Saldo</h3>
+      <p>Usuario: <strong>{depositModal.username}</strong></p>
+      
+      <div className="input-group-transfer">
+        <label>Monto a depositar (USD):</label>
+        <input 
+          type="number" 
+          value={depositModal.amount}
+          onChange={(e) => setDepositModal({...depositModal, amount: e.target.value})}
+          placeholder="0.00"
+          autoFocus
+        />
+      </div>
+
+      <div className="modal-actions-transfer">
+        <button className="btn-cancel-modal" onClick={() => setDepositModal({ open: false })}>
+          Cancelar
+        </button>
+        <button className="btn-confirm-modal" onClick={proceedToConfirmDeposit}>
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <style jsx>{`
         .admin-container { min-height: 100vh; font-family: 'Inter', sans-serif; color: #fff; }
@@ -290,6 +432,29 @@ export default function AdminUsersPage() {
     border-radius: 0.625rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+
+  /* Agrega esto al final de tu bloque de estilos existente */
+.modal-overlay-transfer { 
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+  display: flex; align-items: center; justify-content: center; z-index: 2000; 
+}
+.modal-content-transfer { 
+  background: #1a1d21; padding: 2rem; border-radius: 1rem; 
+  border: 1px solid #333; width: 90%; max-width: 400px; 
+}
+.modal-title-transfer { margin-top: 0; color: #22d3ee; font-size: 1.5rem; }
+.input-group-transfer { margin: 1.5rem 0; }
+.input-group-transfer label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: #9aa0a6; }
+.input-group-transfer input { 
+  width: 100%; padding: 0.75rem; background: #000; border: 1px solid #444; 
+  color: #fff; border-radius: 0.5rem; font-size: 1.25rem; outline: none;
+}
+.input-group-transfer input:focus { border-color: #22d3ee; }
+.modal-actions-transfer { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem; }
+.btn-confirm-modal { 
+  background: #06b6d4; border: none; color: #fff; padding: 0.6rem 1.5rem; 
+  border-radius: 0.5rem; cursor: pointer; font-weight: 700; 
+}
 
   .search-box input {
     background: transparent;
@@ -450,11 +615,16 @@ export default function AdminUsersPage() {
         .btn-refresh { background: none; border: none; color: #9aa0a6; cursor: pointer; font-size: 1.25rem; }
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
       `}</style>
+
+      
 
       <ConfirmModal {...confirmData} onConfirm={handleConfirm} onCancel={() => setConfirmData({ ...confirmData, open: false })} />
       <AdminPasswordModal {...pwdModal} onClose={() => setPwdModal({ open: false })} />
       <AdminPhoneModal {...phoneModal} onClose={() => setPhoneModal({ open: false })} onSuccess={() => { setPhoneModal({ open: false }); fetchUsers(page); }} />
+    
+    
     </>
   )
 }
