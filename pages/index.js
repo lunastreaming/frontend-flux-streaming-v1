@@ -29,7 +29,7 @@ const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
         className="pagination-btn" 
         disabled={currentPage >= totalPages - 1} 
         onClick={() => { 
-          setCurrentPage(prev => prev - 1 + 2); // prev + 1
+          setCurrentPage(prev => prev + 1); 
           window.scrollTo({ top: 400, behavior: 'smooth' }); 
         }}
       >
@@ -1351,81 +1351,85 @@ white-space: normal;
   border-color: var(--accent-1);
 }
 
-/* Estilos para la Paginación */
-.pagination-wrapper {
+/* === NUEVA PAGINACIÓN NEÓN MODERNA === */
+  .pagination-wrapper {
     display: flex;
-    justify-content: flex-end; /* Mueve todo a la derecha */
+    justify-content: flex-end; /* Alinea a la derecha */
     align-items: center;
     gap: 20px;
-    margin-top: 60px; /* Mucha más separación de las cards */
+    margin-top: 80px; /* Mucha separación de las cards */
     margin-bottom: 40px;
-    padding-right: 10px; /* Espacio respecto al borde de la pantalla */
     width: 100%;
+    padding-right: 20px;
   }
 
-.pagination-btn {
+  .pagination-btn {
     position: relative;
-    background: #0d0d0d;
-    color: #fff;
-    padding: 12px 28px;
-    border-radius: 12px;
-    cursor: pointer;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border: none;
-    transition: all 0.3s ease;
-    
-    /* EFECTO BORDE NEÓN */
-    padding: 2px; /* Espacio para el borde */
-    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88);
+    padding: 2px; /* Grosor del borde neón */
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
     background-size: 200% auto;
-    animation: neon-flow-border 3s linear infinite;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    animation: neon-flow-border 4s linear infinite;
+    display: inline-block;
   }
 
-  /* Capa interna para el botón para que el texto sea legible */
   .pagination-btn-inner {
-    background: #0d0d0d;
+    background: #0d0d0d; /* Fondo oscuro interno */
+    color: #fff;
     padding: 10px 25px;
     border-radius: 10px;
     display: block;
-    width: 100%;
-    height: 100%;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+    transition: background 0.3s;
   }
 
-  .pagination-btn:not(:disabled) {
-    animation: neon-pulse 3s infinite alternate;
+  .pagination-btn:not(:disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
   }
 
-  @keyframes neon-pulse {
-    from { box-shadow: 0 0 5px rgba(0, 242, 255, 0.2); }
-    to { box-shadow: 0 0 12px rgba(0, 242, 255, 0.4); }
+  .pagination-btn:not(:disabled):hover .pagination-btn-inner {
+    background: transparent; /* Se vuelve todo neón al pasar el mouse */
   }
 
-.pagination-btn:not(:disabled):hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
-    filter: brightness(1.2);
-  }
-
-.pagination-btn:disabled {
+  .pagination-btn:disabled {
     filter: grayscale(1);
-    opacity: 0.4;
+    opacity: 0.3;
     cursor: not-allowed;
     animation: none;
-    background: #333;
   }
 
-.pagination-info {
+  .pagination-info {
     font-family: 'Poppins', sans-serif;
-    color: #00f2ff; /* Color neón cian */
+    color: #00f2ff;
     font-weight: 600;
-    font-size: 1rem;
-    text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+    font-size: 0.9rem;
     background: rgba(255, 255, 255, 0.05);
-    padding: 10px 20px;
-    border-radius: 30px;
-    border: 1px solid rgba(112, 0, 255, 0.3);
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 242, 255, 0.2);
+    text-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+  }
+
+  /* Asegúrate de que esta animación exista en tu CSS */
+  @keyframes neon-flow-border {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* Ajuste para móviles */
+  @media (max-width: 768px) {
+    .pagination-wrapper {
+      justify-content: center; /* Centrar en móviles para mejor UX */
+      padding-right: 0;
+      margin-top: 40px;
+    }
   }
 
 //container categories
