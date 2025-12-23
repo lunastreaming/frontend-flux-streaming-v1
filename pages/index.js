@@ -1220,13 +1220,31 @@ white-space: normal;
     padding: 0 20px;
   }
 
-  .search-wrapper {
+ .search-wrapper {
     position: relative;
     width: 100%;
     max-width: 600px;
     display: flex;
     align-items: center;
     z-index: 1;
+    
+    /* EFECTO NEÓN IGUAL A CATEGORÍAS */
+    padding: 3px; /* Grosor del borde */
+    border-radius: 16px;
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
+    background-size: 200% auto;
+    animation: neon-flow-border 4s linear infinite;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    overflow: hidden;
+  }
+    /* Capa interna oscura para el buscador */
+  .search-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 2px; /* Ajuste para que el borde se vea fino */
+    background: rgba(10, 10, 10, 0.9);
+    border-radius: 14px;
+    z-index: 0;
   }
 
   .search-glass-effect {
@@ -1245,19 +1263,19 @@ white-space: normal;
     filter: blur(12px);
   }
 
-  .search-input-modern {
+/* Ajuste para que el input y el icono queden sobre el fondo */
+.search-input-modern {
+    position: relative;
+    z-index: 1;
     width: 100%;
-    padding: 18px 50px 18px 55px;
-    background: rgba(10, 10, 10, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
+    /* 55px a la izquierda para dejar espacio a la lupa centrada */
+    padding: 18px 50px 18px 55px; 
+    background: transparent;
+    border: none;
+    outline: none;
     color: #fff;
     font-size: 1.1rem;
     font-family: 'Poppins', sans-serif;
-    outline: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
 
   .search-input-modern:focus {
@@ -1266,13 +1284,19 @@ white-space: normal;
     transform: translateY(-2px);
   }
 
-  .search-icon-main {
+.search-icon-main {
     position: absolute;
-    left: 20px;
+    left: 22px; /* Un poco más de espacio desde el borde neón */
+    top: 50%;
+    transform: translateY(-50%); /* Centrado vertical exacto */
     color: var(--accent-1);
+    font-size: 1.2rem; /* Aumentamos un poco el tamaño para que no se pierda */
     display: flex;
     align-items: center;
     pointer-events: none;
+    z-index: 2;
+    /* Efecto de brillo sutil para que resalte sobre el fondo oscuro */
+    text-shadow: 0 0 8px rgba(6, 182, 212, 0.6); 
   }
 
   .search-clear {
@@ -1298,16 +1322,15 @@ white-space: normal;
   }
 
   /* Ajuste para móviles */
-  @media (max-width: 480px) {
-    .search-input-modern {
-      font-size: 0.95rem;
-      padding: 15px 45px 15px 45px;
-    }
+@media (max-width: 480px) {
     .search-icon-main {
-      left: 15px;
+      left: 18px;
+      font-size: 1rem;
+    }
+    .search-input-modern {
+      padding: 15px 45px 15px 48px;
     }
   }
-
 .search-input {
   width: 100%;
   max-width: 500px;
@@ -1403,6 +1426,32 @@ white-space: normal;
   .subtle-arrow {
     z-index: 10;
     margin: 0 5px; /* Evita que toquen el borde neón */
+  }
+
+
+  /* Personalización del Scrollbar para Chrome, Safari y Edge */
+  .circle-strip::-webkit-scrollbar {
+    height: 6px; /* Grosor de la barra */
+  }
+
+  .circle-strip::-webkit-scrollbar-track {
+    background: rgba(13, 13, 13, 0.5); /* Fondo de la pista */
+    border-radius: 10px;
+    margin: 0 40px; /* Para que no toque los bordes del cuadro */
+  }
+
+  .circle-strip::-webkit-scrollbar-thumb {
+    /* Gradiente Neón para la barrita */
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88);
+    background-size: 200% auto;
+    border-radius: 10px;
+    /* Efecto de brillo en la barra */
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.6);
+  }
+
+  .circle-strip::-webkit-scrollbar-thumb:hover {
+    background: #00f2ff; /* Color sólido al pasar el mouse */
+    box-shadow: 0 0 15px #00f2ff;
   }
 
 
