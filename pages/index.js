@@ -1348,6 +1348,64 @@ white-space: normal;
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+//container categories
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.circle-strip-wrapper {
+    margin-bottom: 18px; 
+    position: relative;
+    border-radius: 16px;
+    /* El padding define el grosor del borde neón */
+    padding: 3px; 
+    
+    /* Gradiente con colores fosforescentes (Cian, Morado, Verde) */
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
+    background-size: 200% auto;
+    
+    /* Animación para que el color fluya */
+    animation: neon-flow-border 4s linear infinite;
+    
+    /* Brillo exterior (glow) */
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+    overflow: hidden;
+  }
+
+  /* Esta capa crea el fondo oscuro interno */
+  .circle-strip-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 2px; /* Grosor visual del borde */
+    background: rgba(13, 13, 13, 0.95);
+    border-radius: 14px;
+    z-index: 0;
+  }
+
+  /* Asegura que las categorías se vean encima del fondo negro */
+  .circle-strip-outer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  @keyframes neon-flow-border {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .subtle-arrow {
+    z-index: 10;
+    margin: 0 5px; /* Evita que toquen el borde neón */
+  }
+
+
 `}</style>
 
       <style jsx global>{`
