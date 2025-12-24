@@ -785,24 +785,32 @@ padding: 8px 6px 48px;
 }
   .circle-item-wrap { flex: 0 0 auto; width: 120px; display: flex; flex-direction: column; align-items: center; gap: 8px; scroll-snap-align: center;
 }
-  .circle-item {
-    width: 120px; height: 120px; border-radius: 999px;
-/* Cambio de diseño: Fondo semi-transparente */
-    background: rgba(40, 40, 40, 0.6);
-backdrop-filter: blur(5px);
-    border: 1px solid rgba(255,255,255,0.08);
-    display: inline-flex; align-items: center; justify-content: center;
+.circle-item {
+    width: 120px; 
+    height: 120px; 
+    border-radius: 999px;
+    background: rgba(40, 40, 40, 0.6); /* Fondo semi-transparente */
+    backdrop-filter: blur(5px);
+    
+    /* EFECTO NEÓN: Borde y Sombra */
+    border: 1px solid var(--accent-1); /* Usamos el color cian definido en :root */
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); /* Resplandor suave inicial */
+    
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
     cursor: pointer;
-transition: transform 240ms ease, box-shadow 240ms ease;
+    transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
     -webkit-tap-highlight-color: transparent;
   }
-  .circle-item:hover {
+.circle-item:hover {
     transform: translateY(-4px);
-}
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6); /* Aumenta el brillo al hacer hover */
+  }
   .circle-item.active-cat {
-    border-color: var(--accent-1);
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
-}
+    border-color: #00ff88; /* Puedes cambiarlo a verde neón para diferenciar la activa */
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  }
   .circle-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 999px;
 }
   .circle-fallback {
@@ -1357,36 +1365,34 @@ white-space: normal;
     justify-content: flex-end; /* Alinea a la derecha */
     align-items: center;
     gap: 20px;
-    margin-top: 80px; /* Mucha separación de las cards */
-    margin-bottom: 40px;
+    margin: 40px 0; /* Mayor separación (40px arriba y abajo) de los cards */
+    padding: 0 10px;
     width: 100%;
-    padding-right: 20px;
   }
 
-  .pagination-btn {
-    position: relative;
-    padding: 2px; /* Grosor del borde neón */
-    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
-    background-size: 200% auto;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    animation: neon-flow-border 4s linear infinite;
-    display: inline-block;
-  }
-
-  .pagination-btn-inner {
-    background: #0d0d0d; /* Fondo oscuro interno */
+.pagination-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
-    padding: 10px 25px;
-    border-radius: 10px;
-    display: block;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 0.85rem;
-    transition: background 0.3s;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(5px);
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    background: var(--accent-1);
+    color: var(--accent-contrast);
+    border-color: var(--accent-1);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+  }
+
+.pagination-btn-inner {
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 
   .pagination-btn:not(:disabled):hover {
@@ -1398,23 +1404,16 @@ white-space: normal;
     background: transparent; /* Se vuelve todo neón al pasar el mouse */
   }
 
-  .pagination-btn:disabled {
-    filter: grayscale(1);
+.pagination-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-    animation: none;
   }
 
-  .pagination-info {
+ .pagination-info {
     font-family: 'Poppins', sans-serif;
-    color: #00f2ff;
-    font-weight: 600;
     font-size: 0.9rem;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 8px 18px;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 242, 255, 0.2);
-    text-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+    color: var(--muted);
+    font-weight: 600;
   }
 
   /* Asegúrate de que esta animación exista en tu CSS */
