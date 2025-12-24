@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo } from 'react-icons/fa'
+import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo, FaEdit } from 'react-icons/fa'
 import SupportModal from '../SupportModal'
 import RenewModal from '../RenewModal'
+import EditPhoneModal from '../EditPhoneModal'
 
 export default function ComprasTable({ endpoint = 'purchases', balance, search = '' }) {
   const [items, setItems] = useState([])
@@ -20,6 +21,16 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
+
+  // ... dentro de la función ComprasTable
+const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
+const [phoneToEdit, setPhoneToEdit] = useState({ id: null, currentPhone: '' });
+
+const openEditPhone = (id, phone) => {
+  setPhoneToEdit({ id, currentPhone: phone });
+  setShowEditPhoneModal(true);
+};
+
   const SIZE = 50
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
@@ -293,17 +304,26 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>
                   <td>
-                    <div className="row-inner whatsapp-cell">
-                      <button
-                        className="wa-btn"
-                        onClick={onClickWhatsAppClient}
-                        aria-label={`WhatsApp cliente ${row.clientPhone || ''}`}
-                      >
-                        <FaWhatsapp />
-                      </button>
-                      <div className="wa-number">{row.clientPhone || ''}</div>
-                    </div>
-                  </td>
+  <div className="row-inner whatsapp-cell">
+    <button
+      className="wa-btn"
+      onClick={onClickWhatsAppClient}
+      aria-label={`WhatsApp cliente ${row.clientPhone || ''}`}
+    >
+      <FaWhatsapp />
+    </button>
+    <div className="wa-number">{row.clientPhone || ''}</div>
+    
+    {/* NUEVO BOTÓN DE EDICIÓN */}
+    <button 
+      className="edit-phone-btn"
+      onClick={() => openEditPhone(row.id, row.clientPhone)}
+      title="Editar teléfono"
+    >
+      <FaEdit />
+    </button>
+  </div>
+</td>
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
                   <td><div className="row-inner">{row.providerPhone || ''}</div></td>
                   <td>
@@ -364,6 +384,16 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
           }}
         />
       )}
+
+      {showEditPhoneModal && (
+  <EditPhoneModal
+    isOpen={showEditPhoneModal}
+    onClose={() => setShowEditPhoneModal(false)}
+    stockId={phoneToEdit.id}
+    currentPhone={phoneToEdit.currentPhone}
+    onSuccess={() => fetchData(page)} // Recarga la tabla para ver el cambio
+  />
+)}
 
       {showRenewModal && (
         <RenewModal
@@ -433,6 +463,20 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
         }
         .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
         color:#fff; }
+        .edit-phone-btn {
+  background: none;
+  border: none;
+  color: #9fb4c8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  transition: color 0.2s;
+}
+.edit-phone-btn:hover {
+  color: #3b82f6;
+}
       `}</style>
     </div>
   )
