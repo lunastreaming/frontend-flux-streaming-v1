@@ -135,20 +135,22 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
 
   const resetForm = () => setForm(initialForm)
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     try {
-      setError(null)
+      setError(null);
+      // Validaciones básicas de campos obligatorios
       if (!form.name || !form.categoryId || !form.salePrice) {
-        setError('Nombre, categoría y precio de venta son obligatorios')
-        return
+        setError('Nombre, categoría y precio de venta son obligatorios');
+        return;
       }
       if (uploading) {
-        setError('Espera a que la imagen termine de subirse')
-        return
+        setError('Espera a que la imagen termine de subirse');
+        return;
       }
 
-      setSubmitting(true)
+      setSubmitting(true);
 
+      // Preparación del payload procesando tipos de datos
       const payload = {
         name: String(form.name).trim(),
         categoryId: toInteger(form.categoryId),
@@ -161,49 +163,70 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
         isRenewable: !!form.isRenewable,
         isOnRequest: !!form.isOnRequest,
         imageUrl: form.imageUrl || null
-      }
+      };
 
+      // Limpieza de valores undefined para el envío JSON 
       const filteredPayload = Object.fromEntries(
         Object.entries(payload).map(([k, v]) => [k, v === undefined ? null : v])
-      )
+      );
 
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('accessToken');
 
+      // LÓGICA DE ACTUALIZACIÓN (EDICIÓN)
       if (initialData && initialData.id) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${initialData.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify(filteredPayload)
-        })
+        });
+
         if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`Error ${res.status} ${text}`)
+          const text = await res.text().catch(() => '');
+          throw new Error(`Error ${res.status} ${text}`);
         }
-        const updated = await res.json()
-        if (onSuccess) onSuccess(updated)
-        resetForm()
-        onClose()
+
+        // Como el backend responde 204 (No Content), no intentamos hacer res.json()
+        // En su lugar, combinamos los datos originales con los cambios del formulario
+        const updatedLocally = {
+          ...initialData,      // Mantiene campos que no están en el formulario (id, active, providerId, etc.)
+          ...filteredPayload   // Sobrescribe con los nuevos valores editados
+        };
+
+        if (onSuccess) onSuccess(updatedLocally);
+        resetForm();
+        onClose();
+
       } else {
+        // LÓGICA DE CREACIÓN (POST)
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify(filteredPayload)
-        })
+        });
+
         if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`Error ${res.status} ${text}`)
+          const text = await res.text().catch(() => '');
+          throw new Error(`Error ${res.status} ${text}`);
         }
-        const created = await res.json()
-        if (onSuccess) onSuccess(created)
-        resetForm()
-        onClose()
+
+        // El POST normalmente sí retorna el objeto creado (Status 201)
+        const created = await res.json();
+        if (onSuccess) onSuccess(created);
+        resetForm();
+        onClose();
       }
     } catch (err) {
-      setError('Error al guardar producto: ' + (err.message || err))
+      setError('Error al guardar producto: ' + (err.message || err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
     resetForm()
