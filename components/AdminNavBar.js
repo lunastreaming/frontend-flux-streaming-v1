@@ -44,7 +44,7 @@ export default function AdminNavBar() {
       <div className="navbar-content">
         <Link href="/admin" passHref legacyBehavior>
           <a className="logo-container" onClick={() => setMenuOpen(false)}>
-            <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
+            <img src="/logo.png" alt="Logo" className="logo-image" />
           </a>
         </Link>
 
@@ -59,7 +59,6 @@ export default function AdminNavBar() {
           <div className="bar" />
         </button>
 
-        {/* Lista completa de items recuperada de tu archivo original */}
         <ul className={`admin-nav-items ${menuOpen ? 'open' : ''}`}>
           <li><Link href="/admin/solds" passHref legacyBehavior><a><FaChartLine /><span>Solds</span></a></Link></li>
           <li><Link href="/admin/finance" passHref legacyBehavior><a><FaMoneyBill /><span>Finance</span></a></Link></li>
@@ -69,9 +68,9 @@ export default function AdminNavBar() {
           <li><Link href="/admin/wallet-user" passHref legacyBehavior><a><FaWallet /><span>Wallet User</span></a></Link></li>
           <li><Link href="/admin/supplier" passHref legacyBehavior><a><FaTruck /><span>Supplier</span></a></Link></li>
           <li><Link href="/admin/wallet-supplier" passHref legacyBehavior><a><FaCoins /><span>Wallet Supplier</span></a></Link></li>
-          <li className="logout-item">
-            <button className="logout-button" onClick={handleLogout}>
-              <FaSignOutAlt /> <span className="logout-text-mobile">Cerrar sesión</span>
+          <li className="logout-item-li">
+            <button className="logout-button-red" onClick={handleLogout}>
+              <FaSignOutAlt /> <span className="logout-text">Cerrar sesión</span>
             </button>
           </li>
         </ul>
@@ -79,14 +78,14 @@ export default function AdminNavBar() {
 
       <style jsx>{`
         .admin-navbar {
-          width: 92%;
-          max-width: 1200px;
-          margin: 20px auto;
-          background-color: rgba(26, 26, 26, 0.4);
-          backdrop-filter: blur(12px);
+          width: 96%;
+          max-width: 1500px;
+          margin: 25px auto;
+          background-color: rgba(26, 26, 26, 0.45);
+          backdrop-filter: blur(15px);
           border-radius: 20px;
-          border: 1px solid #2E2E2E;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          border: 1px solid #333;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
           position: relative;
           z-index: 1000;
           box-sizing: border-box;
@@ -96,99 +95,103 @@ export default function AdminNavBar() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px 24px;
+          padding: 8px 30px;
           width: 100%;
           box-sizing: border-box;
         }
 
-        .logo-image { height: 70px; object-fit: contain; display: block; }
-
-        .hamburger {
-          display: none;
-          flex-direction: column;
-          justify-content: space-between;
-          width: 28px;
-          height: 18px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          padding: 0;
+        .logo-image {
+          height: 80px;
+          display: block;
         }
 
-        .bar { width: 100%; height: 2px; background-color: #E0E0E0; border-radius: 10px; transition: all 0.3s ease; }
-
-        .hamburger.open .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
-        .hamburger.open .bar:nth-child(2) { opacity: 0; }
-        .hamburger.open .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
-
-        /* Desktop */
+        /* --- VISTA PC --- */
         @media (min-width: 1025px) {
+          .hamburger { display: none; }
+          
           .admin-nav-items {
             display: flex;
-            gap: 15px;
             list-style: none;
-            align-items: center;
             margin: 0;
             padding: 0;
+            flex: 1;
+            justify-content: space-evenly;
+            align-items: center;
           }
+
           .admin-nav-items li a {
-            color: #D1D1D1;
-            text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.85rem;
+            gap: 10px;
+            color: #E0E0E0;
+            text-decoration: none;
+            font-size: 1.05rem; /* Mantiene el tamaño grande */
+            font-weight: 400;   /* Texto normal, sin negrita */
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
           }
-          .logout-button {
+
+          .admin-nav-items li a:hover {
+            color: #ffffff;
+            transform: translateY(-2px);
+          }
+
+          .logout-button-red {
             background: linear-gradient(135deg, #ff4d6d 0%, #ff233f 100%);
             border: none;
             color: white;
-            padding: 8px 12px;
-            border-radius: 10px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500; /* Un poco más de peso para el botón pero no negrita total */
+            transition: all 0.3s ease;
           }
-          .logout-text-mobile { display: none; }
         }
 
-        /* Mobile */
+        /* --- VISTA MÓVIL --- */
         @media (max-width: 1024px) {
-          .hamburger { display: flex; }
+          .logo-image { height: 65px; }
+          .hamburger {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 28px;
+            height: 18px;
+            background: transparent;
+            border: none;
+            padding: 0;
+          }
+          .bar { width: 100%; height: 2px; background-color: #fff; }
+          
           .admin-nav-items { display: none; }
           .admin-nav-items.open {
             display: flex;
             flex-direction: column;
             position: absolute;
-            top: calc(100% + 10px);
+            top: calc(100% + 15px);
             right: 0;
-            width: 240px;
-            background: rgba(20, 20, 20, 0.98);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 15px;
-            gap: 5px;
+            width: 280px;
+            background: rgba(18, 18, 18, 0.98);
+            border: 1px solid #333;
+            border-radius: 18px;
+            padding: 20px;
+            gap: 10px;
             list-style: none;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           }
           .admin-nav-items li a {
             color: white;
-            text-decoration: none;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             padding: 10px;
           }
-          .logout-button {
-            width: 100%;
-            background: #ff4d6d;
-            border: none;
-            color: white;
-            padding: 12px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-          }
-          .logout-text-mobile { display: inline; }
+          .logout-button-red { width: 100%; padding: 15px; border-radius: 12px; background: #ff233f; color: white; border: none; }
         }
       `}</style>
     </nav>
