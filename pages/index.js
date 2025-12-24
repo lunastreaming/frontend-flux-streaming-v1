@@ -56,7 +56,7 @@ export default function Home() {
 const [currentPage, setCurrentPage] = useState(0);
 const [searchTerm, setSearchTerm] = useState('');
 const [totalPages, setTotalPages] = useState(0);
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 28;
 
   // productos
   const [products, setProducts] = useState([])
@@ -1491,28 +1491,38 @@ white-space: normal;
 
 
   /* Personalización del Scrollbar para Chrome, Safari y Edge */
-  .circle-strip::-webkit-scrollbar {
-    height: 6px; /* Grosor de la barra */
+.circle-strip::-webkit-scrollbar {
+    height: 10px; /* Aumentado de 6px a 10px para que se vea mejor */
   }
 
-  .circle-strip::-webkit-scrollbar-track {
-    background: rgba(13, 13, 13, 0.5); /* Fondo de la pista */
+.circle-strip::-webkit-scrollbar-track {
+    /* Fondo más oscuro para que el neón resalte por contraste */
+    background: rgba(0, 0, 0, 0.8); 
     border-radius: 10px;
-    margin: 0 40px; /* Para que no toque los bordes del cuadro */
+    margin: 0 40px;
   }
 
-  .circle-strip::-webkit-scrollbar-thumb {
-    /* Gradiente Neón para la barrita */
-    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88);
+.circle-strip::-webkit-scrollbar-thumb {
+    /* Gradiente con colores más puros y saturados */
+    background: linear-gradient(90deg, #00f2ff, #bc00ff, #00ff88);
     background-size: 200% auto;
     border-radius: 10px;
-    /* Efecto de brillo en la barra */
-    box-shadow: 0 0 10px rgba(0, 242, 255, 0.6);
+    
+    /* EFECTO NEÓN CRÍTICO: Mayor radio de desenfoque y opacidad */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Brillo interno */
+    box-shadow: 0 0 15px #00f2ff, 0 0 5px #00f2ff; /* Doble sombra para intensidad */
   }
 
-  .circle-strip::-webkit-scrollbar-thumb:hover {
-    background: #00f2ff; /* Color sólido al pasar el mouse */
-    box-shadow: 0 0 15px #00f2ff;
+.circle-strip::-webkit-scrollbar-thumb:hover {
+    /* Al pasar el mouse, el brillo "explota" */
+    background: #00f2ff;
+    box-shadow: 0 0 25px #00f2ff, 0 0 10px #ffffff;
+    cursor: pointer;
+  }
+
+  .circle-strip {
+    scrollbar-width: auto;
+    scrollbar-color: #00f2ff rgba(13, 13, 13, 0.8);
   }
 
 
