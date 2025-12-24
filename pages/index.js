@@ -39,6 +39,28 @@ const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
   );
 };
 
+const getOptimizedUrl = (url, width = 500) => {
+  // Si no hay URL, o no es un texto, o no es de cloudinary, devuélvela tal cual
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
+    return url;
+  }
+
+  // Si la URL ya tiene parámetros de optimización, no hacemos nada para no duplicar
+  if (url.includes('f_auto')) {
+    return url;
+  }
+
+  try {
+    // Insertamos f_auto, q_auto y el ancho justo después de /upload/
+    // También quitamos la extensión (.png, .jpg) para que f_auto trabaje mejor
+    return url
+      .replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`)
+      .replace(/\.(png|jpg|jpeg|webp)$/i, '');
+  } catch (e) {
+    return url;
+  }
+};
+
 export default function Home() {
   const [imagenActiva, setImagenActiva] = useState(null)
   const [zoomActivo, setZoomActivo] = useState(false)
@@ -83,21 +105,16 @@ const PAGE_SIZE = 28;
   const BASE = rawBase.replace(/\/+$/, '')
   const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
 
-  const getOptimizedUrl = (url, width = 600) => {
+const getOptimizedUrl = (url, width = 600) => {
   if (!url || !url.includes('cloudinary.com')) return url;
-  
-  // Limpia cualquier transformación previa para evitar errores de duplicación
-  const baseUrl = url.replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1');
 
-  const abrirModal = (url) => {
-  // Aquí usamos 1000 para que la imagen se vea grande y nítida
-  setImagenActiva(getOptimizedUrl(url, 1000))
-  setZoomActivo(false)
-}
+  // 1. Limpiamos transformaciones previas y la extensión para forzar f_auto
+  // Al quitar el .png final, Cloudinary decide el mejor formato sin confusión
+  const baseUrl = url
+    .replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1')
+    .replace(/\.(png|jpg|jpeg|webp|avif)$/i, ''); 
 
-  // f_auto: formato automático (WebP/AVIF)
-  // q_auto: calidad automática
-  // w_XXX: redimensión al ancho específico
+  // 2. Aplicamos f_auto, q_auto y el ancho
   return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
 };
 
@@ -250,19 +267,17 @@ async function fetchProducts() {
       setTotalPages(0);
     }
 
-    // 4. Normalización de los datos para el renderizado de las Cards [cite: 30, 31, 35, 36, 37, 38]
+    // 4. Normalización de los datos para el renderizado de las Cards 
     const normalized = raw.map((item) => {
       const productWrapper = item.product ?? item;
       
-      // Cálculo de stock disponible [cite: 31, 34]
+      // Cálculo de stock disponible 
       const availableStockCount = typeof item.availableStockCount === 'number'
         ? item.availableStockCount
         : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
 
         const rawUrl = productWrapper.imageUrl;
-const optimizedUrl = (typeof rawUrl === 'string' && rawUrl.includes('cloudinary.com'))
-  ? rawUrl.replace('/upload/', '/upload/f_auto,q_auto/')
-  : rawUrl;
+const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
       return {
         id: productWrapper.id,
@@ -534,8 +549,9 @@ const optimizedUrl = (typeof rawUrl === 'string' && rawUrl.includes('cloudinary.
                       {p.imageUrl ? (
   <img 
     src={getOptimizedUrl(p.imageUrl, 500)} 
-    alt={p.name} 
-    loading="lazy" 
+    alt={p.name}                           
+    className="tu-clase-css"
+    loading="lazy"
   />
 ) : (
   <div className="product-media placeholder" />
