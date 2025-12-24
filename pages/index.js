@@ -467,6 +467,8 @@ const optimizedUrl = (typeof rawUrl === 'string' && rawUrl.includes('cloudinary.
             </div>
 
             {/* PAGINACIÓN SUPERIOR */}
+
+            <div style={{ height: '50px', width: '100%' }}></div>
           <PaginationControls 
   currentPage={currentPage} 
   totalPages={totalPages} 
@@ -1360,7 +1362,7 @@ white-space: normal;
 }
 
 /* === NUEVA PAGINACIÓN NEÓN MODERNA === */
-  .pagination-wrapper {
+ :global(.pagination-wrapper) {
     display: flex;
     justify-content: flex-end; /* Alinea a la derecha */
     align-items: center;
@@ -1370,7 +1372,7 @@ white-space: normal;
     width: 100%;
   }
 
-.pagination-btn {
+:global(.pagination-btn) {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
@@ -1382,7 +1384,7 @@ white-space: normal;
     backdrop-filter: blur(5px);
   }
 
-  .pagination-btn:hover:not(:disabled) {
+ :global(.pagination-btn:hover:not(:disabled)) {
     background: var(--accent-1);
     color: var(--accent-contrast);
     border-color: var(--accent-1);
@@ -1409,7 +1411,7 @@ white-space: normal;
     cursor: not-allowed;
   }
 
- .pagination-info {
+:global(.pagination-info) {
     font-family: 'Poppins', sans-serif;
     font-size: 0.9rem;
     color: var(--muted);
