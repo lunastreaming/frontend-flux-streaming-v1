@@ -266,7 +266,16 @@ export default function WalletSupplierPending() {
                   </div>
 
                   <div className="card-right">
-                    <div className="amount">{formatItemAmount(item)}</div>
+                    <div className="amount-container">
+    <div className="amount">{formatItemAmount(item)}</div>
+    
+    {/* Nuevo: Mostrar monto en soles si existe */}
+    {item.amountSoles !== undefined && item.amountSoles !== null && (
+      <div className="amount-soles">
+        S/ {parseToNumber(item.amountSoles).toFixed(2)}
+      </div>
+    )}
+  </div>
 
                     <div className="actions">
                       <button
@@ -379,6 +388,20 @@ export default function WalletSupplierPending() {
         .date { color:#9aa0a6; font-size:0.8rem; }
 
         .card-right { display:flex; align-items:center; gap:12px; }
+        .amount-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 96px;
+}
+
+/* Estilo para el nuevo monto en soles */
+.amount-soles {
+  font-size: 0.85rem;
+  color: #9aa0a6; /* Gris, menos resaltado que el blanco */
+  font-weight: 400; /* No negrita */
+  margin-top: 2px;
+}
         .amount { font-weight:900; color:#fff; font-size:1.05rem; min-width:120px; text-align:right; }
 
         .actions { display:flex; gap:8px; align-items:center; }
