@@ -267,6 +267,7 @@ export default function AdminSoldsPage() {
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '120px' }} />
+                    <col style={{ width: '100px' }} /> {/* Perfil */}
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} /> {/* Comprador */}
                     <col style={{ width: '160px' }} /> {/* Vendedor */}
@@ -286,6 +287,7 @@ export default function AdminSoldsPage() {
                       <th>USUARIO</th>
                       <th>CONTRASEÑA</th>
                       <th>PERFIL</th>
+                      <th>PIN</th>
                       <th>CLIENTE</th>
                       <th>COMPRADOR</th>
                       <th>VENDEDOR</th>
@@ -327,6 +329,7 @@ export default function AdminSoldsPage() {
                           <td><div className="row-inner">{r.username ?? '—'}</div></td>
                           <td><div className="row-inner monospace">{r.password ?? '—'}</div></td>
                           <td><div className="row-inner">{r.numeroPerfil ?? '—'}</div></td>
+                          <td><div className="row-inner">{r.pin ?? ''}</div></td>
                           <td><div className="row-inner">{r.clientName ?? r.clientPhone ?? '—'}</div></td>
 
                           <td><div className="row-inner">{r.buyerUsername ?? r.buyerId ?? '—'}</div></td>
