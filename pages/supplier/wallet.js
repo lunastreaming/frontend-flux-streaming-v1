@@ -21,12 +21,12 @@ export default function BilleteraSupplier() {
   const [movimientos, setMovimientos] = useState([])
   const [pending, setPending] = useState([])
   // NUEVO ESTADO para providerStatus (active/inactive)
-  const [providerStatus, setProviderStatus] = useState('inactive') 
+  const [providerStatus, setProviderStatus] = useState('inactive')
 
   // modals
   const [modalOpen, setModalOpen] = useState(false)
-  const [liquidarOpen, setLiquidarOpen] 
-= useState(false)
+  const [liquidarOpen, setLiquidarOpen]
+    = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferSource, setTransferSource] = useState(null)
 
@@ -34,7 +34,7 @@ export default function BilleteraSupplier() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTargetId, setConfirmTargetId] = useState(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
-  
+
   // NUEVOS ESTADOS para toggle status
   const [confirmToggleStatusOpen, setConfirmToggleStatusOpen] = useState(false)
   const [confirmToggleLoading, setConfirmToggleLoading] = useState(false)
@@ -49,9 +49,9 @@ export default function BilleteraSupplier() {
   // BASE desde variable de entorno (SSR-safe)
   const rawApiBase = process.env.NEXT_PUBLIC_API_URL
   const apiBase = rawApiBase ?
-rawApiBase.replace(/\/+$/, '') : ''
+    rawApiBase.replace(/\/+$/, '') : ''
   const buildUrl = (path) => `${apiBase}${path.startsWith('/') ?
-'' : '/'}${path}`
+    '' : '/'}${path}`
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -65,17 +65,17 @@ rawApiBase.replace(/\/+$/, '') : ''
     }
 
     hasFetchedRef.current = true
-    ;(async () => {
-      try {
-        await fetchMeAndPopulate(token)
-        await fetchPendingRequests(token)
-     
-   await fetchUserTransactions(token, movPage, movSize)
-      } catch (err) {
-        console.error('Error inicial:', err)
-        router.push('/supplier/loginSupplier')
-      }
-    })()
+      ; (async () => {
+        try {
+          await fetchMeAndPopulate(token)
+          await fetchPendingRequests(token)
+
+          await fetchUserTransactions(token, movPage, movSize)
+        } catch (err) {
+          console.error('Error inicial:', err)
+          router.push('/supplier/loginSupplier')
+        }
+      })()
   }, [router.isReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchMeAndPopulate(token) {
@@ -84,8 +84,8 @@ rawApiBase.replace(/\/+$/, '') : ''
     })
     if (!res.ok) throw new Error('Token inválido')
     const data = await res.json()
-    setBalance(Number.parseFloat(data.balance) 
-|| 0)
+    setBalance(Number.parseFloat(data.balance)
+      || 0)
     // Obtener y establecer providerStatus
     setProviderStatus(data.providerStatus || 'inactive')
 
@@ -115,8 +115,8 @@ rawApiBase.replace(/\/+$/, '') : ''
 
     if (!res.ok) {
       console.warn('No se pudieron obtener movimientos del servicio /user/transactions', res.status)
-   
-   return
+
+      return
     }
 
     const data = await res.json()
@@ -125,9 +125,9 @@ rawApiBase.replace(/\/+$/, '') : ''
     const content = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : []
     const totalElements = typeof data?.totalElements === 'number' ? data.totalElements : (Array.isArray(data) ? data.length : (typeof data?.total === 'number' ? data.total : content.length))
     const totalPages = typeof data?.totalPages === 'number' ?
-data.totalPages : Math.max(1, Math.ceil(totalElements / size))
+      data.totalPages : Math.max(1, Math.ceil(totalElements / size))
     const number = typeof data?.number === 'number' ?
-data.number : page
+      data.number : page
 
     const mapped = content.map(tx => normalizeTx(tx))
     setMovimientos(mapped)
@@ -146,10 +146,10 @@ data.number : page
       setPending([])
       return
     }
-    
-const data = await res.json()
+
+    const data = await res.json()
     const list = Array.isArray(data) ? data : Array.isArray(data.pending) ?
-data.pending : []
+      data.pending : []
     setPending(list.map(p => ({ ...p })))
   }
 
@@ -158,29 +158,33 @@ data.pending : []
     return {
       id: tx.id,
       date: tx.approvedAt ||
-tx.createdAt || tx.date || tx.created_at || null,
+        tx.createdAt || tx.date || tx.created_at || null,
       desc: tx.description || tx.type || tx.desc ||
-'Transacción',
+        'Transacción',
       amount: typeof tx.amount === 'number' ?
-tx.amount : Number.parseFloat(tx.amount || 0),
+        tx.amount : Number.parseFloat(tx.amount || 0),
       currency: tx.currency ||
-'PEN',
+        'PEN',
       status: tx.status || 'unknown',
       approvedBy: tx.approvedBy ?
-(tx.approvedBy.username || tx.approvedBy.id || tx.approvedBy) : null
+        (tx.approvedBy.username || tx.approvedBy.id || tx.approvedBy) : null
     }
   }
 
   // Actions
   const handleAddClick = () => setModalOpen(true)
-  const handleTransferClick = () => { setTransferSource(null);
-setTransferOpen(true) }
-  const handleLiquidarClick = () => { setModalOpen(false);
-setLiquidarOpen(true) }
+  const handleTransferClick = () => {
+    setTransferSource(null);
+    setTransferOpen(true)
+  }
+  const handleLiquidarClick = () => {
+    setModalOpen(false);
+    setLiquidarOpen(true)
+  }
 
   const handleAdd = async ({ amount, currency }) => {
     const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
+      localStorage.getItem('accessToken') : null
     if (!token) return
     const res = await fetch(buildUrl('/api/wallet/recharge'), {
       method: 'POST',
@@ -198,33 +202,36 @@ localStorage.getItem('accessToken') : null
     setConfirmOpen(true)
   }
 
-  const onConfirmCancel 
-= async () => {
-    const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
-    if (!token || !confirmTargetId) return
-    setConfirmLoading(true)
-    try {
-      const res = await fetch(buildUrl(`/api/wallet/cancel/pending/${confirmTargetId}`), {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error('Error al cancelar')
-      await fetchMeAndPopulate(token)
-      await fetchPendingRequests(token)
-      await fetchUserTransactions(token, movPage, movSize)
-      setConfirmOpen(false)
- 
-     setConfirmTargetId(null)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setConfirmLoading(false)
+  const onConfirmCancel
+    = async () => {
+      const token = typeof window !== 'undefined' ?
+        localStorage.getItem('accessToken') : null
+      if (!token || !confirmTargetId) return
+      setConfirmLoading(true)
+      try {
+        const res = await fetch(buildUrl(`/api/wallet/cancel/pending/${confirmTargetId}`), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) throw new Error('Error al cancelar')
+        await fetchMeAndPopulate(token)
+        await fetchPendingRequests(token)
+        await fetchUserTransactions(token, movPage, movSize)
+        setConfirmOpen(false)
+
+        setConfirmTargetId(null)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setConfirmLoading(false)
+      }
     }
-  }
 
   // NUEVAS FUNCIONES para alternar el estado del proveedor
-  const handleToggleStatusClick = () => setConfirmToggleStatusOpen(true)
+  const handleToggleStatusClick = () => {
+  if (providerStatus === 'emergency') return; // Evita abrir el modal si está bloqueado
+  setConfirmToggleStatusOpen(true);
+};
 
   const onConfirmToggleStatus = async () => {
     const token = typeof window !== 'undefined' ?
@@ -235,7 +242,7 @@ localStorage.getItem('accessToken') : null
     try {
       // Llama al endpoint para alternar el estado (active <-> inactive)
       const res = await fetch(buildUrl('/api/supplier/toggle-status'), {
-        method: 'PUT', 
+        method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -245,7 +252,7 @@ localStorage.getItem('accessToken') : null
       await fetchMeAndPopulate(token)
       await fetchPendingRequests(token)
       await fetchUserTransactions(token, movPage, movSize)
-      
+
       setConfirmToggleStatusOpen(false)
     } catch (err) {
       console.error('Error al alternar estado:', err)
@@ -259,56 +266,60 @@ localStorage.getItem('accessToken') : null
   const movPrev = async () => {
     if (movPage <= 0) return
     const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
-    if (!token) { router.push('/supplier/loginSupplier');
-return }
+      localStorage.getItem('accessToken') : null
+    if (!token) {
+      router.push('/supplier/loginSupplier');
+      return
+    }
     await fetchUserTransactions(token, Math.max(0, movPage - 1), movSize)
   }
 
   const movNext = async () => {
     if (movPage >= movTotalPages - 1) return
     const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
-    if (!token) { router.push('/supplier/loginSupplier');
-return }
+      localStorage.getItem('accessToken') : null
+    if (!token) {
+      router.push('/supplier/loginSupplier');
+      return
+    }
     await fetchUserTransactions(token, Math.min(movTotalPages - 1, movPage + 1), movSize)
   }
 
   // helper formatters
   const formatPendingAmount = (p) => {
     const currency = p.currency ||
-'PEN'
+      'PEN'
     const isWithdrawal = p.type && p.type.toLowerCase() === 'withdrawal'
     const raw = isWithdrawal ?
-(p.realAmount ?? p.amount) : p.amount
+      (p.realAmount ?? p.amount) : p.amount
     const units = (raw === null || raw === undefined) ?
-0 : Number(raw)
+      0 : Number(raw)
     const absVal = Math.abs(units).toFixed(2)
     const sign = isWithdrawal ?
-'-' : ''
+      '-' : ''
     return `${currency} ${sign}${absVal}`
   }
 
   const formatDateLocal = (value) => {
-  if (!value) return ''
-  try {
-    const d = new Date(value)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-     
- second: '2-digit'
-    })
-  } catch {
-    return ''
+    if (!value) return ''
+    try {
+      const d = new Date(value)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
   }
-}
 
   const translateStatus = (status) => {
     if (!status) return ''
@@ -321,8 +332,8 @@ return }
         return 'Pendiente'
       case 'rejected':
       case 'rejected_by_user':
-   
-   case 'failed':
+
+      case 'failed':
         return 'Rechazado'
       default:
         return status.charAt(0).toUpperCase() + status.slice(1)
@@ -331,12 +342,14 @@ return }
 
   // transfer modal helpers
   const getAuthToken = async () => {
-    try { return typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null } catch { return null }
+    try {
+      return typeof window !== 'undefined' ?
+        localStorage.getItem('accessToken') : null
+    } catch { return null }
   }
   const onTransferSuccess = async () => {
     const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
+      localStorage.getItem('accessToken') : null
     if (token) {
       await fetchMeAndPopulate(token)
       await fetchPendingRequests(token)
@@ -356,15 +369,25 @@ localStorage.getItem('accessToken') : null
                 type="button"
                 className="btn-toggle-status"
                 onClick={handleToggleStatusClick}
-                aria-label={`Cambiar estado a ${providerStatus === 'active' ? 'inactivo' : 'activo'}`}
+                // Bloquea el botón si el estado es emergency
+                disabled={providerStatus === 'emergency'}
+                aria-label={
+                  providerStatus === 'emergency'
+                    ? 'Cuenta bloqueada por emergencia'
+                    : `Cambiar estado a ${providerStatus === 'active' ? 'inactivo' : 'activo'}`
+                }
+                style={{
+                  cursor: providerStatus === 'emergency' ? 'not-allowed' : 'pointer',
+                  opacity: providerStatus === 'emergency' ? 0.6 : 1
+                }}
               >
                 <span style={{ fontSize: '1.5rem' }}>
-                  {providerStatus === 'active' ? '😊' : '😴'}
+                  {providerStatus === 'emergency' ? '❌' : (providerStatus === 'active' ? '😊' : '😴')}
                 </span>
               </button>
               {/* BOTÓN DE TRANSFERENCIA EXISTENTE */}
-              <button type="button" className="btn-transfer" onClick={handleTransferClick} 
-aria-label="Transferir">
+              <button type="button" className="btn-transfer" onClick={handleTransferClick}
+                aria-label="Transferir">
                 <FontAwesomeIcon icon={faExchangeAlt} />
               </button>
             </div>
@@ -375,8 +398,8 @@ aria-label="Transferir">
 
             <div className="balance-actions">
               <button type="button" className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
-     
-         <button type="button" className="btn-liquidar" onClick={handleLiquidarClick}>Liquidar</button>
+
+              <button type="button" className="btn-liquidar" onClick={handleLiquidarClick}>Liquidar</button>
             </div>
           </div>
         </section>
@@ -385,30 +408,30 @@ aria-label="Transferir">
           <section className="pending-card">
             <h3>Solicitudes pendientes</h3>
             <ul className="pending-list">
-         
-     {pending.map((p) => (
+
+              {pending.map((p) => (
                 <li key={p.id ||
-p.requestId}>
+                  p.requestId}>
                   <div className="pending-info">
                     <div className="pending-amt">{formatPendingAmount(p)}</div>
                     <div className="pending-meta">
                       <div className="pending-desc">{p.description ||
-'Solicitud pendiente'}</div>
+                        'Solicitud pendiente'}</div>
                       <div className="pending-date">{p.createdAt ?
-formatDateLocal(p.createdAt) : ''}</div>
+                        formatDateLocal(p.createdAt) : ''}</div>
                     </div>
                   </div>
                   <div className="pending-actions">
                     <button type="button" className="btn-cancel" onClick={() => openCancelConfirm(p.id || p.requestId)}>Eliminar</button>
-              
-      <span className={`tx-badge ${p.status === 'approved' || p.status === 'complete' ?
-'approved' : p.status === 'pending' ? 'pending' : 'rejected'}`} style={{ marginLeft: 8 }}>
+
+                    <span className={`tx-badge ${p.status === 'approved' || p.status === 'complete' ?
+                      'approved' : p.status === 'pending' ? 'pending' : 'rejected'}`} style={{ marginLeft: 8 }}>
                       {translateStatus(p.status)}
                     </span>
                   </div>
                 </li>
-            
-  ))}
+
+              ))}
             </ul>
           </section>
         )}
@@ -419,20 +442,20 @@ formatDateLocal(p.createdAt) : ''}</div>
           <ul className="pending-list movements-as-pending">
             {movimientos.length === 0 && <li className="empty">No hay movimientos</li>}
             {movimientos.map((m) => (
-    
-          <li key={m.id}>
+
+              <li key={m.id}>
                 <div className="pending-info">
                   <div className="pending-amt">{m.currency || 'PEN'} {Number(m.amount).toFixed(2)}</div>
                   <div className="pending-meta">
                     <div className="pending-desc">{m.desc || m.description || 'Transacción'}</div>
-      
-              <div className="pending-date">{m.date ? formatDateLocal(m.date) : ''}</div>
+
+                    <div className="pending-date">{m.date ? formatDateLocal(m.date) : ''}</div>
                   </div>
                 </div>
                 <div className="pending-actions">
                   <span className={`tx-badge ${m.status === 'approved' ||
-m.status === 'complete' ? 'approved' : m.status === 'pending' ?
-'pending' : 'rejected'}`}>
+                    m.status === 'complete' ? 'approved' : m.status === 'pending' ?
+                    'pending' : 'rejected'}`}>
                     {translateStatus(m.status)}
                   </span>
                 </div>
@@ -440,16 +463,16 @@ m.status === 'complete' ? 'approved' : m.status === 'pending' ?
             ))}
           </ul>
 
-        
-  <div className="mov-pager">
+
+          <div className="mov-pager">
             <div className="pager-info">Página {movPage + 1} de {movTotalPages} — {movTotalElements} movimientos</div>
             <div className="pager-controls">
               <button onClick={movPrev} disabled={movPage <= 0} className="pager-btn">Anterior</button>
               <button onClick={movNext} disabled={movPage >= movTotalPages - 1} className="pager-btn">Siguiente</button>
             </div>
           </div>
- 
-       </section>
+
+        </section>
       </main>
 
       <Footer />
@@ -461,7 +484,7 @@ m.status === 'complete' ? 'approved' : m.status === 'pending' ?
         onClose={() => setLiquidarOpen(false)}
         onDone={async () => {
           const token = typeof window !== 'undefined' ?
-localStorage.getItem('accessToken') : null
+            localStorage.getItem('accessToken') : null
           if (token) {
             await fetchMeAndPopulate(token)
             await fetchPendingRequests(token)
@@ -472,8 +495,8 @@ localStorage.getItem('accessToken') : null
 
       <TransferToUserModal
         open={transferOpen}
-       
- onClose={() => setTransferOpen(false)}
+
+        onClose={() => setTransferOpen(false)}
         sourceItem={transferSource}
         getAuthToken={getAuthToken}
         baseUrl={apiBase}
@@ -485,21 +508,26 @@ localStorage.getItem('accessToken') : null
 
       {/* ConfirmModal para alternar estado (NUEVO) */}
       <ConfirmModal
-        open={confirmToggleStatusOpen}
-        loading={confirmToggleLoading}
-        title="Confirmar cambio de estado"
-        message={`¿Deseas cambiar tu estado a **${providerStatus === 'active' ? 'INACTIVO' : 'ACTIVO'}**?`}
-        onCancel={() => setConfirmToggleStatusOpen(false)}
-        onConfirm={onConfirmToggleStatus}
-      />
-      
+  open={confirmToggleStatusOpen}
+  loading={confirmToggleLoading}
+  title={providerStatus === 'emergency' ? "Cuenta Bloqueada" : "Confirmar cambio de estado"}
+  message={
+    providerStatus === 'emergency' 
+      ? "Tu cuenta se encuentra en estado de **EMERGENCIA** y no puede cambiar de estado."
+      : `¿Deseas cambiar tu estado a **${providerStatus === 'active' ? 'INACTIVO' : 'ACTIVO'}**?`
+  }
+  onCancel={() => setConfirmToggleStatusOpen(false)}
+  // Si es emergency, no debería permitir confirmar
+  onConfirm={providerStatus === 'emergency' ? null : onConfirmToggleStatus}
+/>
+
       {/* ConfirmModal para cancelar solicitud (EXISTENTE) */}
       <ConfirmModal
         open={confirmOpen}
         loading={confirmLoading}
         title="Confirmar cancelación"
-    
-    message="¿Deseas cancelar esta solicitud pendiente?"
+
+        message="¿Deseas cancelar esta solicitud pendiente?"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={onConfirmCancel}
       />

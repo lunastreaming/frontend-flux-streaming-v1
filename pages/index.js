@@ -12,25 +12,25 @@ const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
   if (totalPages <= 1) return null;
   return (
     <div className="pagination-wrapper">
-      <button 
-        className="pagination-btn" 
-        disabled={currentPage === 0} 
-        onClick={() => { 
-          setCurrentPage(prev => prev - 1); 
-          window.scrollTo({ top: 400, behavior: 'smooth' }); 
+      <button
+        className="pagination-btn"
+        disabled={currentPage === 0}
+        onClick={() => {
+          setCurrentPage(prev => prev - 1);
+          window.scrollTo({ top: 400, behavior: 'smooth' });
         }}
       >
         <span className="pagination-btn-inner">Anterior</span>
       </button>
-      
+
       <span className="pagination-info">Página {currentPage + 1} de {totalPages}</span>
-      
-      <button 
-        className="pagination-btn" 
-        disabled={currentPage >= totalPages - 1} 
-        onClick={() => { 
-          setCurrentPage(prev => prev + 1); 
-          window.scrollTo({ top: 400, behavior: 'smooth' }); 
+
+      <button
+        className="pagination-btn"
+        disabled={currentPage >= totalPages - 1}
+        onClick={() => {
+          setCurrentPage(prev => prev + 1);
+          window.scrollTo({ top: 400, behavior: 'smooth' });
         }}
       >
         <span className="pagination-btn-inner">Siguiente</span>
@@ -75,10 +75,10 @@ export default function Home() {
   //Paginado
 
   // Dentro de Home()
-const [currentPage, setCurrentPage] = useState(0);
-const [searchTerm, setSearchTerm] = useState('');
-const [totalPages, setTotalPages] = useState(0);
-const PAGE_SIZE = 28;
+  const [currentPage, setCurrentPage] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalPages, setTotalPages] = useState(0);
+  const PAGE_SIZE = 28;
 
   // productos
   const [products, setProducts] = useState([])
@@ -105,18 +105,18 @@ const PAGE_SIZE = 28;
   const BASE = rawBase.replace(/\/+$/, '')
   const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
 
-const getOptimizedUrl = (url, width = 600) => {
-  if (!url || !url.includes('cloudinary.com')) return url;
+  const getOptimizedUrl = (url, width = 600) => {
+    if (!url || !url.includes('cloudinary.com')) return url;
 
-  // 1. Limpiamos transformaciones previas y la extensión para forzar f_auto
-  // Al quitar el .png final, Cloudinary decide el mejor formato sin confusión
-  const baseUrl = url
-    .replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1')
-    .replace(/\.(png|jpg|jpeg|webp|avif)$/i, ''); 
+    // 1. Limpiamos transformaciones previas y la extensión para forzar f_auto
+    // Al quitar el .png final, Cloudinary decide el mejor formato sin confusión
+    const baseUrl = url
+      .replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1')
+      .replace(/\.(png|jpg|jpeg|webp|avif)$/i, '');
 
-  // 2. Aplicamos f_auto, q_auto y el ancho
-  return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
-};
+    // 2. Aplicamos f_auto, q_auto y el ancho
+    return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+  };
 
   // cargar saldo del usuario al montar
   useEffect(() => {
@@ -140,7 +140,7 @@ const getOptimizedUrl = (url, width = 600) => {
             Authorization: `Bearer ${token}`
           }
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`) 
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         setUserBalance(data.balance ?? 0)
       } catch (err) {
@@ -187,21 +187,21 @@ const getOptimizedUrl = (url, width = 600) => {
 
         if (!mounted) return
         const normalized = Array.isArray(data)
-  ? data.map((c, i) => {
-      const rawImg = c.image ?? c.imageUrl ?? c.thumbnail ?? null;
-      // Optimizamos la imagen de la categoría
-      const optimizedImg = (typeof rawImg === 'string' && rawImg.includes('cloudinary.com'))
-        ? rawImg.replace('/upload/', '/upload/f_auto,q_auto/')
-        : rawImg;
+          ? data.map((c, i) => {
+            const rawImg = c.image ?? c.imageUrl ?? c.thumbnail ?? null;
+            // Optimizamos la imagen de la categoría
+            const optimizedImg = (typeof rawImg === 'string' && rawImg.includes('cloudinary.com'))
+              ? rawImg.replace('/upload/', '/upload/f_auto,q_auto/')
+              : rawImg;
 
-      return {
-        id: c.id ?? c._id ?? i,
-        name: c.name ?? c.title ?? 'Sin nombre',
-        image: optimizedImg,
-        status: (c.status ?? c.state ?? c.active ?? null)
-      };
-    })
-  : []
+            return {
+              id: c.id ?? c._id ?? i,
+              name: c.name ?? c.title ?? 'Sin nombre',
+              image: optimizedImg,
+              status: (c.status ?? c.state ?? c.active ?? null)
+            };
+          })
+          : []
 
         const onlyActive = normalized.filter(c => {
           const s = (c.status ?? '').toString().toLowerCase()
@@ -225,88 +225,88 @@ const getOptimizedUrl = (url, width = 600) => {
 
   // fetch productos (adaptado a ProductWithStockCountResponse)
   useEffect(() => {
-  // Debounce: espera 400ms después de que el usuario deje de escribir
-  const delayDebounceFn = setTimeout(() => {
-    fetchProducts();
-  }, 400);
+    // Debounce: espera 400ms después de que el usuario deje de escribir
+    const delayDebounceFn = setTimeout(() => {
+      fetchProducts();
+    }, 400);
 
-  return () => clearTimeout(delayDebounceFn);
-}, [searchTerm, currentPage, selectedCategory]);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, currentPage, selectedCategory]);
 
-async function fetchProducts() {
-  setProdLoading(true);
-  setProdError(null);
-  
-  try {
-    // 1. Determinar el endpoint base (si hay categoría seleccionada o no) [cite: 21, 22]
-    const baseEndpoint = selectedCategory
-      ? `/api/categories/products/${selectedCategory}/active`
-      : '/api/categories/products/active';
-    
-    // 2. Construir la URL con 'query' para búsqueda y parámetros de paginación [cite: 22, 23]
-    const url = joinApi(`${baseEndpoint}?page=${currentPage}&size=${PAGE_SIZE}&query=${encodeURIComponent(searchTerm || '')}`);
+  async function fetchProducts() {
+    setProdLoading(true);
+    setProdError(null);
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
-    const data = await res.json();
+    try {
+      // 1. Determinar el endpoint base (si hay categoría seleccionada o no) [cite: 21, 22]
+      const baseEndpoint = selectedCategory
+        ? `/api/categories/products/${selectedCategory}/active`
+        : '/api/categories/products/active';
 
-    // 3. Extraer el array de resultados según la estructura de la respuesta (Paginada o Lista) [cite: 28, 29]
-    let raw = [];
-    if (Array.isArray(data)) {
-      raw = data;
-      setTotalPages(1);
-    } else if (data?.content && Array.isArray(data.content)) {
-      raw = data.content;
-      setTotalPages(data.totalPages || 0);
-    } else if (data?.items && Array.isArray(data.items)) {
-      raw = data.items;
-      setTotalPages(data.totalPages || 0);
-    } else {
-      raw = [];
-      setTotalPages(0);
-    }
+      // 2. Construir la URL con 'query' para búsqueda y parámetros de paginación [cite: 22, 23]
+      const url = joinApi(`${baseEndpoint}?page=${currentPage}&size=${PAGE_SIZE}&query=${encodeURIComponent(searchTerm || '')}`);
 
-    // 4. Normalización de los datos para el renderizado de las Cards 
-    const normalized = raw.map((item) => {
-      const productWrapper = item.product ?? item;
-      
-      // Cálculo de stock disponible 
-      const availableStockCount = typeof item.availableStockCount === 'number'
-        ? item.availableStockCount
-        : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      // 3. Extraer el array de resultados según la estructura de la respuesta (Paginada o Lista) [cite: 28, 29]
+      let raw = [];
+      if (Array.isArray(data)) {
+        raw = data;
+        setTotalPages(1);
+      } else if (data?.content && Array.isArray(data.content)) {
+        raw = data.content;
+        setTotalPages(data.totalPages || 0);
+      } else if (data?.items && Array.isArray(data.items)) {
+        raw = data.items;
+        setTotalPages(data.totalPages || 0);
+      } else {
+        raw = [];
+        setTotalPages(0);
+      }
+
+      // 4. Normalización de los datos para el renderizado de las Cards 
+      const normalized = raw.map((item) => {
+        const productWrapper = item.product ?? item;
+
+        // Cálculo de stock disponible 
+        const availableStockCount = typeof item.availableStockCount === 'number'
+          ? item.availableStockCount
+          : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
 
         const rawUrl = productWrapper.imageUrl;
-const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
+        const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
-      return {
-        id: productWrapper.id,
-        name: productWrapper.name,
-        salePrice: productWrapper.salePrice,
-        salePriceSoles: productWrapper.salePriceSoles,
-        renewalPrice: productWrapper.renewalPrice,
-        providerName: productWrapper.providerName,
-        categoryId: productWrapper.categoryId,
-        categoryName: productWrapper.categoryName,
-        imageUrl: optimizedUrl,
-        stock: Number(availableStockCount),
-        fullProduct: productWrapper,
-        isOnRequest: productWrapper.isOnRequest ?? false,
-        isRenewable: productWrapper.isRenewable ?? false,
-        providerStatus: productWrapper.providerStatus ?? null,
-      };
-    });
+        return {
+          id: productWrapper.id,
+          name: productWrapper.name,
+          salePrice: productWrapper.salePrice,
+          salePriceSoles: productWrapper.salePriceSoles,
+          renewalPrice: productWrapper.renewalPrice,
+          providerName: productWrapper.providerName,
+          categoryId: productWrapper.categoryId,
+          categoryName: productWrapper.categoryName,
+          imageUrl: optimizedUrl,
+          stock: Number(availableStockCount),
+          fullProduct: productWrapper,
+          isOnRequest: productWrapper.isOnRequest ?? false,
+          isRenewable: productWrapper.isRenewable ?? false,
+          providerStatus: productWrapper.providerStatus ?? null,
+        };
+      });
 
-    setProducts(normalized);
-  } catch (err) {
-    console.error('Error cargando productos:', err);
-    setProdError('No se pudieron cargar los productos');
-    setProducts([]);
-    setTotalPages(0);
-  } finally {
-    setProdLoading(false);
+      setProducts(normalized);
+    } catch (err) {
+      console.error('Error cargando productos:', err);
+      setProdError('No se pudieron cargar los productos');
+      setProducts([]);
+      setTotalPages(0);
+    } finally {
+      setProdLoading(false);
+    }
   }
-}
 
   const moneyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -375,75 +375,75 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
           <div className="circle-strip-wrapper" aria-hidden={catLoading}>
             {catLoading ? (
-                <div className="circle-strip skeleton-strip">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div className="circle-item skeleton" key={`skc-${i}`} />
-                  ))}
-                </div>
+              <div className="circle-strip skeleton-strip">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div className="circle-item skeleton" key={`skc-${i}`} />
+                ))}
+              </div>
 
-              ) : (
-                <div className="circle-strip-outer">
-                  <div className="fade left" style={{ display: hasOverflow ? 'block' : 'none' }} />
-                  <div className="circle-strip" ref={stripRef} role="list" tabIndex={0}>
-                    <div className="circle-item-wrap" role="listitem">
-                      <button
-                        key="circle-all"
-                        className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
-                        onClick={() => goToCategory(null)}
-                        title="Ver todos los productos"
-                        aria-label="Ver todos los productos"
-                        aria-pressed={selectedCategory === null}
-                      >
-                        <div className="circle-fallback">ALL</div>
-                      </button>
-                      <span className="circle-name">Todos</span>
-                    </div>
-
-                    {categories.map(cat => (
-                      <div className="circle-item-wrap" role="listitem"
-                        key={`wrap-${cat.id}`}>
-                        <button
-                          key={`circle-${cat.id}`}
-                          className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
-                          onClick={() => goToCategory(cat)}
-                          title={cat.name}
-                          aria-label={`Abrir ${cat.name}`}
-                          aria-pressed={selectedCategory === cat.id}
-                        >
-                          {cat.image ? (
-  <img 
-    src={getOptimizedUrl(cat.image, 200)} // <--- Aquí aplicas el helper
-    alt={cat.name} 
-    loading="lazy" 
-  />
-) : (
-  <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
-)}
-                        </button>
-                        <span className="circle-name">{cat.name}</span>
-                      </div>
-                    ))}
-
+            ) : (
+              <div className="circle-strip-outer">
+                <div className="fade left" style={{ display: hasOverflow ? 'block' : 'none' }} />
+                <div className="circle-strip" ref={stripRef} role="list" tabIndex={0}>
+                  <div className="circle-item-wrap" role="listitem">
+                    <button
+                      key="circle-all"
+                      className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
+                      onClick={() => goToCategory(null)}
+                      title="Ver todos los productos"
+                      aria-label="Ver todos los productos"
+                      aria-pressed={selectedCategory === null}
+                    >
+                      <div className="circle-fallback">ALL</div>
+                    </button>
+                    <span className="circle-name">Todos</span>
                   </div>
-                  <div className="fade right" style={{ display: hasOverflow ? 'block' : 'none' }} />
-                  <button
-                    className="subtle-arrow left"
-                    onClick={() => stripRef.current && stripRef.current.scrollBy({ left: -200, behavior: 'smooth' })}
-                    aria-hidden={!hasOverflow}
-                    style={{ display: hasOverflow ? 'flex' : 'none' }}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    className="subtle-arrow right"
-                    onClick={() => stripRef.current && stripRef.current.scrollBy({ left: 200, behavior: 'smooth' })}
-                    aria-hidden={!hasOverflow}
-                    style={{ display: hasOverflow ? 'flex' : 'none' }}
-                  >
-                    ›
-                  </button>
+
+                  {categories.map(cat => (
+                    <div className="circle-item-wrap" role="listitem"
+                      key={`wrap-${cat.id}`}>
+                      <button
+                        key={`circle-${cat.id}`}
+                        className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
+                        onClick={() => goToCategory(cat)}
+                        title={cat.name}
+                        aria-label={`Abrir ${cat.name}`}
+                        aria-pressed={selectedCategory === cat.id}
+                      >
+                        {cat.image ? (
+                          <img
+                            src={getOptimizedUrl(cat.image, 200)} // <--- Aquí aplicas el helper
+                            alt={cat.name}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
+                        )}
+                      </button>
+                      <span className="circle-name">{cat.name}</span>
+                    </div>
+                  ))}
+
                 </div>
-              )}
+                <div className="fade right" style={{ display: hasOverflow ? 'block' : 'none' }} />
+                <button
+                  className="subtle-arrow left"
+                  onClick={() => stripRef.current && stripRef.current.scrollBy({ left: -200, behavior: 'smooth' })}
+                  aria-hidden={!hasOverflow}
+                  style={{ display: hasOverflow ? 'flex' : 'none' }}
+                >
+                  ‹
+                </button>
+                <button
+                  className="subtle-arrow right"
+                  onClick={() => stripRef.current && stripRef.current.scrollBy({ left: 200, behavior: 'smooth' })}
+                  aria-hidden={!hasOverflow}
+                  style={{ display: hasOverflow ? 'flex' : 'none' }}
+                >
+                  ›
+                </button>
+              </div>
+            )}
           </div>
 
           <div
@@ -453,23 +453,23 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
               <p className="muted">{prodLoading ? 'Cargando productos...' : (prodError ? prodError : `${products.length} resultados`)}</p>
             </div>
             {/* BUSCADOR CENTRALIZADO */}
-          {/* BUSCADOR CON DISEÑO MEJORADO */}
-<div className="search-container">
-      <div className="search-wrapper">
-        <div className="search-glass-effect"></div>
-        <span className="search-icon-main">🔍</span>
-        <input 
-          type="text" 
-          placeholder="Busca servicios, categorías o proveedores..." 
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(0); // Reinicia a página 1 al buscar
-          }}
-          className="search-input-modern"
-        />
-      </div>
-    </div>
+            {/* BUSCADOR CON DISEÑO MEJORADO */}
+            <div className="search-container">
+              <div className="search-wrapper">
+                <div className="search-glass-effect"></div>
+                <span className="search-icon-main">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Busca servicios, categorías o proveedores..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(0); // Reinicia a página 1 al buscar
+                  }}
+                  className="search-input-modern"
+                />
+              </div>
+            </div>
             <div className="legend">
               <div className="legend-item">
                 <span className="legend-dot blue"></span>
@@ -484,11 +484,11 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
             {/* PAGINACIÓN SUPERIOR */}
 
             <div style={{ height: '50px', width: '100%' }}></div>
-          <PaginationControls 
-  currentPage={currentPage} 
-  totalPages={totalPages} 
-  setCurrentPage={setCurrentPage} 
-/>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
             <div className="cards-grid">
               {prodLoading && Array.from({ length: 8 }).map((_, i) => (
                 <article className="product-card skeleton" key={`psk-${i}`} />
@@ -502,8 +502,11 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
                 const stockCount = Number(p.stock ?? 0)
                 const hasStock = stockCount > 0
+
+                const statusLower = p.providerStatus?.toLowerCase();
+                const isEmergency = statusLower === 'emergency';
                 const isInactiveForRequest = p.isOnRequest && (p.providerStatus?.toLowerCase() === 'inactive');
-                
+
                 const categoryName = p.categoryName ?? categories.find(c => String(c.id) === String(p.categoryId))?.name ??
                   'Sin categoría'
 
@@ -515,26 +518,34 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
                 let buttonDisabled = false;
                 let showStockPill = hasStock;
 
-                if (isInactiveForRequest) {
-                    // 1. A Solicitud + Proveedor Inactivo (Botón Naranja Bloqueado con Tooltip)
-                    buttonTitle = "No se puede comprar este producto porque el proveedor no se encuentra activo";
-                    buttonAction = () => {}; 
-                    buttonDisabled = true;
-                    // Clase específica para el estilo naranja de botón inactivo
-                    buttonClass += ' disabled-provider-inactive-btn'; 
-                    showStockPill = false; 
+
+                if (isEmergency) {
+    // 1. PRIORIDAD: Estado de Emergencia (Botón Rojo Brillante)
+    buttonText = 'NO DISPONIBLE';
+    buttonAction = () => {}; 
+    buttonDisabled = true;
+    buttonClass += ' btn-emergency-blocked'; // Clase para el color rojo brillante
+    showStockPill = false;
+                } else if (isInactiveForRequest) {
+                  // 1. A Solicitud + Proveedor Inactivo (Botón Naranja Bloqueado con Tooltip)
+                  buttonTitle = "No se puede comprar este producto porque el proveedor no se encuentra activo";
+                  buttonAction = () => { };
+                  buttonDisabled = true;
+                  // Clase específica para el estilo naranja de botón inactivo
+                  buttonClass += ' disabled-provider-inactive-btn';
+                  showStockPill = false;
                 } else if (!p.isOnRequest && !hasStock) {
-                    // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
-                    buttonText = 'SIN STOCK';
-                    buttonAction = () => {}; 
-                    buttonDisabled = true;
-                    buttonClass += ' out-stock disabled-sin-stock';
-                    showStockPill = false;
+                  // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
+                  buttonText = 'SIN STOCK';
+                  buttonAction = () => { };
+                  buttonDisabled = true;
+                  buttonClass += ' out-stock disabled-sin-stock';
+                  showStockPill = false;
                 } else {
-                    // 3. Compra Normal (En stock O A Solicitud con proveedor activo)
-                    buttonClass += ' in-stock';
-                    buttonDisabled = false;
-                    // showStockPill se mantiene como 'hasStock'
+                  // 3. Compra Normal (En stock O A Solicitud con proveedor activo)
+                  buttonClass += ' in-stock';
+                  buttonDisabled = false;
+                  // showStockPill se mantiene como 'hasStock'
                 }
                 // --- Fin Lógica del Botón de Compra ---
 
@@ -547,15 +558,15 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
                     <div className="product-media">
                       {p.imageUrl ? (
-  <img 
-    src={getOptimizedUrl(p.imageUrl, 500)} 
-    alt={p.name}                           
-    className="tu-clase-css"
-    loading="lazy"
-  />
-) : (
-  <div className="product-media placeholder" />
-)}
+                        <img
+                          src={getOptimizedUrl(p.imageUrl, 500)}
+                          alt={p.name}
+                          className="tu-clase-css"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="product-media placeholder" />
+                      )}
                     </div>
 
                     <div className="product-body">
@@ -564,7 +575,7 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
                       </div>
 
                       {p.providerName && (
-                       <div className="provider-name" title={p.providerName}>
+                        <div className="provider-name" title={p.providerName}>
                           {p.providerName}
                         </div>
                       )}
@@ -576,7 +587,11 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
                             <>
                               <span className="status-emoji">😊</span> ACTIVO
                             </>
-                          ) : (
+                          ) : p.providerStatus.toLowerCase() === 'emergency' ? (
+      <>
+        <span className="status-emoji">❌</span> EMERGENCIA
+      </>
+    ) : (
                             <>
                               <span className="status-emoji">😴</span> DURMIENDO
                             </>
@@ -586,65 +601,65 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
                       {/* 💡 FIN: Estado del Proveedor */}
 
                       <div className="price-wrapper dual-price">
-  <div className="sale-price-container">
-    {/* Precio en Dólares */}
-    <div className="sale-price-badge usd">
-      <span className="price-prefix">USD</span> {formatPrice(p.salePrice)} 
-    </div>
-    
-    {/* Precio en Soles (Nuevo campo del backend) */}
-    {p.salePriceSoles && (
-      <div className="sale-price-badge pen">
-        <span className="price-prefix">PEN</span> S/ {p.salePriceSoles}
-      </div>
-    )}
-  </div>
+                        <div className="sale-price-container">
+                          {/* Precio en Dólares */}
+                          <div className="sale-price-badge usd">
+                            <span className="price-prefix">USD</span> {formatPrice(p.salePrice)}
+                          </div>
 
-  {/* Estado de Renovación */}
-  <div className={`renewal-status-tag ${p.isRenewable ? 'is-renewable' : 'not-renewable'}`}>
-    {p.isRenewable ? (
-      <>
-        <span className="renewal-prefix">RENOVABLE:</span> {formatPrice(p.renewalPrice)}
-      </>
-    ) : (
-      <span>NO RENOVABLE</span> 
-    )}
-  </div>
-</div>
+                          {/* Precio en Soles (Nuevo campo del backend) */}
+                          {p.salePriceSoles && (
+                            <div className="sale-price-badge pen">
+                              <span className="price-prefix">PEN</span> S/ {p.salePriceSoles}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Estado de Renovación */}
+                        <div className={`renewal-status-tag ${p.isRenewable ? 'is-renewable' : 'not-renewable'}`}>
+                          {p.isRenewable ? (
+                            <>
+                              <span className="renewal-prefix">RENOVABLE:</span> {formatPrice(p.renewalPrice)}
+                            </>
+                          ) : (
+                            <span>NO RENOVABLE</span>
+                          )}
+                        </div>
+                      </div>
 
                       {/* 💡 FIN: Nueva estructura de Precios y Renovación */}
 
 
                       <div className="product-actions">
                         {(buttonDisabled && buttonText === 'SIN STOCK') ? (
-                            // SIN STOCK (Full width)
-                            <button
-                                className={buttonClass}
-                                aria-disabled="true"
-                                onClick={buttonAction}
-                            >
-                                {buttonText}
-                            </button>
+                          // SIN STOCK (Full width)
+                          <button
+                            className={buttonClass}
+                            aria-disabled="true"
+                            onClick={buttonAction}
+                          >
+                            {buttonText}
+                          </button>
                         ) : (
-                            // COMPRAR (Normal o Deshabilitado con Tooltip)
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                                <button
-                                    className={buttonClass}
-                                    onClick={buttonAction}
-                                    aria-disabled={buttonDisabled}
-                                    // Tooltip al pasar el cursor
-                                    title={buttonTitle || undefined} 
-                                >
-                                    <span className="btn-text">{buttonText}</span>
-                                </button>
-                                
-                                {showStockPill && (
-                                    <div className="stock-pill" aria-hidden>
-                                        <span className="stock-icon">📦</span>
-                                        <span className="stock-count-pill">{stockCount}</span>
-                                    </div>
-                                )}
-                            </div>
+                          // COMPRAR (Normal o Deshabilitado con Tooltip)
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                            <button
+                              className={buttonClass}
+                              onClick={buttonAction}
+                              aria-disabled={buttonDisabled}
+                              // Tooltip al pasar el cursor
+                              title={buttonTitle || undefined}
+                            >
+                              <span className="btn-text">{buttonText}</span>
+                            </button>
+
+                            {showStockPill && (
+                              <div className="stock-pill" aria-hidden>
+                                <span className="stock-icon">📦</span>
+                                <span className="stock-count-pill">{stockCount}</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -653,11 +668,11 @@ const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
               })}
               {/* PAGINACIÓN INFERIOR */}
-          <PaginationControls 
-  currentPage={currentPage} 
-  totalPages={totalPages} 
-  setCurrentPage={setCurrentPage} 
-/>
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+              />
             </div>
           </div>
         </section>
@@ -1540,6 +1555,27 @@ white-space: normal;
     scrollbar-width: auto;
     scrollbar-color: #00f2ff rgba(13, 13, 13, 0.8);
   }
+
+  /* Tag de estado en la card */
+.provider-status-tag.status-emergency {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d4d;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* Botón NO DISPONIBLE Rojo Brillante */
+.btn-primary.btn-emergency-blocked[aria-disabled="true"] {
+  background: linear-gradient(90deg, #ff0000, #cc0000);
+  color: #fff;
+  border: none;
+  opacity: 1;
+  cursor: not-allowed;
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+  width: 100%; /* Para que ocupe todo el ancho como el de SIN STOCK */
+}
 
 
 `}</style>
