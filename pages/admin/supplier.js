@@ -333,7 +333,11 @@ export default function AdminSuppliersPage() {
         th { padding: 1rem; background: rgba(255,255,255,0.03); color: #9aa0a6; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
         td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; text-align: center; }
         
-        .bold { font-weight: 600; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bold {
+  font-weight: 600; 
+  white-space: nowrap; /* Esto garantiza que el nombre siempre esté en una sola línea */
+  /* Hemos eliminado max-width, overflow y text-overflow */
+}
         .mono { font-family: ui-monospace, monospace; }
         .highlight { color: #22d3ee; }
         .phone-cell { display: flex; align-items: center; gap: 0.5rem; justify-content: center; }

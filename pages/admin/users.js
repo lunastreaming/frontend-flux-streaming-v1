@@ -21,8 +21,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState(null)
 
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1) 
-  const pageSize = 30                 
+  const [page, setPage] = useState(1)
+  const pageSize = 30
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
 
@@ -33,10 +33,10 @@ export default function AdminUsersPage() {
   const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
 
   const roleLabels = {
-  'seller': 'Vendedor',
-  'admin': 'Administrador',
-  'client': 'Cliente'
-};
+    'seller': 'Vendedor',
+    'admin': 'Administrador',
+    'client': 'Cliente'
+  };
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -57,43 +57,43 @@ export default function AdminUsersPage() {
   }
 
   // 2. Modifica handleConfirm para incluir la lógica de 'deposit'
-const handleConfirm2 = async () => {
-  const { userId, action } = confirmData;
-  if (!userId || !action) return;
-  
-  setConfirmData(prev => ({ ...prev, loading: true }));
-  try {
-    let url = '', method = 'POST', body = undefined;
+  const handleConfirm2 = async () => {
+    const { userId, action } = confirmData;
+    if (!userId || !action) return;
 
-    if (action === 'deposit') {
-      // Usamos el endpoint administrativo definido
-      url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
-      method = 'POST';
-      body = JSON.stringify({ 
-        userId: userId, 
-        amount: parseFloat(depositModal.amount) 
+    setConfirmData(prev => ({ ...prev, loading: true }));
+    try {
+      let url = '', method = 'POST', body = undefined;
+
+      if (action === 'deposit') {
+        // Usamos el endpoint administrativo definido
+        url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
+        method = 'POST';
+        body = JSON.stringify({
+          userId: userId,
+          amount: parseFloat(depositModal.amount)
+        });
+      }
+      // ... resto de tus condiciones (verify, disable, delete)
+      else if (action === 'verify') {
+        url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`;
+        method = 'PATCH';
+      }
+      // ...
+
+      await callEndpoint(url, {
+        method,
+        body: body || (method === 'POST' ? JSON.stringify({}) : undefined)
       });
-    } 
-    // ... resto de tus condiciones (verify, disable, delete)
-    else if (action === 'verify') { 
-        url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`; 
-        method = 'PATCH'; 
+
+      await fetchUsers(page);
+      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
+      setDepositModal({ open: false, userId: null, username: null, amount: '' }); // Limpiar modal de monto
+    } catch (err) {
+      setError(err.message || 'Error en la acción');
+      setConfirmData(prev => ({ ...prev, loading: false }));
     }
-    // ...
-    
-    await callEndpoint(url, { 
-      method, 
-      body: body || (method === 'POST' ? JSON.stringify({}) : undefined) 
-    });
-    
-    await fetchUsers(page);
-    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
-    setDepositModal({ open: false, userId: null, username: null, amount: '' }); // Limpiar modal de monto
-  } catch (err) {
-    setError(err.message || 'Error en la acción');
-    setConfirmData(prev => ({ ...prev, loading: false }));
-  }
-};
+  };
 
   const fetchUsers = async (uiPage = 1) => {
     setLoading(true)
@@ -117,14 +117,14 @@ const handleConfirm2 = async () => {
 
       const text = await res.text().catch(() => null)
       if (!res.ok) throw new Error(text || `Error ${res.status}`)
-      
+
       const payload = text ? JSON.parse(text) : null
       const content = Array.isArray(payload?.content) ? payload.content : []
-      
+
       setUsers(content)
       setTotalElements(Number(payload?.totalElements ?? content.length))
       setTotalPages(Number(payload?.totalPages ?? 1))
-      setPage(uiPage) 
+      setPage(uiPage)
     } catch (err) {
       setError('No se pudo cargar la lista de usuarios')
       setUsers([])
@@ -154,90 +154,90 @@ const handleConfirm2 = async () => {
     setConfirmData({ open: true, userId, username, action, message, loading: false })
   }
 
-const handleConfirm = async () => {
-  const { userId, action, username } = confirmData;
-  if (!userId || !action) return;
+  const handleConfirm = async () => {
+    const { userId, action, username } = confirmData;
+    if (!userId || !action) return;
 
-  setConfirmData(prev => ({ ...prev, loading: true }));
+    setConfirmData(prev => ({ ...prev, loading: true }));
 
-  try {
-    let url = '';
-    let method = 'POST'; // Por defecto para la mayoría de acciones personalizadas
-    let body = undefined;
+    try {
+      let url = '';
+      let method = 'POST'; // Por defecto para la mayoría de acciones personalizadas
+      let body = undefined;
 
-    // --- Lógica Nueva: Depósito Administrativo ---
-    if (action === 'deposit') {
-      url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
-      method = 'POST';
-      body = JSON.stringify({ 
-        userId: userId, 
-        amount: parseFloat(depositModal.amount) 
+      // --- Lógica Nueva: Depósito Administrativo ---
+      if (action === 'deposit') {
+        url = `${API_BASE}/api/admin/users/admin/deposit-to-user`;
+        method = 'POST';
+        body = JSON.stringify({
+          userId: userId,
+          amount: parseFloat(depositModal.amount)
+        });
+      }
+      // --- Lógica Existente: Cambios de Estado ---
+      else if (action === 'verify') {
+        url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`;
+        method = 'PATCH';
+      }
+      else if (action === 'disable') {
+        url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`;
+        method = 'PATCH';
+      }
+      // --- Lógica Existente: Eliminación ---
+      else if (action === 'delete') {
+        url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`;
+        method = 'DELETE';
+      }
+      // --- Otros (discount, incentive, referrals) ---
+      else {
+        url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`;
+      }
+
+      // Ejecución de la petición usando tu función auxiliar callEndpoint
+      await callEndpoint(url, {
+        method,
+        body: body || (method === 'POST' ? JSON.stringify({}) : undefined)
       });
-    } 
-    // --- Lógica Existente: Cambios de Estado ---
-    else if (action === 'verify') { 
-      url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=active`;
-      method = 'PATCH';
-    } 
-    else if (action === 'disable') { 
-      url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`;
-      method = 'PATCH';
-    } 
-    // --- Lógica Existente: Eliminación ---
-    else if (action === 'delete') { 
-      url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`;
-      method = 'DELETE';
-    } 
-    // --- Otros (discount, incentive, referrals) ---
-    else { 
-      url = `${API_BASE}/api/admin/users/${action}/${encodeURIComponent(userId)}`;
+
+      // Refrescar la tabla en la página actual
+      await fetchUsers(page);
+
+      // Limpiar estados y cerrar modales
+      setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
+
+      // Si fue un depósito, reseteamos el modal de monto
+      if (action === 'deposit') {
+        setDepositModal({ open: false, userId: null, username: null, amount: '' });
+      }
+
+    } catch (err) {
+      // Manejo de errores basado en tu implementación actual
+      setError(err.message || 'Error en la acción');
+      setConfirmData(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const requestDeposit = (userId, username) => {
+    setDepositModal({ open: true, userId, username, amount: '' });
+  };
+
+  const proceedToConfirmDeposit = () => {
+    if (!depositModal.amount || parseFloat(depositModal.amount) <= 0) {
+      alert("Por favor ingrese un monto válido");
+      return;
     }
 
-    // Ejecución de la petición usando tu función auxiliar callEndpoint
-    await callEndpoint(url, { 
-      method, 
-      body: body || (method === 'POST' ? JSON.stringify({}) : undefined)
+    // Cerramos el modal de monto y abrimos el ConfirmModal existente
+    setConfirmData({
+      open: true,
+      userId: depositModal.userId,
+      username: depositModal.username,
+      action: 'deposit',
+      message: `¿Estás seguro de transferir $. ${depositModal.amount} al usuario ${depositModal.username}? Este saldo se creará administrativamente.`,
+      loading: false
     });
-
-    // Refrescar la tabla en la página actual
-    await fetchUsers(page);
-
-    // Limpiar estados y cerrar modales
-    setConfirmData({ open: false, userId: null, username: null, action: null, message: '', loading: false });
-    
-    // Si fue un depósito, reseteamos el modal de monto
-    if (action === 'deposit') {
-      setDepositModal({ open: false, userId: null, username: null, amount: '' });
-    }
-
-  } catch (err) {
-    // Manejo de errores basado en tu implementación actual
-    setError(err.message || 'Error en la acción');
-    setConfirmData(prev => ({ ...prev, loading: false }));
-  }
-};
-
-const requestDeposit = (userId, username) => {
-  setDepositModal({ open: true, userId, username, amount: '' });
-};
-
-const proceedToConfirmDeposit = () => {
-  if (!depositModal.amount || parseFloat(depositModal.amount) <= 0) {
-    alert("Por favor ingrese un monto válido");
-    return;
-  }
-  
-  // Cerramos el modal de monto y abrimos el ConfirmModal existente
-  setConfirmData({
-    open: true,
-    userId: depositModal.userId,
-    username: depositModal.username,
-    action: 'deposit',
-    message: `¿Estás seguro de transferir $. ${depositModal.amount} al usuario ${depositModal.username}? Este saldo se creará administrativamente.`,
-    loading: false
-  });
-  setDepositModal(prev => ({ ...prev, open: false }));
-};
+    setDepositModal(prev => ({ ...prev, open: false }));
+  };
 
   const goPrev = () => { if (page > 1) fetchUsers(page - 1) }
   const goNext = () => { if (page < totalPages) fetchUsers(page + 1) }
@@ -259,28 +259,28 @@ const proceedToConfirmDeposit = () => {
           </header>
 
           <section className="controls-row">
-  <div className="search-container">
-    <div className="search-box">
-      <FaSearch className="icon" />
-      <input 
-        placeholder="Buscar username o celular..." 
-        value={query} 
-        onChange={(e) => setQuery(e.target.value)} 
-      />
-    </div>
-  </div>
+            <div className="search-container">
+              <div className="search-box">
+                <FaSearch className="icon" />
+                <input
+                  placeholder="Buscar username o celular..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+            </div>
 
-  <div className="modern-pager">
-    <div className="pager-info">
-      <span className="total-badge">{totalElements}</span> <span className="label">registros</span>
-    </div>
-    <div className="pager-actions">
-      <button onClick={goPrev} disabled={page === 1 || loading} className="pager-btn">Anterior</button>
-      <div className="page-indicator">{page} <span>/</span> {totalPages}</div>
-      <button onClick={goNext} disabled={page === totalPages || loading} className="pager-btn">Siguiente</button>
-    </div>
-  </div>
-</section>
+            <div className="modern-pager">
+              <div className="pager-info">
+                <span className="total-badge">{totalElements}</span> <span className="label">registros</span>
+              </div>
+              <div className="pager-actions">
+                <button onClick={goPrev} disabled={page === 1 || loading} className="pager-btn">Anterior</button>
+                <div className="page-indicator">{page} <span>/</span> {totalPages}</div>
+                <button onClick={goNext} disabled={page === totalPages || loading} className="pager-btn">Siguiente</button>
+              </div>
+            </div>
+          </section>
 
           <section className="table-container">
             {error && <div className="error-message">{error}</div>}
@@ -300,47 +300,47 @@ const proceedToConfirmDeposit = () => {
                         <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="bold">{u.username || '-'}</td>
                         <td>
-  <div className="phone-cell">
-    {u.phone ? (
-      <>
-        <a
-          href={`https://wa.me/${u.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-            `Hola ${u.username || ''}\n` +
-            `Se ha registrado en la LUNA PLATAFORMAS,\n` +
-            `¿Desea afiliarse?\n` +
-            `por el módico pago de S/.25.00 o $8.00\n\n` +
-            `Medios de pago\n\n` +
-            `JOSUE R. SOMOCURCIO\n` +
-            `-YAPE o PLIN : 935 769 255\n` +
-            `-BINANCE : 1025532462\n` +
-            `-PAYPAL: randu.sq@gmail.com\n\n` +
-            `ENVIAR CAPTURA PARA LA ACTIVACIÒN`
-          )}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="whatsapp-btn-link"
-          title="Enviar mensaje de bienvenida"
-        >
-          <FaWhatsapp size={20} />
-        </a>
-        <span className="phone-number">{u.phone}</span>
-      </>
-    ) : (
-      '-'
-    )}
-    <button 
-      onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} 
-      className="edit-phone"
-    >
-      <FaPen size={11} />
-    </button>
-  </div>
-</td>
+                          <div className="phone-cell">
+                            {u.phone ? (
+                              <>
+                                <a
+                                  href={`https://wa.me/${u.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                    `Hola ${u.username || ''}\n` +
+                                    `Se ha registrado en la LUNA PLATAFORMAS,\n` +
+                                    `¿Desea afiliarse?\n` +
+                                    `por el módico pago de S/.25.00 o $8.00\n\n` +
+                                    `Medios de pago\n\n` +
+                                    `JOSUE R. SOMOCURCIO\n` +
+                                    `-YAPE o PLIN : 935 769 255\n` +
+                                    `-BINANCE : 1025532462\n` +
+                                    `-PAYPAL: randu.sq@gmail.com\n\n` +
+                                    `ENVIAR CAPTURA PARA LA ACTIVACIÒN`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="whatsapp-btn-link"
+                                  title="Enviar mensaje de bienvenida"
+                                >
+                                  <FaWhatsapp size={20} />
+                                </a>
+                                <span className="phone-number">{u.phone}</span>
+                              </>
+                            ) : (
+                              '-'
+                            )}
+                            <button
+                              onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })}
+                              className="edit-phone"
+                            >
+                              <FaPen size={11} />
+                            </button>
+                          </div>
+                        </td>
                         <td>
-  <span className="role-tag">
-    {roleLabels[u.role?.toLowerCase()] || u.role}
-  </span>
-</td>
+                          <span className="role-tag">
+                            {roleLabels[u.role?.toLowerCase()] || u.role}
+                          </span>
+                        </td>
                         <td className="mono highlight">{u.balance?.toFixed(2) || '0.00'}</td>
                         <td className="mono">{u.salesCount || 0}</td>
                         <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'Activo' : 'Inactivo'}</span></td>
@@ -351,13 +351,13 @@ const proceedToConfirmDeposit = () => {
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'discount')}><FaTag /></button>
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'incentive')}><FaGift /></button>
                             <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'referrals')}><FaUserFriends /></button>
-                            <button 
-        onClick={() => requestDeposit(u.id, u.username)} 
-        title="Transferencia Administrativa"
-        style={{ color: '#22d3ee' }}
-    >
-        <FaWallet />
-    </button>
+                            <button
+                              onClick={() => requestDeposit(u.id, u.username)}
+                              title="Transferencia Administrativa"
+                              style={{ color: '#22d3ee' }}
+                            >
+                              <FaWallet />
+                            </button>
                             <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable}><FaTrash /></button>
                           </div>
                         </td>
@@ -374,33 +374,33 @@ const proceedToConfirmDeposit = () => {
       </div>
 
       {depositModal.open && (
-  <div className="modal-overlay-transfer">
-    <div className="modal-content-transfer">
-      <h3 className="modal-title-transfer">Transferir Saldo</h3>
-      <p>Usuario: <strong>{depositModal.username}</strong></p>
-      
-      <div className="input-group-transfer">
-        <label>Monto a depositar (USD):</label>
-        <input 
-          type="number" 
-          value={depositModal.amount}
-          onChange={(e) => setDepositModal({...depositModal, amount: e.target.value})}
-          placeholder="0.00"
-          autoFocus
-        />
-      </div>
+        <div className="modal-overlay-transfer">
+          <div className="modal-content-transfer">
+            <h3 className="modal-title-transfer">Transferir Saldo</h3>
+            <p>Usuario: <strong>{depositModal.username}</strong></p>
 
-      <div className="modal-actions-transfer">
-        <button className="btn-cancel-modal" onClick={() => setDepositModal({ open: false })}>
-          Cancelar
-        </button>
-        <button className="btn-confirm-modal" onClick={proceedToConfirmDeposit}>
-          Siguiente
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="input-group-transfer">
+              <label>Monto a depositar (USD):</label>
+              <input
+                type="number"
+                value={depositModal.amount}
+                onChange={(e) => setDepositModal({ ...depositModal, amount: e.target.value })}
+                placeholder="0.00"
+                autoFocus
+              />
+            </div>
+
+            <div className="modal-actions-transfer">
+              <button className="btn-cancel-modal" onClick={() => setDepositModal({ open: false })}>
+                Cancelar
+              </button>
+              <button className="btn-confirm-modal" onClick={proceedToConfirmDeposit}>
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .admin-container { min-height: 100vh; font-family: 'Inter', sans-serif; color: #fff; }
@@ -522,7 +522,6 @@ const proceedToConfirmDeposit = () => {
         td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; }
         
         .mono { font-family: ui-monospace, monospace; }
-        .bold { font-weight: 600; }
         .highlight { color: #22d3ee; }
         .phone-cell { 
   display: flex; 
@@ -538,13 +537,13 @@ const proceedToConfirmDeposit = () => {
     text-align: center;
   }
 
-  /* Truncar el nombre de usuario si es muy largo */
+/* 1. Busca la línea 108 y reemplaza el bloque .bold por este: */
 .bold {
-  max-width: 150px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 600; 
+  white-space: nowrap; /* Esto garantiza que el nombre siempre esté en una sola línea */
+  /* Hemos eliminado max-width, overflow y text-overflow */
 }
+
 
 .whatsapp-link {
   display: flex;
@@ -618,13 +617,13 @@ const proceedToConfirmDeposit = () => {
         
       `}</style>
 
-      
+
 
       <ConfirmModal {...confirmData} onConfirm={handleConfirm} onCancel={() => setConfirmData({ ...confirmData, open: false })} />
       <AdminPasswordModal {...pwdModal} onClose={() => setPwdModal({ open: false })} />
       <AdminPhoneModal {...phoneModal} onClose={() => setPhoneModal({ open: false })} onSuccess={() => { setPhoneModal({ open: false }); fetchUsers(page); }} />
-    
-    
+
+
     </>
   )
 }
