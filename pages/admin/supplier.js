@@ -6,7 +6,7 @@ import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan, FaPen
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan, FaPen, FaExclamationTriangle
 } from 'react-icons/fa'
 
 export default function AdminSuppliersPage() {
@@ -100,21 +100,27 @@ export default function AdminSuppliersPage() {
     try { return text ? JSON.parse(text) : null } catch (_) { return text }
   }
 
-  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null, canTransfer = null) => {
-    const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify')
-    
-    let message = ''
-    if (action === 'verify') message = `Vas a activar al proveedor ${username}. ¿Deseas continuar?`
-    else if (action === 'disable') message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`
-    else if (action === 'delete') message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`
-    else if (action === 'transfer') {
-      message = canTransfer 
-        ? `Vas a deshabilitar la capacidad de transferir del proveedor ${username}.`
-        : `Vas a habilitar la capacidad de transferir del proveedor ${username}.`
-    }
-    
-    setConfirmData({ open: true, userId, username, action, message, loading: false, canTransfer })
+  const requestConfirmAction = (userId, username, currentStatus, actionOverride = null, canTransfer = null, pStatus = null) => {
+  const action = actionOverride || (currentStatus === 'active' ? 'disable' : 'verify');
+  
+  let message = '';
+  if (action === 'verify') message = `Vas a activar al proveedor ${username}. ¿Deseas continuar?`;
+  else if (action === 'disable') message = `Vas a inhabilitar al proveedor ${username}. ¿Deseas continuar?`;
+  else if (action === 'delete') message = `¿Seguro que quieres eliminar al proveedor ${username}? Esta acción es irreversible.`;
+  else if (action === 'transfer') {
+    message = canTransfer 
+      ? `Vas a deshabilitar la capacidad de transferir del proveedor ${username}.`
+      : `Vas a habilitar la capacidad de transferir del proveedor ${username}.`;
   }
+  // Nueva lógica para el botón de emergencia
+  else if (action === 'emergency') {
+    message = pStatus === 'emergency'
+      ? `Vas a quitar el estado de EMERGENCIA al proveedor ${username} y volverlo a ACTIVO.`
+      : `Vas a poner al proveedor ${username} en estado de EMERGENCIA.`;
+  }
+  
+  setConfirmData({ open: true, userId, username, action, message, loading: false, canTransfer, pStatus });
+};
 
   const handleConfirm = async () => {
     const { userId, action } = confirmData
@@ -126,6 +132,11 @@ export default function AdminSuppliersPage() {
       else if (action === 'disable') url = `${API_BASE}/api/users/${encodeURIComponent(userId)}/status?status=inactive`
       else if (action === 'delete') { url = `${API_BASE}/api/users/delete/${encodeURIComponent(userId)}`; method = 'DELETE' }
       else if (action === 'transfer') url = `${API_BASE}/api/admin/users/${encodeURIComponent(userId)}/enable-transfer`
+
+      else if (action === 'emergency') {
+      url = `${API_BASE}/api/admin/users/toggle-emergency/${encodeURIComponent(userId)}`;
+      method = 'PUT';
+    }
       
       await callEndpoint(url, { method })
       await fetchSuppliers(page)
@@ -182,39 +193,103 @@ export default function AdminSuppliersPage() {
               <table className="users-table">
                 <thead>
                   <tr>
-                    <th>No.</th><th>Nombre</th><th>Username</th><th>Celular</th><th>Balance</th><th>Transfer</th><th>Estado</th><th>Acciones</th>
+                    <th>No.</th><th>Nombre</th><th>Username</th><th>Celular</th><th>Balance</th><th>Transfer</th><th>Habilitado</th><th>Estado</th><th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {suppliers.map((u, idx) => {
-                    const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'))
-                    const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer)
-                    const isDeletable = String(currentStatus).toLowerCase() === 'inactive'
-                    return (
-                      <tr key={u.id}>
-                        <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
-                        <td className="bold">{u.name || u.username || '-'}</td>
-                        <td>{u.username || '-'}</td>
-                        <td>
-                          <div className="phone-cell">
-                            {u.phone || '-'}
-                            <button onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} className="edit-phone"><FaPen size={11} /></button>
-                          </div>
-                        </td>
-                        <td className="mono highlight">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '0.00')}</td>
-                        <td className="bold">{canTransfer ? 'SÍ' : 'NO'}</td>
-                        <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'Activo' : 'Inactivo'}</span></td>
-                        <td className="actions-cell">
-                          <div className="actions">
-                            <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus)} className={currentStatus === 'active' ? 'btn-disable' : 'btn-verify'} title={currentStatus === 'active' ? 'Inhabilitar' : 'Activar'}><FaCheck /></button>
-                            <button onClick={() => setPwdModal({ open: true, userId: u.id, username: u.username })} title="Contraseña"><FaKey /></button>
-                            <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'transfer', canTransfer)} className={canTransfer ? 'btn-transfer-on' : 'btn-transfer-off'} title="Transferencia">{canTransfer ? <FaExchangeAlt /> : <FaBan />}</button>
-                            <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable} title="Eliminar"><FaTrash /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+  // Estado de la cuenta de usuario (Habilitado/Inhabilitado)
+  const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'));
+  const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer);
+  const isDeletable = String(currentStatus).toLowerCase() === 'inactive'; 
+  
+  // Estado específico del proveedor (active, inactive, emergency)
+  const pStatus = (u.providerStatus || 'inactive').toLowerCase();
+
+  return (
+    <tr key={u.id}>
+      <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
+      <td className="bold">{u.name || u.username || '-'}</td>
+      <td>{u.username || '-'}</td>
+      <td>
+        <div className="phone-cell">
+          {u.phone || '-'}
+          <button 
+            onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} 
+            className="edit-phone"
+          > 
+            <FaPen size={11} />
+          </button>
+        </div>
+      </td>
+      <td className="mono highlight">
+        {typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '0.00')} 
+      </td>
+      <td className="bold">{canTransfer ? 'SÍ' : 'NO'}</td> 
+
+      {/* Columna: HABILITADO */}
+      <td>
+        <span className={`status ${currentStatus}`}>
+          {currentStatus === 'active' ? 'SÍ' : 'NO'} 
+        </span>
+      </td>
+
+      {/* Columna: ESTADO */}
+      <td>
+        <span className={`p-status ${pStatus}`}>
+          {pStatus === 'active' && 'ACTIVO'}
+          {pStatus === 'inactive' && 'DURMIENDO'}
+          {pStatus === 'emergency' && 'EMERGENCIA'}
+        </span>
+      </td>
+
+      <td className="actions-cell">
+        <div className="actions">
+          <button 
+            onClick={() => requestConfirmAction(u.id, u.username, currentStatus)} 
+            className={currentStatus === 'active' ? 'btn-disable' : 'btn-verify'} 
+            title={currentStatus === 'active' ? 'Inhabilitar' : 'Activar'}
+          >
+            <FaCheck />
+          </button>
+          
+          <button 
+            onClick={() => setPwdModal({ open: true, userId: u.id, username: u.username })} 
+            title="Contraseña"
+          >
+            <FaKey />
+          </button>
+          
+          <button 
+            onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'transfer', canTransfer)} 
+            className={canTransfer ? 'btn-transfer-on' : 'btn-transfer-off'} 
+            title="Transferencia"
+          >
+            {canTransfer ? <FaExchangeAlt /> : <FaBan />}
+          </button>
+
+          {/* BOTÓN DE EMERGENCIA: Ahora antes de Eliminar */}
+          <button 
+            onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'emergency', null, pStatus)} 
+            className={pStatus === 'emergency' ? 'btn-emergency-on' : 'btn-emergency-off'} 
+            title="Alternar Emergencia"
+          >
+            <FaExclamationTriangle />
+          </button>
+          
+          <button 
+            onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} 
+            className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} 
+            disabled={!isDeletable} 
+            title="Eliminar"
+          > 
+            <FaTrash />
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+})}
                 </tbody>
               </table>
               {suppliers.length === 0 && !loading && <div className="empty-text">No se encontraron resultados.</div>}
@@ -285,6 +360,60 @@ export default function AdminSuppliersPage() {
         .btn-refresh { background: none; border: none; color: #9aa0a6; cursor: pointer; font-size: 1.25rem; }
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Estilos para la nueva columna de estado del proveedor */
+.p-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px; /* Un diseño más cuadrado para diferenciarlo */
+  font-weight: 700;
+  font-size: 0.7rem;
+  display: inline-block;
+  min-width: 90px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Verde para ACTIVO */
+.p-status.active {
+  background: #064e3b;
+  color: #34d399;
+  border: 1px solid #059669;
+}
+
+/* Naranja para DURMIENDO (inactive) */
+.p-status.inactive {
+  background: #451a03;
+  color: #fbbf24;
+  border: 1px solid #d97706;
+}
+
+/* Rojo para EMERGENCIA */
+.p-status.emergency {
+  background: #450a0a;
+  color: #f87171;
+  border: 1px solid #dc2626;
+  animation: pulse-red 2s infinite; /* Efecto visual de alerta */
+}
+
+@keyframes pulse-red {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.btn-emergency-on {
+  background: #dc2626 !important; /* Rojo fuerte */
+  color: #fff !important;
+}
+
+.btn-emergency-off {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f87171 !important; /* Texto rojo suave */
+}
+
+.btn-emergency-off:hover {
+  background: #450a0a !important;
+}
       `}</style>
 
       <ConfirmModal {...confirmData} onConfirm={handleConfirm} onCancel={() => setConfirmData({ ...confirmData, open: false })} />
