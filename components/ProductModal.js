@@ -82,22 +82,21 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
     e.stopPropagation()
   }
 
-  const handleFile = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // --- NUEVA VALIDACIÓN ---
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    alert("Solo se permiten imágenes estáticas (JPG, PNG, WEBP). Los GIFs y Videos no están permitidos.");
-    return;
-  }
-  // ------------------------
+    // --- VALIDACIÓN DE TIPOS ---
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Solo se permiten imágenes estáticas (JPG, PNG, WEBP). Los GIFs y Videos no están permitidos.");
+      return;
+    }
 
-  setUploading(true);
-  setError(null);
-  // ... resto del código
-};
+    // --- LLAMADA A LA FUNCIÓN DE CARGA ---
+    // Agrega esta línea para que realmente suba el archivo seleccionado
+    await handleImageUpload(file); 
+  };
 
   const handleImageUpload = async (file) => {
     setUploading(true)
