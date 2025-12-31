@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
-import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit } from 'react-icons/fa'
+import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
 import StockEditModal from '../../components/StockEditModal'
 
@@ -120,24 +120,24 @@ export default function ProviderSalesPage() {
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const formatDateLocal = (v) => {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return ''
+    if (!v) return ''
+    try {
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
   }
-}
 
   const formatAmount = (v) => {
     if (v == null) return ''
@@ -331,7 +331,44 @@ export default function ProviderSalesPage() {
                         <td><div className="row-inner no-wrap">{formatDateLocal(r.startAt)}</div></td>
                         <td><div className="row-inner no-wrap">{formatDateLocal(r.endAt)}</div></td>
                         <td><div className="row-inner">{formatAmount(r.refund)}</div></td>
-                        <td><div className="row-inner">{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</div></td>
+                        <td>
+  <div className="row-inner" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <span>{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</span>
+    
+    {r.buyerUsernamePhone && (
+      <button
+        className="wa-btn" // Usando la clase que ya tienes definida en soporte
+        onClick={() => {
+          const num = String(r.buyerUsernamePhone).replace(/[^\d+]/g, '');
+          const phone = num.startsWith('+') ? num.slice(1) : num;
+          
+          // Definimos el mensaje igual que en support.txt para asegurar compatibilidad
+          const message = `Hola reseller ${r.buyerUsername ?? ''} 👋🏻
+🍿Tu subscripcion a *${r.productName ?? ''}*🍿
+✉ usuario: ${r.username ?? ''}
+🔐 Vence en : ${days ?? 0} días
+📣 Comunicate con tu cliente ${r.clientName ?? r.buyerUsername ?? ''}
+Al 📲 ${r.clientPhone ?? ''}, para consultar si *${r.productName ?? ''}* será renovado...
+🤖 Atentamente Proveedor ${r.providerName ?? ''}`;
+
+          const encoded = encodeURIComponent(message);
+          window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`, '_blank');
+        }}
+        title="Enviar a WhatsApp"
+        style={{ 
+          background: 'linear-gradient(90deg,#25D366,#128C7E)', 
+          border: 'none', 
+          borderRadius: '8px', 
+          color: 'white', 
+          padding: '4px 8px', 
+          cursor: 'pointer' 
+        }}
+      >
+        <FaWhatsapp />
+      </button>
+    )}
+  </div>
+</td>
                         <td>
                           <div className="row-inner">
                             {days == null ? '' : (
@@ -406,7 +443,7 @@ export default function ProviderSalesPage() {
 
       <style jsx>{`
         .page-bg { 
-          background: radial-gradient(circle at top, #0b1220, #05060a); [cite: 16]
+          background: radial-gradient(circle at top, #0b1220, #05060a);
           min-height: 100vh; 
         }
         .page-container { padding: 36px 20px; max-width: 1400px; margin:0 auto; }
@@ -475,6 +512,15 @@ export default function ProviderSalesPage() {
           table.styled-table { min-width: 900px; }
           .page-container { padding: 18px 10px; }
         }
+
+        .whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+.whatsapp-btn:hover {
+  transform: scale(1.2);
+}
       `}</style>
     </div>
   )
