@@ -207,7 +207,7 @@ export default function Home() {
           const s = (c.status ?? '').toString().toLowerCase()
           return s === 'active' || s === 'true' || s === 'enabled' || s === ''
         })
-        onlyActive.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
+        //onlyActive.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
         setCategories(onlyActive)
 
       } catch (err) {

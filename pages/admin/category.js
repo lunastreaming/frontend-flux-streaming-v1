@@ -33,13 +33,8 @@ export default function CategoryPage() {
       const res = await fetch(`${BASE}/api/categories`)
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
-      const sorted = data.slice().sort((a, b) => {
-        const ia = typeof a.id === 'number' ? a.id : a.id.toString()
-        const ib = typeof b.id === 'number' ? b.id : b.id.toString()
-        if (!isNaN(Number(ia)) && !isNaN(Number(ib))) return Number(ia) - Number(ib)
-        return ia.localeCompare(ib, undefined, { numeric: true })
-      })
-      setCategories(sorted)
+      // Ya no ordenamos por ID, confiamos en el orden que viene del backend
+      setCategories(data)
     } catch (err) {
       console.error('Error fetching categories:', err)
     } finally {
@@ -62,6 +57,35 @@ export default function CategoryPage() {
       console.error('Error creando categoría:', err)
     }
   }
+
+  const handleReorder = async (newOrderedList) => {
+    try {
+      const ids = newOrderedList.map(cat => cat.id); // Extraemos solo los IDs [cite: 3]
+      const res = await fetch(`${BASE}/api/categories/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ids) // Enviamos la lista de Integer/Long
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setCategories(newOrderedList); // Actualizamos estado local
+    } catch (err) {
+      console.error('Error al reordenar:', err);
+      await fetchCategories(); // Si falla, revertimos al orden del servidor
+    }
+  };
+
+  const moveCategory = (index, direction) => {
+    const newList = [...categories];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= newList.length) return;
+
+    // Intercambio de posiciones
+    const [movedItem] = newList.splice(index, 1);
+    newList.splice(targetIndex, 0, movedItem);
+
+    handleReorder(newList); // Guardar en base de datos
+  };
 
   const handleUpdateCategory = async () => {
     try {
@@ -160,11 +184,12 @@ export default function CategoryPage() {
                     <th className="th">Nombre</th>
                     <th className="th">Descripción</th>
                     <th className="th">Estado</th>
+                    <th className="th">Orden</th>
                     <th className="th">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {categories.map((cat) => {
+                  {categories.map((cat, index) => {
                     const toggled = cat.status === 'active' ? 'inactive' : 'active'
                     return (
                       <tr key={cat.id} className="body-row">
@@ -185,6 +210,27 @@ export default function CategoryPage() {
                             {cat.status}
                           </span>
                         </td>
+
+                        <td className="td">
+          <div className="flex flex-col items-center gap-1">
+            <button 
+              onClick={() => moveCategory(index, 'up')} 
+              disabled={index === 0}
+              className="btn-order"
+              title="Subir"
+            >
+              <span className="text-[10px]">▲</span>
+            </button>
+            <button 
+              onClick={() => moveCategory(index, 'down')} 
+              disabled={index === categories.length - 1}
+              className="btn-order"
+              title="Bajar"
+            >
+              <span className="text-[10px]">▼</span>
+            </button>
+          </div>
+        </td>
                         <td className="td">
                           <div className="actions">
                             <div className="action-col">
@@ -308,6 +354,22 @@ export default function CategoryPage() {
           .action-label { display: none; }
           .header-row { margin-bottom: 20px; }
         }
+          .btn-order {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 0.6rem;
+}
+.btn-order:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.btn-order:hover:not(:disabled) {
+  background: #8b5cf6;
+}
       `}</style>
     </>
   )
