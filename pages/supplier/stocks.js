@@ -22,9 +22,9 @@ export default function StocksPage() {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    fetchStocks(page)
+    fetchStocks(page, search)
     setSelectedIds([]) 
-  }, [page])
+  }, [page, search])
 
   function getAuthHeaders() {
     const token = localStorage.getItem('accessToken')
@@ -47,27 +47,27 @@ export default function StocksPage() {
     }
   }
 
-  const fetchStocks = async (p = 0) => {
-    try {
-      const headers = getAuthHeaders()
-      if (!headers) return
-      const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}`, { headers })
-      const payload = await res.json()
-      const content = Array.isArray(payload?.content) ? payload.content : []
-      
-      setStocks(content.map(normalizeStock).filter(Boolean))
-      setPage(Number(payload?.number ?? p))
-      setTotalElements(Number(payload?.totalElements ?? content.length))
-      setTotalPages(Number(payload?.totalPages ?? 1))
-    } catch (err) {
-      console.error('Error al cargar stocks:', err)
-    }
+  const fetchStocks = async (p = 0, searchTerm = '') => {
+  try {
+    const headers = getAuthHeaders()
+    if (!headers) return
+    
+    // Añade el parámetro &search= a la URL
+    const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}&search=${searchTerm}`, { headers })
+    const payload = await res.json()
+    
+    const content = Array.isArray(payload?.content) ? payload.content : []
+    
+    setStocks(content.map(normalizeStock).filter(Boolean))
+    setPage(Number(payload?.number ?? p))
+    setTotalElements(Number(payload?.totalElements ?? content.length))
+    setTotalPages(Number(payload?.totalPages ?? 1))
+  } catch (err) {
+    console.error('Error al cargar stocks:', err)
   }
+}
 
-  const filtered = stocks.filter(s => {
-    const isVisible = s.status === 'active' || s.status === 'inactive'
-    return isVisible && (s.productName ?? '').toLowerCase().includes(search.toLowerCase())
-  })
+const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inactive')
 
   const selectableOnPage = filtered.filter(s => s.status === 'inactive')
   const handleSelectAll = (e) => setSelectedIds(e.target.checked ? selectableOnPage.map(s => s.id) : [])
