@@ -51,10 +51,11 @@ export default function ProviderSalesPage() {
     setLoading(true)
     setError(null)
     try {
-      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}`
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-      })
+      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}&q=${encodeURIComponent(search)}`
+    
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+    })
       if (res.status === 401) {
         router.replace('/supplier/login')
         return
@@ -88,6 +89,14 @@ export default function ProviderSalesPage() {
     fetchPage(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, token])
+
+  useEffect(() => {
+  const handler = setTimeout(() => {
+    setPage(0); // Reiniciar a la primera página en cada búsqueda
+    fetchPage(0);
+  }, 500); // Esperar 500ms tras dejar de escribir
+  return () => clearTimeout(handler);
+}, [search]);
 
   // Helpers UI
   const togglePasswordVisibility = (id) => {
