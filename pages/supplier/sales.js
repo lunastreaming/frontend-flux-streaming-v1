@@ -31,6 +31,8 @@ export default function ProviderSalesPage() {
   // StockEditModal (edición)
   const [editOpen, setEditOpen] = useState(false)
 
+  const [allVisible, setAllVisible] = useState(false);
+
   // Leer token
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -96,6 +98,19 @@ export default function ProviderSalesPage() {
       return copy
     })
   }
+
+  const toggleAllPasswords = () => {
+  // Si ya están todas (o la mayoría) visibles, las ocultamos todas
+  if (visiblePasswords.size > 0) {
+    setVisiblePasswords(new Set());
+    setAllVisible(false);
+  } else {
+    // Si no, agregamos todos los IDs de los items actuales al Set
+    const allIds = new Set(displayed.map(it => it.id).filter(id => id !== undefined));
+    setVisiblePasswords(allIds);
+    setAllVisible(true);
+  }
+};
 
   // Fechas en UTC para reflejar exactamente el backend
   const formatDateUTC = (v) => {
@@ -279,7 +294,27 @@ export default function ProviderSalesPage() {
                     <th>Id</th>
                     <th>Nombre producto</th>
                     <th>Username</th>
-                    <th>Password</th>
+                    {/* Localiza la línea 127 aprox. */}
+<th>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    Password
+    <button 
+      onClick={toggleAllPasswords}
+      title={visiblePasswords.size > 0 ? "Ocultar todas" : "Mostrar todas"}
+      style={{ 
+        background: 'transparent', 
+        border: 'none', 
+        color: '#9fb4c8', 
+        cursor: 'pointer',
+        fontSize: '1rem',
+        display: 'flex'
+      }}
+    >
+      {/* Si hay al menos un password visible, mostramos el ojo de cerrar */}
+      {visiblePasswords.size > 0 ? <FaEyeSlash /> : <FaEye />}
+    </button>
+  </div>
+</th>
                     <th>URL</th>
                     <th>Nº Perfil</th>
                     <th>Nombre cliente</th>
@@ -295,7 +330,7 @@ export default function ProviderSalesPage() {
 
                 <tbody>
                   {displayed.map((r, i) => {
-                    const isVisible = visiblePasswords.has(r.id)
+                    const isVisible = visiblePasswords.has(r.id);
                     const masked = r.password ? '••••••••' : ''
                     const days =
                       typeof r.daysRemaining === 'number' && Number.isFinite(r.daysRemaining)
