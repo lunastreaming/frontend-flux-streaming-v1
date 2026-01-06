@@ -165,45 +165,53 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
           </div>
 
           <div className="qr-area">
-            {!selectedMethod && (
-              <div className="qr-placeholder">
-                <p>Selecciona un método para ver el detalle</p>
-              </div>
-            )}
+  {!selectedMethod && (
+    <div className="qr-placeholder">
+      <p>Selecciona un método para ver el detalle</p>
+    </div>
+  )}
 
-            {selectedMethod && (
-              <div className="method-detail" role="region" aria-label={`${selectedMethod.label} detalle`}>
-                <div className="method-header">
-                  <img
-                    src={selectedMethod.logo}
-                    alt={`${selectedMethod.label} logo`}
-                    className={`method-logo ${selectedMethod.key === 'PayPal' ? 'paypal-logo-large' : ''}`}
-                    loading="lazy"
-                  />
-                  <div className="method-head-info">
-                    <strong>{selectedMethod.label}</strong>
-                    <p>{selectedMethod.info}</p>
-                  </div>
-                </div>
-
-                <div className="qr-list">
-                  {selectedMethod.qr.map((qrSrc, idx) => (
-                    <img key={idx} src={qrSrc} alt={`QR ${selectedMethod.label} ${idx + 1}`} className="qr" loading="lazy" />
-                  ))}
-                </div>
-
-                <div className="detail-actions">
-                  <button
-                    className="copy-btn"
-                    onClick={() => handleCopy(selectedMethod.copy)}
-                    aria-label={`Copiar dato ${selectedMethod.label}`}
-                  >
-                    {copySuccess ? copySuccess : 'Copiar dato'}
-                  </button>
-                </div>
-              </div>
-            )}
+  {selectedMethod && (
+    /* Capa oscura de fondo que cierra la burbuja al hacer clic fuera */
+    <div className="qr-overlay" onClick={() => setSelectedKey(null)}>
+      <div 
+        className="method-detail-floating" 
+        role="region" 
+        onClick={(e) => e.stopPropagation()} /* Evita cerrar al tocar el QR */
+      >
+        <button className="close-qr" onClick={() => setSelectedKey(null)}>✕</button>
+        
+        <div className="method-header">
+          <img
+            src={selectedMethod.logo}
+            alt={`${selectedMethod.label} logo`}
+            className={`method-logo ${selectedMethod.key === 'PayPal' ? 'paypal-logo-large' : ''}`}
+            loading="lazy"
+          />
+          <div className="method-head-info">
+            <strong>{selectedMethod.label}</strong>
+            <p>{selectedMethod.info}</p>
           </div>
+        </div>
+
+        <div className="qr-list">
+          {selectedMethod.qr.map((qrSrc, idx) => (
+            <img key={idx} src={qrSrc} alt={`QR ${selectedMethod.label} ${idx + 1}`} className="qr-large" loading="lazy" />
+          ))}
+        </div>
+
+        <div className="detail-actions">
+          <button
+            className="copy-btn-primary"
+            onClick={() => handleCopy(selectedMethod.copy)}
+          >
+            {copySuccess ? copySuccess : `Copiar ${selectedMethod.label}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
         </div>
       </div>
 
@@ -327,13 +335,15 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
         .method-head-info p { color:#cfcfcf; margin:0; }
 
 .qr-list {
-  display: flex;              /* usamos flexbox */
-  flex-wrap: wrap;            /* permite varias imágenes (ej. Yape con 2 QR) */
-  justify-content: center;    /* centra horizontalmente */
-  gap: 16px;                  /* espacio uniforme entre QR */
+  display: flex;
+  flex-direction: row; /* Alineación horizontal */
+  flex-wrap: nowrap;   /* Evita que se salten de línea */
+  justify-content: center;
+  align-items: center;
+  gap: 12px;           /* Espacio entre los dos QRs */
   width: 100%;
+  padding: 4px 0;
 }
-
 .qr {
   display: block;
   margin: 0 auto;             /* asegura centrado si hay una sola imagen */
@@ -368,6 +378,105 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
         .btn { padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer; border:none; }
         .btn.ghost { background:transparent; color:#e6e6e6; border:1px solid rgba(255,255,255,0.06); }
         .btn.primary { background:linear-gradient(135deg,#8b5cf6 0%,#22d3ee 100%); color:#0d0d0d; }
+
+
+        /* Contenedor que oscurece el fondo del modal */
+.qr-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85); /* Oscurece el resto del modal */
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* La "Burbuja" flotante */
+.method-detail-floating {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.qr-large {
+  /* Si hay dos QRs, cada uno ocupará casi la mitad del ancho */
+  width: 100%;
+  max-width: 180px;    /* Reducimos un poco el máximo para que quepan dos */
+  height: auto;
+  border-radius: 12px;
+  background: white;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+
+/* Efecto opcional al pasar el mouse */
+.qr-large:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.close-qr {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.copy-btn-primary {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+  color: #000;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Compactar la lista de métodos original para que no ocupe tanto */
+.method-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas de botones */
+  gap: 8px;
+  margin-top: 12px;
+}
+.method-btn {
+  min-height: 60px !important;
+  padding: 8px !important;
+}
       `}</style>
     </Modal>
   )
