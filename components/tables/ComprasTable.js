@@ -23,13 +23,13 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   const [totalElements, setTotalElements] = useState(0)
 
   // ... dentro de la función ComprasTable
-const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
-const [phoneToEdit, setPhoneToEdit] = useState({ id: null, currentPhone: '' });
+  const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
+  const [phoneToEdit, setPhoneToEdit] = useState({ id: null, currentPhone: '' });
 
-const openEditPhone = (id, phone) => {
-  setPhoneToEdit({ id, currentPhone: phone });
-  setShowEditPhoneModal(true);
-};
+  const openEditPhone = (id, phone) => {
+    setPhoneToEdit({ id, currentPhone: phone });
+    setShowEditPhoneModal(true);
+  };
 
   const SIZE = 50
 
@@ -56,24 +56,24 @@ const openEditPhone = (id, phone) => {
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const formatDateLocal = (v) => {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return ''
+    if (!v) return ''
+    try {
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
   }
-}
 
   // Si quisieras ver el ISO exacto del backend (incluye milisegundos y 'Z'), usa esta:
   // const formatIsoUTC = (value) => {
@@ -189,9 +189,9 @@ const openEditPhone = (id, phone) => {
       <div className="no-results">
         <img src="/SinCompras.png" alt="No hay compras registradas" className="no-results-image" />
         <p className="no-results-text">
-          {search ? 
-           `No se encontraron compras que coincidan con "${search}".` : 
-           'Aún no tienes compras registradas.'
+          {search ?
+            `No se encontraron compras que coincidan con "${search}".` :
+            'Aún no tienes compras registradas.'
           }
         </p>
         <style jsx>{`
@@ -254,13 +254,23 @@ const openEditPhone = (id, phone) => {
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
+              const formatDateMsg = (dateStr) => {
+                if (!dateStr) return ''
+                // Extrae YYYY-MM-DD y lo reordena
+                const [year, month, day] = dateStr.split('T')[0].split('-')
+                return `${day}/${month}/${year}`
+              }
+
               const whatsappMsg = `Hola ${row.clientName ?? ''} 👋🏻
 🍿De ${row.productName ?? ''}🍿
 ✉ usuario: ${row.username ?? ''}
 🔐 Contraseña: ${row.password ?? ''}
 🌍 Url: ${row.url ?? ''}
 👥 Perfil: ${row.numeroPerfil ?? ''}
-🔐 Pin: ${row.pin ?? ''}`
+🔐 Pin: ${row.pin ?? ''}
+⏳ Contratado: ${row.daysRemaining ?? ''} días
+🗓 Compra: ${formatDateMsg(row.startAt)}
+🗓 Vencimiento: ${formatDateMsg(row.endAt)}`
 
               const onClickWhatsAppClient = () => {
                 const phoneRaw = row.clientPhone ?? ''
@@ -304,26 +314,26 @@ const openEditPhone = (id, phone) => {
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
                   <td><div className="row-inner">{row.clientName || ''}</div></td>
                   <td>
-  <div className="row-inner whatsapp-cell">
-    <button
-      className="wa-btn"
-      onClick={onClickWhatsAppClient}
-      aria-label={`WhatsApp cliente ${row.clientPhone || ''}`}
-    >
-      <FaWhatsapp />
-    </button>
-    <div className="wa-number">{row.clientPhone || ''}</div>
-    
-    {/* NUEVO BOTÓN DE EDICIÓN */}
-    <button 
-      className="edit-phone-btn"
-      onClick={() => openEditPhone(row.id, row.clientPhone)}
-      title="Editar teléfono"
-    >
-      <FaEdit />
-    </button>
-  </div>
-</td>
+                    <div className="row-inner whatsapp-cell">
+                      <button
+                        className="wa-btn"
+                        onClick={onClickWhatsAppClient}
+                        aria-label={`WhatsApp cliente ${row.clientPhone || ''}`}
+                      >
+                        <FaWhatsapp />
+                      </button>
+                      <div className="wa-number">{row.clientPhone || ''}</div>
+
+                      {/* NUEVO BOTÓN DE EDICIÓN */}
+                      <button
+                        className="edit-phone-btn"
+                        onClick={() => openEditPhone(row.id, row.clientPhone)}
+                        title="Editar teléfono"
+                      >
+                        <FaEdit />
+                      </button>
+                    </div>
+                  </td>
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
                   <td><div className="row-inner">{row.providerPhone || ''}</div></td>
                   <td>
@@ -386,14 +396,14 @@ const openEditPhone = (id, phone) => {
       )}
 
       {showEditPhoneModal && (
-  <EditPhoneModal
-    isOpen={showEditPhoneModal}
-    onClose={() => setShowEditPhoneModal(false)}
-    stockId={phoneToEdit.id}
-    currentPhone={phoneToEdit.currentPhone}
-    onSuccess={() => fetchData(page)} // Recarga la tabla para ver el cambio
-  />
-)}
+        <EditPhoneModal
+          isOpen={showEditPhoneModal}
+          onClose={() => setShowEditPhoneModal(false)}
+          stockId={phoneToEdit.id}
+          currentPhone={phoneToEdit.currentPhone}
+          onSuccess={() => fetchData(page)} // Recarga la tabla para ver el cambio
+        />
+      )}
 
       {showRenewModal && (
         <RenewModal
