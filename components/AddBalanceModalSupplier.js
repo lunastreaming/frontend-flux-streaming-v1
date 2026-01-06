@@ -251,7 +251,7 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
 
       <div className="actions">
         <button className="btn ghost" onClick={() => { if (!submitting) onClose() }} disabled={submitting}>Cancelar</button>
-        <button className="btn primary" onClick={submit} disabled={submitting}>{submitting ? 'Enviando...' : 'Agregar'}</button>
+        <button className="btn primary" onClick={submit} disabled={submitting}>{submitting ? 'Enviando...' : 'Recargar'}</button>
       </div>
 
       <style jsx>{`

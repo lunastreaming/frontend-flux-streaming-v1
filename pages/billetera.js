@@ -321,7 +321,7 @@ export default function Billetera() {
             <h2>Saldo disponible</h2>
             <div className="balance-row">
               <div className="balance-amount">Cargando…</div>
-              <button className="btn-add" disabled>Agregar saldo</button>
+              <button className="btn-add" disabled>Recarga Aquí</button>
             </div>
           </section>
         </main>
@@ -344,7 +344,7 @@ export default function Billetera() {
     {/* Contenedor para los botones alineados verticalmente */}
     <div className="balance-actions">
       <button className="btn-add" onClick={handleAddClick}>
-        Agregar saldo
+        Recarga Aquí
       </button>
       
       <a 

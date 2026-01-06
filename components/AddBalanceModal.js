@@ -120,9 +120,9 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
   const selectedMethod = methods.find(m => m.key === selectedKey) || null
 
   return (
-    <Modal open={open} onClose={() => { if (!submitting) onClose() }} ariaLabel="Agregar saldo">
+    <Modal open={open} onClose={() => { if (!submitting) onClose() }} ariaLabel="Recarga Aquí">
       <div className="modal-header">
-        <h2 style={{ margin: 0 }}>Agregar saldo</h2>
+        <h2 style={{ margin: 0 }}>Recarga Aquí</h2>
         <button className="close" onClick={() => { if (!submitting) onClose() }} aria-label="Cerrar">✕</button>
       </div>
 
@@ -212,7 +212,7 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
 
       <div className="actions">
         <button className="btn ghost" onClick={() => { if (!submitting) onClose() }} disabled={submitting}>Cancelar</button>
-        <button className="btn primary" onClick={submit} disabled={submitting}>{submitting ? 'Enviando...' : 'Agregar'}</button>
+        <button className="btn primary" onClick={submit} disabled={submitting}>{submitting ? 'Enviando...' : 'Recargar'}</button>
       </div>
 
       <style jsx>{`
