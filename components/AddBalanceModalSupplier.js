@@ -184,8 +184,8 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
         </div>
 
         <div className="instructions">
-          <h3>Métodos de pago</h3>
-          <div className="method-list" role="tablist" aria-label="Métodos de pago">
+          <h3>SELECCIONA MÉTODO DE PAGO</h3>
+          <div className="method-list" role="tablist" aria-label="SELECCIONA MÉTODO DE PAGO">
             {methods.map(m => (
               <button
                 key={m.key}
