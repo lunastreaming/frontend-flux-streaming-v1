@@ -87,8 +87,13 @@ export default function RenewModal({ product, balance, onClose, onSuccess }) {
         throw new Error(serverMsg || `Error ${res.status}`)
       }
 
+      if (!res.ok) { /* manejo de errores */ }
       const updated = await res.json()
-      if (onSuccess) onSuccess(updated)
+      if (onSuccess) {
+      // Enviamos updated.product para que la tabla reciba el DTO plano
+      // Si por alguna razón no viene .product, enviamos el objeto tal cual
+      onSuccess(updated?.product ?? updated);
+    }
       onClose()
     } catch (err) {
       setError(err.message || String(err))
