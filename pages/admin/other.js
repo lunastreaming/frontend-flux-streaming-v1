@@ -261,7 +261,7 @@ const saveSetting = async (key, newValue, isBool = false) => {
                       />
                       <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
-                        <button className="btn primary" onClick={() => saveSetting('supplierDiscount')} disabled={loading}>Guardar</button>
+                        <button className="btn primary" onClick={() => saveSetting('supplierDiscount', editedValue)} disabled={loading}>Guardar</button>
                       </div>
                     </div>
                   )}
@@ -299,7 +299,7 @@ const saveSetting = async (key, newValue, isBool = false) => {
                       />
                       <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
-                        <button className="btn primary" onClick={() => saveSetting('supplierPublication')} disabled={loading}>Guardar</button>
+                        <button className="btn primary" onClick={() => saveSetting('supplierPublication', editedValue)} disabled={loading}>Guardar</button>
                       </div>
                     </div>
                   )}
