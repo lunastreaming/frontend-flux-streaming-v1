@@ -46,6 +46,8 @@ export default function BilleteraSupplier() {
   const [movTotalElements, setMovTotalElements] = useState(0)
   const [movTotalPages, setMovTotalPages] = useState(1)
 
+  const [canTransfer, setCanTransfer] = useState(false)
+
   // BASE desde variable de entorno (SSR-safe)
   const rawApiBase = process.env.NEXT_PUBLIC_API_URL
   const apiBase = rawApiBase ?
@@ -78,23 +80,24 @@ export default function BilleteraSupplier() {
       })()
   }, [router.isReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchMeAndPopulate(token) {
-    const res = await fetch(buildUrl('/api/users/me'), {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error('Token inválido')
-    const data = await res.json()
-    setBalance(Number.parseFloat(data.balance)
-      || 0)
-    // Obtener y establecer providerStatus
-    setProviderStatus(data.providerStatus || 'inactive')
-
-    // If the user object returns movements, keep them as a fallback (not paginated)
-    if (Array.isArray(data.movements) && data.movements.length > 0) {
-      const mapped = data.movements.map(tx => normalizeTx(tx))
-      setMovimientos(mapped)
-    }
+async function fetchMeAndPopulate(token) {
+  const res = await fetch(buildUrl('/api/users/me'), {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Token inválido') 
+  
+  const data = await res.json()
+  setBalance(Number.parseFloat(data.balance) || 0) 
+  setProviderStatus(data.providerStatus || 'inactive') 
+  
+  // Guardar el permiso de transferencia desde la API
+  setCanTransfer(!!data.canTransfer) // <-- NUEVA ASIGNACIÓN
+  
+  if (Array.isArray(data.movements) && data.movements.length > 0) {
+    const mapped = data.movements.map(tx => normalizeTx(tx)) 
+    setMovimientos(mapped)
   }
+}
 
   /**
    * fetchUserTransactions consumes the paginated endpoint:
@@ -386,10 +389,16 @@ export default function BilleteraSupplier() {
                 </span>
               </button>
               {/* BOTÓN DE TRANSFERENCIA EXISTENTE */}
-              <button type="button" className="btn-transfer" onClick={handleTransferClick}
-                aria-label="Transferir">
-                <FontAwesomeIcon icon={faExchangeAlt} />
-              </button>
+              {canTransfer && (
+    <button 
+      type="button" 
+      className="btn-transfer" 
+      onClick={handleTransferClick}
+      aria-label="Transferir"
+    >
+      <FontAwesomeIcon icon={faExchangeAlt} /> 
+    </button>
+  )}
             </div>
           </div>
 
