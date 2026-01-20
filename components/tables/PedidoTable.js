@@ -92,11 +92,15 @@ export default function PedidoTable({ search = '' }) {
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
-              const whatsappMsgProvider = `Hola *${row.providerName ?? ''}* 👋🏻
-🫴He generado un pedido *${row.productName ?? ''}*🫴
-✉ *Por favor acepte mi solicitud, ¡¡¡Gracias!!!*`
+const whatsappMsgProvider = `🛒 COMPRA A PEDIDO 🛒
+______
 
+🙋 Hola *${row.providerName ?? ''}*, realicé un pedido del producto:
+🔑 Código: *${row.id ?? ''}*
+📋 Nombre: *${row.productName ?? ''}*
+🛍️ Tipo: *${row.tipo ?? ''}*
 
+✅ Por favor, procese mi compra a pedido.`;
 
               const onClickWhatsAppProvider = () => {
                 const phoneRaw = row.providerPhone ?? ''
