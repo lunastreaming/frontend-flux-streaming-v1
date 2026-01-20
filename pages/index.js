@@ -534,7 +534,7 @@ export default function Home() {
                   // Clase específica para el estilo naranja de botón inactivo
                   buttonClass += ' disabled-provider-inactive-btn';
                   showStockPill = false;
-                } else if (!p.isOnRequest && !hasStock) {
+                } else if (!hasStock) {
                   // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
                   buttonText = 'SIN STOCK';
                   buttonAction = () => { };
