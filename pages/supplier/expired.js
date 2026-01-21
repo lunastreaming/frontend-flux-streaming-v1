@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
-import { FaSearch, FaEye, FaEyeSlash, FaTrash } from 'react-icons/fa'
+import { FaSearch, FaEye, FaEyeSlash, FaTrash, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
 
 export default function ExpiredPage() {
@@ -106,6 +106,27 @@ export default function ExpiredPage() {
       return d.toLocaleDateString()
     } catch { return '' }
   }
+
+const openWhatsAppToClient = (clientPhone, clientName, productName, id, tipo, r) => {
+  const raw = String(clientPhone ?? '').replace(/[^\d]/g, '');
+  
+  // Construcción del mensaje con Template Literals para preservar emojis
+  const message = `Hola reseller ${r.buyerUsername || ''} 👋🏻
+🍿Tu subscripcion a ${r.productName || ''}🍿
+✉ usuario: ${r.username || ''}
+🔐 Vence en : ${r.daysRemaining ?? 0} días
+📣 Comunicate con tu cliente ${r.clientName || ''}
+Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será renovado...
+🤖 Atentamente Proveedor ${r.providerName || ''}`;
+
+  const encoded = encodeURIComponent(message);
+  
+  if (!raw) {
+    window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank');
+    return;
+  }
+  window.open(`https://api.whatsapp.com/send?phone=${raw}&text=${encoded}`, '_blank');
+};
 
   const formatDateUTC = (value) => {
   if (!value) return ''
@@ -304,10 +325,37 @@ const formatDateLocal = (v) => {
                           </div>
                         </td>
                         <td><div className="row-inner">{r.url ?? ''}</div></td>
-                        <td><div className="row-inner">{r.clientName ?? r.buyerUsername ?? ''}</div></td>
+                        <td>
+  <div className="row-inner">
+    {r.buyerUsername ?? ''}
+  </div>
+</td>
 
                         {/* Celular cliente: solo número */}
-                        <td><div className="row-inner">{r.clientPhone ?? ''}</div></td>
+                       <td>
+  <div className="row-inner phone-cell">
+    {r.buyerUsernamePhone && (
+      <button
+        className="wa-btn"
+        onClick={() => {
+          const message = `Hola reseller ${r.buyerUsername || ''} 👋🏻
+🍿Tu subscripcion a ${r.productName || ''}🍿
+✉ usuario: ${r.username || ''}
+🔐 Vence en : ${r.daysRemaining ?? 0} días
+📣 Comunicate con tu cliente ${r.clientName || ''}
+Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será renovado...
+🤖 Atentamente Proveedor ${r.providerName || ''}`;
+          
+          const rawPhone = String(r.buyerUsernamePhone).replace(/\D/g, '');
+          window.open(`https://api.whatsapp.com/send?phone=${rawPhone}&text=${encodeURIComponent(message)}`, '_blank');
+        }}
+      >
+        <FaWhatsapp />
+      </button>
+    )}
+    <span className="client-phone">{r.buyerUsernamePhone ?? ''}</span>
+  </div>
+</td>
 
                         {/* Pin */}
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
@@ -471,6 +519,43 @@ const formatDateLocal = (v) => {
           table.styled-table { min-width: 900px; }
           .page-container { padding: 18px 10px; }
         }
+
+        .whatsapp-btn {
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+.whatsapp-btn:hover {
+  transform: scale(1.2);
+}
+
+.phone-cell { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+}
+
+.wa-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #25D366, #128C7E);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.wa-btn:hover {
+  transform: scale(1.1);
+}
+
+.client-phone { 
+  color: #cbd5e1; 
+  font-size: 0.95rem; 
+}
       `}</style>
     </div>
   )
