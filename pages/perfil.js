@@ -291,6 +291,12 @@ const handleUpdateExecution = async () => {
           box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
 
+
+        .balance-panel h2 { 
+    margin: 0; 
+    font-size: 32px; 
+    transition: all 0.5s ease; /* <--- Agrégalo aquí */
+  }
         .header-flex { display: flex; align-items: center; gap: 20px; margin-bottom: 25px; }
         .avatar-box { position: relative; }
         .status-badge {
