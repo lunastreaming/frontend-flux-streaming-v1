@@ -5,6 +5,7 @@ import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo, FaEdit } from 'react-icon
 import SupportModal from '../SupportModal'
 import RenewModal from '../RenewModal'
 import EditPhoneModal from '../EditPhoneModal'
+import EditNameModal from '../EditNameModal'; 
 
 export default function ComprasTable({ endpoint = 'purchases', balance, search = '' }) {
   const [items, setItems] = useState([])
@@ -25,6 +26,14 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   // ... dentro de la función ComprasTable
   const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
   const [phoneToEdit, setPhoneToEdit] = useState({ id: null, currentPhone: '' });
+
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [nameToEdit, setNameToEdit] = useState({ id: null, currentName: '' });
+
+  const openEditName = (id, name) => {
+  setNameToEdit({ id, currentName: name });
+  setShowEditNameModal(true);
+};
 
   const openEditPhone = (id, phone) => {
     setPhoneToEdit({ id, currentPhone: phone });
@@ -312,7 +321,18 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                   <td><div className="row-inner">{formatDateLocal(row.endAt)}</div></td>
                   <td><div className="row-inner">{row.daysRemaining ?? ''}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
-                  <td><div className="row-inner">{row.clientName || ''}</div></td>
+                  <td>
+  <div className="row-inner client-cell">
+    <span>{row.clientName || ''}</span>
+    <button
+      className="edit-phone-btn" // Reutilizamos el estilo del botón de edición
+      onClick={() => openEditName(row.id, row.clientName)}
+      title="Editar nombre"
+    >
+      <FaEdit />
+    </button>
+  </div>
+</td>
                   <td>
                     <div className="row-inner whatsapp-cell">
                       <button
@@ -404,6 +424,16 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
           onSuccess={() => fetchData(page)} // Recarga la tabla para ver el cambio
         />
       )}
+
+      {showEditNameModal && (
+  <EditNameModal
+    isOpen={showEditNameModal}
+    onClose={() => setShowEditNameModal(false)}
+    stockId={nameToEdit.id}
+    currentName={nameToEdit.currentName}
+    onSuccess={() => fetchData(page)} // Recarga la tabla tras el cambio [cite: 15, 59]
+  />
+)}
 
       {showRenewModal && (
         <RenewModal
