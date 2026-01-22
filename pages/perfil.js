@@ -357,6 +357,114 @@ const handleUpdateExecution = async () => {
         .status-msg.error { background: rgba(248,113,113,0.1); color: #f87171; }
         .status-msg.success { background: rgba(74,222,128,0.1); color: #4ade80; }
         .divider { height: 1px; background: rgba(255,255,255,0.05); margin: 25px 0; }
+
+        /* ... tus estilos anteriores ... */
+
+/* MEDIA QUERIES PARA MÓVIL */
+@media (max-width: 640px) {
+  .profile-container {
+    margin: 15px auto;
+    padding: 0 10px;
+    gap: 15px;
+  }
+
+  .glass-card {
+    padding: 20px; /* Reducimos el padding interno en móvil */
+    border-radius: 18px;
+  }
+
+  /* Ajuste de Cabecera (Avatar y Nombre) */
+  .header-flex {
+    flex-direction: column; /* Apilamos avatar y nombre */
+    text-align: center;
+    gap: 12px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  /* Ajuste del Widget de Balance */
+  .balance-widget {
+    flex-direction: column; /* Apilamos etiqueta y monto */
+    gap: 10px;
+    text-align: center;
+  }
+
+  .b-right h2 {
+    font-size: 26px;
+  }
+
+  /* Ajuste de Filas de Datos (WhatsApp / ID) */
+  .data-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .btn-edit {
+    width: 100%; /* Botón de cambiar número ocupa todo el ancho */
+    justify-content: center;
+  }
+
+  /* Ajuste del Formulario de Cambio de Número */
+  .input-group {
+    flex-direction: column; /* El selector de país y el input se apilan */
+    gap: 10px;
+  }
+
+  .sel-container {
+    width: 100%; /* El selector de país ocupa todo el ancho */
+  }
+
+  .form-actions {
+    flex-direction: column-reverse; /* Botón confirmar arriba del cancelar */
+    gap: 10px;
+  }
+
+  .btn-confirm-trigger, .btn-cancel {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .uuid-text {
+    word-break: break-all; /* Evita que el ID largo rompa el diseño */
+    font-size: 11px !important;
+  }
+    .input-group {
+    display: flex;
+    flex-direction: column; /* Apilamos los elementos verticalmente [cite: 103, 186] */
+    gap: 12px;
+    width: 100%;
+  }
+
+  .sel-container {
+    width: 100% !important; /* El selector de banderas ocupa todo el ancho [cite: 187] */
+    height: 48px; /* Altura fija para consistencia [cite: 188] */
+    display: flex;
+    align-items: center;
+  }
+
+  .input-group input {
+    width: 100% !important; /* El input de número ocupa todo el ancho [cite: 188] */
+    height: 48px; /* Misma altura que el sel-container para que no se vea más pequeño [cite: 188] */
+    padding: 0 15px;
+    font-size: 16px; /* Evita el zoom automático en iOS al enfocar [cite: 19, 62] */
+    box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+  }
+
+  .form-actions {
+    margin-top: 10px;
+    flex-direction: column-reverse; /* El botón de acción queda arriba del de cancelar [cite: 190] */
+    gap: 12px;
+  }
+
+  .btn-confirm-trigger {
+    width: 100%;
+    height: 48px; /* Consistencia visual en botones también [cite: 192] */
+    font-size: 16px;
+  }
+}
       `}</style>
     </div>
   );
