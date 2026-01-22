@@ -149,7 +149,14 @@ const handleUpdateExecution = async () => {
       cursor: 'pointer'
     }),
     singleValue: (base) => ({ ...base, color: '#fff' }),
-    menu: (base) => ({ ...base, background: '#111', border: '1px solid #333', borderRadius: '12px', zIndex: 100 }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }), // Asegura que flote sobre todo
+  menu: (base) => ({ 
+    ...base, 
+    background: '#111', 
+    border: '1px solid #333', 
+    borderRadius: '12px',
+    width: '280px', // Ancho fijo para que se vea bien en móvil al desplegarse
+  }),
     option: (base, state) => ({ 
       ...base, 
       background: state.isFocused ? '#222' : 'transparent', 
@@ -224,6 +231,7 @@ const handleUpdateExecution = async () => {
                     components={{ Option: OptionWithFlag, SingleValue: SingleValueWithFlag }}
                     styles={selectStyles}
                     isSearchable={false}
+                    menuPortalTarget={typeof window !== "undefined" ? document.body : null}
                   />
                 </div>
                 <input 
@@ -438,11 +446,14 @@ const handleUpdateExecution = async () => {
     width: 100%;
   }
 
+  .expand-form {
+    overflow: visible !important; /* Permite que el listado de banderas salga del recuadro */
+  }
+
   .sel-container {
-    width: 100% !important; /* El selector de banderas ocupa todo el ancho [cite: 187] */
-    height: 48px; /* Altura fija para consistencia [cite: 188] */
-    display: flex;
-    align-items: center;
+    width: 100% !important;
+    position: relative;
+    overflow: visible !important;
   }
 
   .input-group input {
