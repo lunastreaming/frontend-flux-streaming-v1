@@ -128,20 +128,21 @@ const saveSetting = async (key, newValue, isBool = false) => {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    // Construcción del payload dinámico
+    // Construcción del payload dinámico [cite: 12, 13]
     const payload = isBool 
-      ? { valueBool: newValue }   // Para el switch
-      : { number: Number(newValue) }; // Para descuentos y precios
+      ? { valueBool: newValue } 
+      : { number: Number(newValue) };
 
     const res = await fetch(UPDATE_SETTING_ENDPOINT(key), { 
       method: 'PATCH',
       headers,
       body: JSON.stringify(payload)
     });
-
+    
     if (!res.ok) throw new Error(await res.text());
     
     const updated = await res.json();
+    
     setSettings(prev => {
       const idx = prev.findIndex(s => s.key === updated.key); 
       if (idx >= 0) {
@@ -151,6 +152,13 @@ const saveSetting = async (key, newValue, isBool = false) => {
       }
       return [...prev, updated];
     });
+
+    // --- MEJORA: Cerramos el modo edición al tener éxito ---
+    if (!isBool) {
+      setEditingKey(null);
+      setEditedValue('');
+    }
+
   } catch (err) {
     setError(err.message || 'No se pudo guardar el valor');
   } finally {
@@ -328,6 +336,99 @@ const saveSetting = async (key, newValue, isBool = false) => {
         </div>
       </div>
           </section>
+
+          {/* Configuración Vendedores */}
+<section className="card-settings" style={{ marginTop: 16 }}>
+  <div className="card-header">
+    <h2 className="card-title">Configuración Vendedores</h2>
+    <div className="card-actions">
+      <button className="btn" onClick={loadSettings}>
+        {loading ? <span className="spin small" /> : 'Refrescar'}
+      </button>
+    </div>
+  </div>
+  
+  <div className="card-body">
+    {error && <div className="error">{error}</div>}
+    <div className="exchange-grid">
+
+      {/* cost_change_phone */}
+      <div className="row">
+        <div>
+          <div className="label">Costo cambio de celular</div>
+          <div className="muted small">Precio por actualizar el número de teléfono del vendedor</div>
+        </div>
+
+        {!editingKey || editingKey !== 'cost_change_phone' ? (
+          <div style={{ textAlign: 'right' }}>
+            <div className="value">
+              {getSettingValue('cost_change_phone') != null
+                ? Number(getSettingValue('cost_change_phone')).toLocaleString(undefined, { minimumFractionDigits: 2 })
+                : '—'}
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn primary" onClick={() => startEditSetting('cost_change_phone', getSettingValue('cost_change_phone'))}>
+                Editar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'right' }}>
+            <input
+              className="input-rate"
+              value={editedValue}
+              onChange={(e) => setEditedValue(e.target.value)}
+              inputMode="decimal"
+              aria-label="Editar costo cambio celular"
+            />
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
+              <button className="btn primary" onClick={() => saveSetting('cost_change_phone', editedValue)} disabled={loading}>Guardar</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* cost_change_password */}
+      <div className="row">
+        <div>
+          <div className="label">Costo cambio de contraseña</div>
+          <div className="muted small">Tarifa aplicada por reseteo de credenciales</div>
+        </div>
+
+        {!editingKey || editingKey !== 'cost_change_password' ? (
+          <div style={{ textAlign: 'right' }}>
+            <div className="value">
+              {getSettingValue('cost_change_password') != null
+                ? Number(getSettingValue('cost_change_password')).toLocaleString(undefined, { minimumFractionDigits: 2 })
+                : '—'}
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn primary" onClick={() => startEditSetting('cost_change_password', getSettingValue('cost_change_password'))}>
+                Editar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'right' }}>
+            <input
+              className="input-rate"
+              value={editedValue}
+              onChange={(e) => setEditedValue(e.target.value)}
+              inputMode="decimal"
+              aria-label="Editar costo cambio password"
+            />
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
+              <button className="btn primary" onClick={() => saveSetting('cost_change_password', editedValue)} disabled={loading}>Guardar</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  </div>
+</section>
         </main>
       </div>
 
