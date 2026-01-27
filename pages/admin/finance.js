@@ -22,51 +22,67 @@ export default function AdminTransactionsPage() {
   const [selectedRow, setSelectedRow] = useState(null)
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
-  useEffect(() => {
-    let mounted = true
+useEffect(() => {
+    let mounted = true;
+    let timer;
 
     const fetchPage = async (p = 0) => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
-        if (!token) throw new Error('No token')
+        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+        if (!token) throw new Error('No token');
 
-        const url = `${BASE_URL}/api/wallet/transactions?page=${p}`
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        // Construimos la URL enviando el parámetro 'search' al backend
+        const url = `${BASE_URL}/api/wallet/transactions?page=${p}&search=${encodeURIComponent(search)}`;
+        
+        const res = await fetch(url, { 
+          headers: { Authorization: `Bearer ${token}` } 
+        });
 
         if (!res.ok) {
-          const txt = await res.text().catch(() => '')
-          throw new Error(`Error ${res.status} ${txt}`)
+          const txt = await res.text().catch(() => '');
+          throw new Error(`Error ${res.status} ${txt}`);
         }
 
-        const payload = await res.json()
-        if (!mounted) return
+        const payload = await res.json();
+        if (!mounted) return;
 
-        const content = Array.isArray(payload?.content) ? payload.content : []
-        setItems(content)
-        setPage(Number(payload?.number ?? p))
-        setTotalElements(Number(payload?.totalElements ?? payload?.total ?? content.length))
-        setTotalPages(Number(payload?.totalPages ?? Math.ceil((payload?.totalElements ?? content.length) / size) ?? 1))
+        // El backend ahora hace el trabajo pesado del filtro
+        const content = Array.isArray(payload?.content) ? payload.content : [];
+    
+        setItems(content);
+        setPage(Number(payload?.number ?? p));
+        setTotalElements(Number(payload?.totalElements ?? content.length));
+        setTotalPages(Number(payload?.totalPages ?? 1));
       } catch (err) {
-        if (!mounted) return
-        setError(err.message || String(err))
-        setItems([])
-        setTotalElements(0)
-        setTotalPages(1)
+        if (!mounted) return;
+        setError(err.message || String(err));
+        setItems([]);
+        setTotalElements(0);
+        setTotalPages(1);
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) setLoading(false);
       }
+    };
+
+    // Aplicamos Debounce: Solo busca si el usuario deja de escribir por 400ms
+    if (search) {
+      timer = setTimeout(() => {
+        fetchPage(page);
+      }, 400);
+    } else {
+      fetchPage(page);
     }
 
-    fetchPage(page)
-    return () => { mounted = false }
-  }, [page, BASE_URL, size])
+    return () => { 
+      mounted = false;
+      if (timer) clearTimeout(timer); // Limpia el temporizador si el componente se desmonta o cambia el search
+    };
+  }, [page, BASE_URL, search]); // Se ejecuta al cambiar la página o el texto de búsqueda [cite: 6]
 
   // Filtered list for display (search across userName, description)
-  const displayed = items.filter(it =>
-    ((it.userName ?? '') + ' ' + (it.description ?? '')).toLowerCase().includes(search.toLowerCase())
-  )
+  const displayed = items;
 
   const formatDate = (v) => v ? new Date(v).toLocaleString() : '—'
   const formatAmount = (v, curr = 'USD') => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
@@ -182,11 +198,14 @@ export default function AdminTransactionsPage() {
           <div className="search-bar">
             <FaSearch className="search-icon-inline" />
             <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="search-input-inline"
-              placeholder="Buscar por usuario o descripción..."
-            />
+  value={search}
+  onChange={e => {
+    setSearch(e.target.value);
+    setPage(0); // Reinicia a la primera página al buscar
+  }}
+  className="search-input-inline"
+  placeholder="Buscar por usuario o descripción..."
+/>
           </div>
 
         </div>
