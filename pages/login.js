@@ -27,6 +27,7 @@ export default function Login() {
   }
 
   const adContainerRef = useRef(null); // Referencia para el contenedor del anuncio
+  const adContainerRef2 = useRef(null);
 
   useEffect(() => {
     // Solo ejecutamos esto si el contenedor existe y no tiene hijos (evita duplicados)
@@ -48,6 +49,15 @@ export default function Login() {
 
       adContainerRef.current.appendChild(atOptions);
       adContainerRef.current.appendChild(invokeScript);
+    }
+
+    if (adContainerRef2.current && !adContainerRef2.current.firstChild) {
+      const atOptions2 = document.createElement('script');
+      atOptions2.innerHTML = `atOptions = { 'key' : '77f94119e48b472f342ca439c429388c', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };`;
+      const invokeScript2 = document.createElement('script');
+      invokeScript2.src = 'https://www.highperformanceformat.com/77f94119e48b472f342ca439c429388c/invoke.js';
+      adContainerRef2.current.appendChild(atOptions2);
+      adContainerRef2.current.appendChild(invokeScript2);
     }
   }, []);
 
@@ -223,6 +233,8 @@ export default function Login() {
           </p>
         </form>
       </div>
+
+      <div className="ad-footer-container" ref={adContainerRef2}></div>
 
       <style jsx>{`
         .canvas {
@@ -487,6 +499,31 @@ export default function Login() {
           background: rgba(255, 255, 255, 0.02); /* Fondo sutil para el área */
           border-radius: 12px;
           overflow: hidden;
+        }
+
+        .ad-wrapper-box {
+          display: flex;
+          justify-content: center;
+          min-height: 250px;
+          margin: 10px 0;
+        }
+
+        .ad-footer-container {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          width: 100%;
+          margin-top: 30px;
+          padding-bottom: 20px;
+          overflow: hidden; /* Evita scroll horizontal si el banner es muy ancho */
+        }
+
+        /* Ajuste para móviles: escala el banner si la pantalla es pequeña */
+        @media (max-width: 768px) {
+          .ad-footer-container {
+            transform: scale(0.8); /* Reduce el tamaño visualmente para que quepa */
+            transform-origin: center;
+          }
         }
       `}</style>
     </>
