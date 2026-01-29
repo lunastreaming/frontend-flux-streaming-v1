@@ -177,12 +177,18 @@ export default function LoginSupplier() {
           )}
 
           <button 
-            type="submit" 
-            className="cta" 
-            disabled={loading || (turnstileSiteKey && !turnstileToken)}
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
+  type="submit" 
+  className="cta" 
+  style={{ 
+    position: 'relative', 
+    zIndex: 999999, 
+    pointerEvents: 'auto',
+    cursor: 'pointer'
+  }}
+  disabled={loading || (turnstileSiteKey && !turnstileToken)}
+>
+  {loading ? 'Ingresando...' : 'Ingresar'}
+</button>
 
           <div className="ad-wrapper" ref={adContainerRef}></div>
 
@@ -398,6 +404,18 @@ export default function LoginSupplier() {
             transform-origin: center;
           }
         }
+
+        .ad-wrapper-box, .ad-footer-container {
+  position: relative;
+  z-index: 0; /* Prioridad baja */
+  pointer-events: none; /* Bloquea que el contenedor intercepte clics generales */
+}
+
+/* Permitir clics SOLO dentro del anuncio real */
+.ad-wrapper-box :global(iframe), 
+.ad-footer-container :global(iframe) {
+  pointer-events: auto;
+}
       `}</style>
     </>
   );
