@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthProvider';
@@ -78,6 +78,31 @@ export default function LoginSupplier() {
       setLoading(false);
     }
   };
+
+  const adContainerRef = useRef(null); // Referencia para el contenedor del anuncio
+
+  useEffect(() => {
+    // Solo ejecutamos esto si el contenedor existe y no tiene hijos (evita duplicados)
+    if (adContainerRef.current && !adContainerRef.current.firstChild) {
+      const atOptions = document.createElement('script');
+      atOptions.innerHTML = `
+        atOptions = {
+          'key' : '690c6f42a678c0742bf1e451d81ab0ca',
+          'format' : 'iframe',
+          'height' : 250,
+          'width' : 300,
+          'params' : {}
+        };
+      `;
+      
+      const invokeScript = document.createElement('script');
+      invokeScript.src = 'https://www.highperformanceformat.com/690c6f42a678c0742bf1e451d81ab0ca/invoke.js';
+      invokeScript.type = 'text/javascript';
+
+      adContainerRef.current.appendChild(atOptions);
+      adContainerRef.current.appendChild(invokeScript);
+    }
+  }, []);
   
   return (
     <>
@@ -149,6 +174,8 @@ export default function LoginSupplier() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
 
+          <div className="ad-wrapper" ref={adContainerRef}></div>
+
           <p className="back-login">
             ¿No tienes cuenta?
             <span className="link" onClick={() => router.push('/supplier/registerSupplier')}>Regístrate</span>
@@ -173,7 +200,7 @@ export default function LoginSupplier() {
           max-width: 480px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
         .title {
           font-size: 1.8rem;
@@ -321,6 +348,18 @@ export default function LoginSupplier() {
         @media (max-width: 560px) {
           .card { padding: 20px; border-radius: 16px; }
           .title { font-size: 1.6rem; }
+        }
+
+        .ad-wrapper {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 250px; /* Evita saltos de diseño cuando cargue */
+          width: 100%;
+          margin: 10px 0;
+          background: rgba(255, 255, 255, 0.02); /* Fondo sutil para el área */
+          border-radius: 12px;
+          overflow: hidden;
         }
       `}</style>
     </>
