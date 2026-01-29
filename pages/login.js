@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -25,6 +25,31 @@ export default function Login() {
     if (!data) return null
     return data.accessToken || data.access_token || data.token || data.jwt || null
   }
+
+  const adContainerRef = useRef(null); // Referencia para el contenedor del anuncio
+
+  useEffect(() => {
+    // Solo ejecutamos esto si el contenedor existe y no tiene hijos (evita duplicados)
+    if (adContainerRef.current && !adContainerRef.current.firstChild) {
+      const atOptions = document.createElement('script');
+      atOptions.innerHTML = `
+        atOptions = {
+          'key' : '690c6f42a678c0742bf1e451d81ab0ca',
+          'format' : 'iframe',
+          'height' : 250,
+          'width' : 300,
+          'params' : {}
+        };
+      `;
+      
+      const invokeScript = document.createElement('script');
+      invokeScript.src = 'https://www.highperformanceformat.com/690c6f42a678c0742bf1e451d81ab0ca/invoke.js';
+      invokeScript.type = 'text/javascript';
+
+      adContainerRef.current.appendChild(atOptions);
+      adContainerRef.current.appendChild(invokeScript);
+    }
+  }, []);
 
   const handleLogin = async e => {
     e.preventDefault()
@@ -191,6 +216,8 @@ export default function Login() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
 
+          <div className="ad-wrapper" ref={adContainerRef}></div>
+
           <p className="back-login">
             ¿No tienes una cuenta? <Link href="/register"><span className="link">Regístrate aquí</span></Link>
           </p>
@@ -239,7 +266,7 @@ export default function Login() {
           box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
           position: relative;
           animation: rise 0.35s ease forwards;
         }
@@ -448,6 +475,18 @@ export default function Login() {
           }
           .cta { width: 100%;
           }
+        }
+
+        .ad-wrapper {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 250px; /* Evita saltos de diseño cuando cargue */
+          width: 100%;
+          margin: 10px 0;
+          background: rgba(255, 255, 255, 0.02); /* Fondo sutil para el área */
+          border-radius: 12px;
+          overflow: hidden;
         }
       `}</style>
     </>
