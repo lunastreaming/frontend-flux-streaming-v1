@@ -78,41 +78,6 @@ export default function LoginSupplier() {
       setLoading(false);
     }
   };
-
-  const adContainerRef = useRef(null); // Referencia para el contenedor del anuncio
-  const adContainerRef2 = useRef(null);
-
-  useEffect(() => {
-    // Solo ejecutamos esto si el contenedor existe y no tiene hijos (evita duplicados)
-    if (adContainerRef.current && !adContainerRef.current.firstChild) {
-      const atOptions = document.createElement('script');
-      atOptions.innerHTML = `
-        atOptions = {
-          'key' : '690c6f42a678c0742bf1e451d81ab0ca',
-          'format' : 'iframe',
-          'height' : 250,
-          'width' : 300,
-          'params' : {}
-        };
-      `;
-      
-      const invokeScript = document.createElement('script');
-      invokeScript.src = 'https://www.highperformanceformat.com/690c6f42a678c0742bf1e451d81ab0ca/invoke.js';
-      invokeScript.type = 'text/javascript';
-
-      adContainerRef.current.appendChild(atOptions);
-      adContainerRef.current.appendChild(invokeScript);
-    }
-
-    if (adContainerRef2.current && !adContainerRef2.current.firstChild) {
-      const atOptions2 = document.createElement('script');
-      atOptions2.innerHTML = `atOptions = { 'key' : '77f94119e48b472f342ca439c429388c', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };`;
-      const invokeScript2 = document.createElement('script');
-      invokeScript2.src = 'https://www.highperformanceformat.com/77f94119e48b472f342ca439c429388c/invoke.js';
-      adContainerRef2.current.appendChild(atOptions2);
-      adContainerRef2.current.appendChild(invokeScript2);
-    }
-  }, []);
   
   return (
     <>
@@ -190,16 +155,12 @@ export default function LoginSupplier() {
   {loading ? 'Ingresando...' : 'Ingresar'}
 </button>
 
-          <div className="ad-wrapper" ref={adContainerRef}></div>
-
           <p className="back-login">
             ¿No tienes cuenta?
             <span className="link" onClick={() => router.push('/supplier/registerSupplier')}>Regístrate</span>
           </p>
         </form>
       </div>
-
-      <div className="ad-footer-container" ref={adContainerRef2}></div>
 
       <style jsx>{`
         .canvas {
@@ -405,17 +366,6 @@ export default function LoginSupplier() {
           }
         }
 
-        .ad-wrapper-box, .ad-footer-container {
-  position: relative;
-  z-index: 0; /* Prioridad baja */
-  pointer-events: none; /* Bloquea que el contenedor intercepte clics generales */
-}
-
-/* Permitir clics SOLO dentro del anuncio real */
-.ad-wrapper-box :global(iframe), 
-.ad-footer-container :global(iframe) {
-  pointer-events: auto;
-}
       `}</style>
     </>
   );
