@@ -100,7 +100,7 @@ export default function Login() {
   return (
     <>
       <Head>
-        <title>Login | Luna Streaming</title>
+        <title>Login | Flux Streaming</title>
       </Head>
 
       <div className="canvas">
@@ -113,7 +113,7 @@ export default function Login() {
           </button>
 
           <h1 className="title">Bienvenido</h1>
-          <p className="subtitle">Login Luna Plataformas</p>
+          <p className="subtitle">Login Flux Plataformas</p>
 
           {/* 🚨 MEJORA: Estilo de error con icono */}
           {error && (

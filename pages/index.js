@@ -4,7 +4,6 @@ import Navbar from '../components/Navbar'
 import Carrusel from '../components/Carrusel'
 import Footer from '../components/Footer'
 import PurchaseModal from '../components/PurchaseModal'
-import PopupModal from '../components/PopupModal';
 import { useAuth } from '../context/AuthProvider'
 
 // DEFINE ESTO FUERA DE LA FUNCIÓN HOME (Arriba del todo o abajo del todo del archivo)
@@ -79,7 +78,6 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [totalPages, setTotalPages] = useState(0);
-  const [showPopup, setShowPopup] = useState(true);
   const PAGE_SIZE = 28;
 
   // productos
@@ -119,21 +117,6 @@ export default function Home() {
     // 2. Aplicamos f_auto, q_auto y el ancho
     return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
   };
-
-useEffect(() => {
-  // 1. Verificamos si ya existe la marca en el navegador
-  const hasSeenPopup = localStorage.getItem('luna_popup_seen');
-
-  if (!hasSeenPopup) {
-    const timer = setTimeout(() => {
-      setShowPopup(true);
-      // 2. Guardamos la marca para la próxima vez
-      localStorage.setItem('luna_popup_seen', 'true');
-    }, 2000); // 2 segundos de espera para que cargue la mística del sitio
-
-    return () => clearTimeout(timer);
-  }
-}, []);
 
 
   // cargar saldo del usuario al montar
@@ -370,9 +353,9 @@ useEffect(() => {
   return (
     <>
       <Head>
-        <title>Luna Streaming</title>
+        <title>Flux Streaming</title>
         <link rel="icon" href="/logofavicon.ico" type="image/x-icon" />
-        <meta name="description" content="Luna Streaming - Visuales ritualizados y experiencias simbólicas" />
+        <meta name="description" content="Flux Streaming - Visuales ritualizados y experiencias simbólicas" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
       </Head>
 
@@ -722,12 +705,6 @@ useEffect(() => {
       )}
 
       <Footer />
-
-      <PopupModal 
-        isOpen={showPopup} 
-        onClose={() => setShowPopup(false)} 
-        imageSrc="/popup.jpeg" 
-      />
 
       <style jsx>{`
   :root{

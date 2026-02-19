@@ -81,7 +81,7 @@ export default function LoginSupplier() {
   
   return (
     <>
-      <Head><title>Login Proveedor | Luna Streaming</title></Head>
+      <Head><title>Login Proveedor | Flux Streaming</title></Head>
       <div className="canvas">
         <form className="card" onSubmit={handleLogin}>
           <h1 className="title">Proveedor</h1>

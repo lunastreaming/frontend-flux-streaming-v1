@@ -63,7 +63,7 @@ localStorage.getItem('accessToken') : null
     <>
       <Head>
         <title>Panel Supplier |
-Luna Streaming</title>
+Flux Streaming</title>
       </Head>
 
       <div className="page-bg">

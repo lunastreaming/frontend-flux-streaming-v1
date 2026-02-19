@@ -112,7 +112,7 @@ export default function LoginAdmin() {
 
   return (
     <>
-      <Head><title>Login Admin | Luna Streaming</title></Head>
+      <Head><title>Login Admin | Flux Streaming</title></Head>
 
   
       <div className="canvas">

@@ -10,7 +10,7 @@ export default function Document() {
         {/* Metadatos globales */}
         <meta
           name="description"
-          content="Luna Streaming - Visuales ritualizados y experiencias simbólicas"
+          content="Flux Streaming"
         />
       </Head>
       {/* ESTILO EN LÍNEA: Forzamos la transparencia absoluta del body 

@@ -80,7 +80,7 @@ export default function Navbar() {
     <nav className="navbar" role="navigation" aria-label="Barra de navegación principal">
       <Link href="/" passHref legacyBehavior>
         <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
-          <img src="/logo.png" alt="Luna Streaming Logo" className="logo-image" />
+          <img src="/logo.png" alt="Flux Streaming Logo" className="logo-image" />
    
       </a>
       </Link>

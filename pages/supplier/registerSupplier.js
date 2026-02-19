@@ -208,7 +208,7 @@ export default function RegisterSupplier() {
 
   return (
     <>
-      <Head><title>Registro Proveedor | Luna Streaming</title></Head>
+      <Head><title>Registro Proveedor | Flux Streaming</title></Head>
       <div className="canvas">
         <form className="card" onSubmit={handleRegister}>
           <h1 className="title">Registro Proveedor</h1>

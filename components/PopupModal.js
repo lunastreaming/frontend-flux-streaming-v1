@@ -67,7 +67,7 @@ export default function PopupModal({ isOpen, onClose, imageSrc }) {
         }}>
           <Image 
             src={imageSrc} 
-            alt="Luna Streaming Promo" 
+            alt="Flux Streaming Promo" 
             fill
             sizes="(max-width: 768px) 100vw, 450px"
             style={{ 

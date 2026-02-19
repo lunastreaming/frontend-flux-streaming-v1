@@ -249,14 +249,14 @@ export default function Register() {
 
   return (
     <>
-      <Head><title>Registro | Luna Streaming</title></Head>
+      <Head><title>Registro | Flux Streaming</title></Head>
 
       <div className="canvas">
         <form className="card" onSubmit={handleRegister} noValidate>
           <button type="button" className="close" onClick={handleClose} aria-label="Cerrar">✕</button>
 
           <h1 className="title">Regístrate</h1>
-          <p className="subtitle">Regístrate a Luna</p>
+          <p className="subtitle">Regístrate a Flux</p>
 
           {/* 🚨 NUEVO: Error Box para errores generales/servidor */}
           {error && (
