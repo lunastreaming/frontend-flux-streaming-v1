@@ -104,6 +104,26 @@ export default function OrdersPage() {
     })
   }
 
+  const formatDateLocal = (v) => {
+    if (!v) return ''
+    try {
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
+  }
+
   const formatAmount = (v) => {
     if (v == null) return ''
     try {
@@ -114,12 +134,24 @@ export default function OrdersPage() {
   }
 
   // WhatsApp cliente: ícono primero y número al costado
-  const openWhatsAppToClient = (clientPhone, clientName, productName) => {
+// WhatsApp cliente con nuevo formato
+  const openWhatsAppToClient = (clientPhone, clientName, productName, id, tipo) => {
     const raw = String(clientPhone ?? '').replace(/[^\d+]/g, '')
     const name = clientName ?? ''
     const product = productName ?? ''
-    const message = `Hola *${name}* 👋🏻\n¿Has realizado una compra de *${product}*?`
+    const orderId = id ?? ''
+    const orderType = tipo ?? 'CUENTA'
+
+    const message = `🛒 *COMPRA A PEDIDO* 🛒\n` +
+                    `__________________\n\n` +
+                    `🙋 Hola *${name}*, realicé un pedido del producto:\n` +
+                    `🔑 *Código:* ${orderId}\n` +
+                    `📋 *Nombre:* ${product}\n` +
+                    `🛍️ *Tipo:* ${orderType}\n\n` +
+                    `✅ Por favor, procese mi compra a pedido.`
+    
     const encoded = encodeURIComponent(message)
+    
     if (!raw) {
       window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank')
       return
@@ -246,6 +278,7 @@ export default function OrdersPage() {
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '160px' }} />
                   <col style={{ width: '160px' }} />
+                  <col style={{ width: '180px' }} />
                   <col style={{ width: '220px' }} />
                 </colgroup>
 
@@ -258,12 +291,11 @@ export default function OrdersPage() {
                     <th>Password</th>
                     <th>URL</th>
                     <th>Nº Perfil</th>
-                    <th>Cliente</th>
-                    <th>Celular cliente</th>
+                    <th>DISTRIBUIDOR</th>
+                    <th>Celular Distribuidor</th>
                     <th>Pin</th>
                     <th>Refund</th>
-                    <th>Proveedor</th>
-                    <th>Celular proveedor</th>
+                    <th>Fecha de compra</th>
                     <th>Configuraciones</th>
                   </tr>
                 </thead>
@@ -304,9 +336,15 @@ export default function OrdersPage() {
 {r.buyerUsernamePhone && (
     <button
         className="wa-btn"
-        title={`WhatsApp cliente ${r.buyerUsernamePhone}`}
-        onClick={() => openWhatsAppToClient(r.buyerUsernamePhone, r.buyerUsername, r.productName)}
-        aria-label={`WhatsApp cliente ${r.buyerUsernamePhone}`}
+        title={`WhatsApp Distribuidor ${r.buyerUsernamePhone}`}
+        onClick={() => openWhatsAppToClient(
+            r.buyerUsernamePhone, 
+            r.buyerUsername, 
+            r.productName,
+            r.id,
+            r.tipo ?? (r.type ?? 'CUENTA') // Mapeo de tipo similar al de edición 
+        )}
+        aria-label={`WhatsApp Distribuidor ${r.buyerUsernamePhone}`}
     >
         <FaWhatsapp />
     </button>
@@ -318,8 +356,9 @@ export default function OrdersPage() {
                         <td><div className="row-inner">{r.pin ?? ''}</div></td>
                         {/* Refund: mostrar amount del backend */}
                         <td><div className="row-inner">{formatAmount(r.amount)}</div></td>
-                        <td><div className="row-inner">{r.providerName ?? ''}</div></td>
-                        <td><div className="row-inner">{r.providerPhone ?? ''}</div></td>
+
+                        {/* Fecha de Compra - NUEVA */}
+<td><div className="row-inner" style={{ fontSize: '0.85rem' }}>{formatDateLocal(r.soldAt)}</div></td>
                         {/* Configuraciones */}
                         <td>
                           <div className="row-inner config-cell">
@@ -410,7 +449,7 @@ export default function OrdersPage() {
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
         .table-scroll { overflow:auto; border-radius:8px; }
 
-        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1200px; }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1380px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.72rem; }
         thead th { padding:10px; text-align:left; font-weight:700; vertical-align:middle; white-space:nowrap; }
 

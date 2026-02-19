@@ -85,7 +85,7 @@ export default function AdminSoldsPage() {
 
   // Funciones de formato (formatDate, formatAmount, formatDateLocal, stateClass)
 
-  const formatAmount = (v, curr = 'PEN') =>
+  const formatAmount = (v, curr = 'USD') =>
     v == null ?
     '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(Number(v))
 
@@ -204,7 +204,7 @@ export default function AdminSoldsPage() {
       const typeText = refundType === 'full' ?
       'completo' : 'parcial'
 
-      setBanner({ type: 'success', message: `Reembolso ${typeText} aplicado. Stock ID: ${stockId}. Monto: ${amountText} PEN.` })
+      setBanner({ type: 'success', message: `Reembolso ${typeText} aplicado. Stock ID: ${stockId}. Monto: ${amountText} USD.` })
 
       // REFRESH: llamar directamente a fetchPage para actualizar la tabla inmediatamente
       await fetchPage(page)
@@ -267,6 +267,7 @@ export default function AdminSoldsPage() {
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '120px' }} />
+                    <col style={{ width: '100px' }} /> {/* Perfil */}
                     <col style={{ width: '160px' }} />
                     <col style={{ width: '160px' }} /> {/* Comprador */}
                     <col style={{ width: '160px' }} /> {/* Vendedor */}
@@ -286,6 +287,7 @@ export default function AdminSoldsPage() {
                       <th>USUARIO</th>
                       <th>CONTRASEÑA</th>
                       <th>PERFIL</th>
+                      <th>PIN</th>
                       <th>CLIENTE</th>
                       <th>COMPRADOR</th>
                       <th>VENDEDOR</th>
@@ -309,8 +311,7 @@ export default function AdminSoldsPage() {
                       const statusLowerCase = String(r.status ?? '').toLowerCase()
                       // MODIFICACIÓN: Incluir 'support' para ocultar botones de reembolso si es SOPORTE
                       const isRefundFinalState = statusLowerCase === 'refund' ||
-                       statusLowerCase === 'refund_confirmed' ||
-                       statusLowerCase === 'support'
+                       statusLowerCase === 'refund_confirmed'
                       
                       return (
                         <tr key={r.id ?? i}>
@@ -327,6 +328,7 @@ export default function AdminSoldsPage() {
                           <td><div className="row-inner">{r.username ?? '—'}</div></td>
                           <td><div className="row-inner monospace">{r.password ?? '—'}</div></td>
                           <td><div className="row-inner">{r.numeroPerfil ?? '—'}</div></td>
+                          <td><div className="row-inner">{r.pin ?? ''}</div></td>
                           <td><div className="row-inner">{r.clientName ?? r.clientPhone ?? '—'}</div></td>
 
                           <td><div className="row-inner">{r.buyerUsername ?? r.buyerId ?? '—'}</div></td>
@@ -355,44 +357,46 @@ export default function AdminSoldsPage() {
                           </td>
 
                           <td>
-                            <div className="row-inner setting-actions">
-                              {/* Condicional para OCULTAR los botones si es estado de reembolso final o SOPORTE */}
-                              {!isRefundFinalState ? (
-                                <>
-                                  {/* Reembolso parcial */}
-                                  <button
-                                    className="btn-disburse"
-                                    onClick={() => openConfirmForRow(r)}
-                                    aria-label={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
-                                    title={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
-                                    disabled={!refundEnabled || processingRefund}
-                                    style={{ opacity: (!refundEnabled || processingRefund) ? 0.45 : 1, cursor: (!refundEnabled || processingRefund) ? 'not-allowed' : 'pointer' }}
-                                  >
-                                    <FaMoneyBillWave />
-                                    <span className="sr-only">Reembolsar</span>
-                                  </button>
+  <div className="row-inner setting-actions">
+    {/* Solo mostramos contenido si NO es un estado final (REFUND o REFUND_CONFIRMED) */}
+    {!isRefundFinalState && (
+      <>
+        {/* Botón de Reembolso Parcial */}
+        <button
+          className="btn-disburse"
+          onClick={() => openConfirmForRow(r)}
+          aria-label={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
+          title={refundEnabled ? "Reembolsar" : "Reembolso no disponible"}
+          disabled={!refundEnabled || processingRefund}
+          style={{ 
+            opacity: (!refundEnabled || processingRefund) ? 0.45 : 1, 
+            cursor: (!refundEnabled || processingRefund) ? 'not-allowed' : 'pointer' 
+          }}
+        >
+          <FaMoneyBillWave />
+          <span className="sr-only">Reembolsar</span>
+        </button>
 
-                                  {/* Reembolso completo (icono) */}
-                                  <button
-                                    className="btn-full-refund"
-                                    onClick={() => openFullRefundForRow(r)}
-                                    aria-label="Reembolso completo"
-                                    title="Reembolso completo"
-                                    disabled={processingRefund}
-                                    style={{ opacity: processingRefund ? 0.45 : 1, cursor: processingRefund ? 'not-allowed' : 'pointer' }}
-                                  >
-                                    <FaCoins />
-                                    <span className="sr-only">Reembolso completo</span>
-                                  </button>
-                                </>
-                              ) : (
-                                <span style={{ fontSize: '0.8rem', color: '#86efac' }}>
-                                  {/* Muestra "Reembolso Confirmado" o "SOPORTE" */}
-                                  {r.status ?? '—'}
-                                </span>
-                              )}
-                            </div>
-                          </td>
+        {/* Botón de Reembolso Completo */}
+        <button
+          className="btn-full-refund"
+          onClick={() => openFullRefundForRow(r)}
+          aria-label="Reembolso completo"
+          title="Reembolso completo"
+          disabled={processingRefund}
+          style={{ 
+            opacity: processingRefund ? 0.45 : 1, 
+            cursor: processingRefund ? 'not-allowed' : 'pointer' 
+          }}
+        >
+          <FaCoins />
+          <span className="sr-only">Reembolso completo</span>
+        </button>
+      </>
+    )}
+    {/* Al no haber un bloque 'else', si isRefundFinalState es true, la celda queda vacía */}
+  </div>
+</td>
                         </tr>
                       )
                     })}
@@ -421,8 +425,8 @@ export default function AdminSoldsPage() {
           selectedRow
             ? (
               refundType === 'full'
-                ? `El backend indica que el monto a reembolsar será ${selectedRow.amount != null ? formatAmount(selectedRow.amount) : (selectedRow.salePrice != null ? formatAmount(selectedRow.salePrice) : (selectedRow.refund != null ? formatAmount(selectedRow.refund) : '—'))}. ¿Deseas continuar?`
-                : `Vas a reembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} PEN para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
+                ? `El monto a reembolsar será ${selectedRow.amount != null ? formatAmount(selectedRow.amount) : (selectedRow.salePrice != null ? formatAmount(selectedRow.salePrice) : (selectedRow.refund != null ? formatAmount(selectedRow.refund) : '—'))}. ¿Deseas continuar?`
+                : `Vas a reembolsar ${selectedRow.refund == null ? '0.00' : Number(selectedRow.refund).toFixed(2)} USD para el Stock ID ${selectedRow.id}. ¿Deseas continuar?`
             )
             : '¿Deseas continuar?'
         }

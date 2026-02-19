@@ -82,10 +82,21 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
     e.stopPropagation()
   }
 
-  const handleFileInput = (e) => {
-    const file = e.target.files?.[0]
-    if (file) handleImageUpload(file)
-  }
+const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // --- VALIDACIÓN DE TIPOS ---
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Solo se permiten imágenes estáticas (JPG, PNG, WEBP). Los GIFs y Videos no están permitidos.");
+      return;
+    }
+
+    // --- LLAMADA A LA FUNCIÓN DE CARGA ---
+    // Agrega esta línea para que realmente suba el archivo seleccionado
+    await handleImageUpload(file); 
+  };
 
   const handleImageUpload = async (file) => {
     setUploading(true)
@@ -123,20 +134,22 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
 
   const resetForm = () => setForm(initialForm)
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     try {
-      setError(null)
+      setError(null);
+      // Validaciones básicas de campos obligatorios
       if (!form.name || !form.categoryId || !form.salePrice) {
-        setError('Nombre, categoría y precio de venta son obligatorios')
-        return
+        setError('Nombre, categoría y precio de venta son obligatorios');
+        return;
       }
       if (uploading) {
-        setError('Espera a que la imagen termine de subirse')
-        return
+        setError('Espera a que la imagen termine de subirse');
+        return;
       }
 
-      setSubmitting(true)
+      setSubmitting(true);
 
+      // Preparación del payload procesando tipos de datos
       const payload = {
         name: String(form.name).trim(),
         categoryId: toInteger(form.categoryId),
@@ -149,49 +162,70 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
         isRenewable: !!form.isRenewable,
         isOnRequest: !!form.isOnRequest,
         imageUrl: form.imageUrl || null
-      }
+      };
 
+      // Limpieza de valores undefined para el envío JSON 
       const filteredPayload = Object.fromEntries(
         Object.entries(payload).map(([k, v]) => [k, v === undefined ? null : v])
-      )
+      );
 
-      const token = localStorage.getItem('accessToken')
+      const token = localStorage.getItem('accessToken');
 
+      // LÓGICA DE ACTUALIZACIÓN (EDICIÓN)
       if (initialData && initialData.id) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${initialData.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify(filteredPayload)
-        })
+        });
+
         if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`Error ${res.status} ${text}`)
+          const text = await res.text().catch(() => '');
+          throw new Error(`Error ${res.status} ${text}`);
         }
-        const updated = await res.json()
-        if (onSuccess) onSuccess(updated)
-        resetForm()
-        onClose()
+
+        // Como el backend responde 204 (No Content), no intentamos hacer res.json()
+        // En su lugar, combinamos los datos originales con los cambios del formulario
+        const updatedLocally = {
+          ...initialData,      // Mantiene campos que no están en el formulario (id, active, providerId, etc.)
+          ...filteredPayload   // Sobrescribe con los nuevos valores editados
+        };
+
+        if (onSuccess) onSuccess(updatedLocally);
+        resetForm();
+        onClose();
+
       } else {
+        // LÓGICA DE CREACIÓN (POST)
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify(filteredPayload)
-        })
+        });
+
         if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`Error ${res.status} ${text}`)
+          const text = await res.text().catch(() => '');
+          throw new Error(`Error ${res.status} ${text}`);
         }
-        const created = await res.json()
-        if (onSuccess) onSuccess(created)
-        resetForm()
-        onClose()
+
+        // El POST normalmente sí retorna el objeto creado (Status 201)
+        const created = await res.json();
+        if (onSuccess) onSuccess(created);
+        resetForm();
+        onClose();
       }
     } catch (err) {
-      setError('Error al guardar producto: ' + (err.message || err))
+      setError('Error al guardar producto: ' + (err.message || err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
     resetForm()
@@ -295,13 +329,20 @@ export default function ProductModal({ visible, onClose, onSuccess, initialData 
                 <div style={styles.dropInner}>
                   <FaCloudUploadAlt size={36} color="#6b7280" />
                   <div style={{ marginTop: 8, color: '#6b7280' }}>{uploading ? 'Subiendo imagen…' : 'Arrastra o selecciona una imagen'}</div>
-                  <input type="file" accept="image/*" onChange={handleFileInput} style={styles.fileInput} />
+                  <input type="file" onChange={handleFile} style={styles.fileInput} id="fileInput" accept="image/jpeg, image/png, image/webp" />
                 </div>
               </div>
 
               {form.imageUrl ? (
                 <div style={styles.previewBox}>
-                  <img src={form.imageUrl} alt="Preview" style={styles.previewImg} />
+                  <img 
+  src={form.imageUrl.includes('cloudinary.com') 
+    ? form.imageUrl.replace('/upload/', '/upload/f_auto,q_auto,w_400/') 
+    : form.imageUrl
+  } 
+  alt="Preview" 
+  style={styles.previewImg} 
+/>
                   <div style={styles.previewActions}>
                     <button type="button" onClick={() => setForm(prev => ({ ...prev, imageUrl: '' }))} style={styles.removeBtn}>Eliminar imagen</button>
                   </div>

@@ -4,7 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Select, { components } from 'react-select'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faLock, faHashtag, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faLock, faEye, faEyeSlash, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import countriesData from '../../data/countries.json' // ajusta ruta si tu estructura difiere
 
@@ -147,7 +147,6 @@ export default function RegisterSupplier() {
       password,
       phone: fullPhone,
       role: 'provider',
-      referrerCode: refCode?.trim() || null,
     }
 
     setLoading(true)
@@ -296,19 +295,6 @@ export default function RegisterSupplier() {
               />
             </div>
 
-            <span className="underline" />
-          </div>
-
-          {/* CAMPO CÓDIGO DE REFERENCIA */}
-          <div className="group">
-            <div className="icon"><FontAwesomeIcon icon={faHashtag} /></div>
-            <input
-              type="text"
-              placeholder="Código de referencia"
-              value={refCode}
-              onChange={e => setRefCode(e.target.value)}
-              aria-label="Código de referencia"
-            />
             <span className="underline" />
           </div>
 

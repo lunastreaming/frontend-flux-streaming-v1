@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
-import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit } from 'react-icons/fa'
+import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
 import StockEditModal from '../../components/StockEditModal'
 
@@ -31,6 +31,8 @@ export default function ProviderSalesPage() {
   // StockEditModal (edición)
   const [editOpen, setEditOpen] = useState(false)
 
+  const [allVisible, setAllVisible] = useState(false);
+
   // Leer token
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -49,10 +51,11 @@ export default function ProviderSalesPage() {
     setLoading(true)
     setError(null)
     try {
-      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}`
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-      })
+      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}&q=${encodeURIComponent(search)}`
+    
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+    })
       if (res.status === 401) {
         router.replace('/supplier/login')
         return
@@ -87,6 +90,14 @@ export default function ProviderSalesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, token])
 
+  useEffect(() => {
+  const handler = setTimeout(() => {
+    setPage(0); // Reiniciar a la primera página en cada búsqueda
+    fetchPage(0);
+  }, 500); // Esperar 500ms tras dejar de escribir
+  return () => clearTimeout(handler);
+}, [search]);
+
   // Helpers UI
   const togglePasswordVisibility = (id) => {
     setVisiblePasswords(prev => {
@@ -96,6 +107,19 @@ export default function ProviderSalesPage() {
       return copy
     })
   }
+
+  const toggleAllPasswords = () => {
+  // Si ya están todas (o la mayoría) visibles, las ocultamos todas
+  if (visiblePasswords.size > 0) {
+    setVisiblePasswords(new Set());
+    setAllVisible(false);
+  } else {
+    // Si no, agregamos todos los IDs de los items actuales al Set
+    const allIds = new Set(displayed.map(it => it.id).filter(id => id !== undefined));
+    setVisiblePasswords(allIds);
+    setAllVisible(true);
+  }
+};
 
   // Fechas en UTC para reflejar exactamente el backend
   const formatDateUTC = (v) => {
@@ -120,24 +144,24 @@ export default function ProviderSalesPage() {
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const formatDateLocal = (v) => {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return ''
+    if (!v) return ''
+    try {
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
   }
-}
 
   const formatAmount = (v) => {
     if (v == null) return ''
@@ -279,7 +303,27 @@ export default function ProviderSalesPage() {
                     <th>Id</th>
                     <th>Nombre producto</th>
                     <th>Username</th>
-                    <th>Password</th>
+                    {/* Localiza la línea 127 aprox. */}
+<th>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    Password
+    <button 
+      onClick={toggleAllPasswords}
+      title={visiblePasswords.size > 0 ? "Ocultar todas" : "Mostrar todas"}
+      style={{ 
+        background: 'transparent', 
+        border: 'none', 
+        color: '#9fb4c8', 
+        cursor: 'pointer',
+        fontSize: '1rem',
+        display: 'flex'
+      }}
+    >
+      {/* Si hay al menos un password visible, mostramos el ojo de cerrar */}
+      {visiblePasswords.size > 0 ? <FaEyeSlash /> : <FaEye />}
+    </button>
+  </div>
+</th>
                     <th>URL</th>
                     <th>Nº Perfil</th>
                     <th>Nombre cliente</th>
@@ -295,7 +339,7 @@ export default function ProviderSalesPage() {
 
                 <tbody>
                   {displayed.map((r, i) => {
-                    const isVisible = visiblePasswords.has(r.id)
+                    const isVisible = visiblePasswords.has(r.id);
                     const masked = r.password ? '••••••••' : ''
                     const days =
                       typeof r.daysRemaining === 'number' && Number.isFinite(r.daysRemaining)
@@ -331,7 +375,44 @@ export default function ProviderSalesPage() {
                         <td><div className="row-inner no-wrap">{formatDateLocal(r.startAt)}</div></td>
                         <td><div className="row-inner no-wrap">{formatDateLocal(r.endAt)}</div></td>
                         <td><div className="row-inner">{formatAmount(r.refund)}</div></td>
-                        <td><div className="row-inner">{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</div></td>
+                        <td>
+  <div className="row-inner" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <span>{r.buyerUsername ?? (r.buyerId ? String(r.buyerId) : '')}</span>
+    
+    {r.buyerUsernamePhone && (
+      <button
+        className="wa-btn" // Usando la clase que ya tienes definida en soporte
+        onClick={() => {
+          const num = String(r.buyerUsernamePhone).replace(/[^\d+]/g, '');
+          const phone = num.startsWith('+') ? num.slice(1) : num;
+          
+          // Definimos el mensaje igual que en support.txt para asegurar compatibilidad
+          const message = `Hola reseller ${r.buyerUsername ?? ''} 👋🏻
+🍿Tu subscripcion a *${r.productName ?? ''}*🍿
+✉ usuario: ${r.username ?? ''}
+🔐 Vence en : ${days ?? 0} días
+📣 Comunicate con tu cliente ${r.clientName ?? r.buyerUsername ?? ''}
+Al 📲 ${r.clientPhone ?? ''}, para consultar si *${r.productName ?? ''}* será renovado...
+🤖 Atentamente Proveedor ${r.providerName ?? ''}`;
+
+          const encoded = encodeURIComponent(message);
+          window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`, '_blank');
+        }}
+        title="Enviar a WhatsApp"
+        style={{ 
+          background: 'linear-gradient(90deg,#25D366,#128C7E)', 
+          border: 'none', 
+          borderRadius: '8px', 
+          color: 'white', 
+          padding: '4px 8px', 
+          cursor: 'pointer' 
+        }}
+      >
+        <FaWhatsapp />
+      </button>
+    )}
+  </div>
+</td>
                         <td>
                           <div className="row-inner">
                             {days == null ? '' : (
@@ -406,7 +487,7 @@ export default function ProviderSalesPage() {
 
       <style jsx>{`
         .page-bg { 
-          background: radial-gradient(circle at top, #0b1220, #05060a); [cite: 16]
+          background: radial-gradient(circle at top, #0b1220, #05060a);
           min-height: 100vh; 
         }
         .page-container { padding: 36px 20px; max-width: 1400px; margin:0 auto; }
@@ -475,6 +556,15 @@ export default function ProviderSalesPage() {
           table.styled-table { min-width: 900px; }
           .page-container { padding: 18px 10px; }
         }
+
+        .whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+.whatsapp-btn:hover {
+  transform: scale(1.2);
+}
       `}</style>
     </div>
   )

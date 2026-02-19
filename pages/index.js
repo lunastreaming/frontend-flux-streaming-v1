@@ -4,7 +4,63 @@ import Navbar from '../components/Navbar'
 import Carrusel from '../components/Carrusel'
 import Footer from '../components/Footer'
 import PurchaseModal from '../components/PurchaseModal'
+import PopupModal from '../components/PopupModal';
 import { useAuth } from '../context/AuthProvider'
+
+// DEFINE ESTO FUERA DE LA FUNCIÓN HOME (Arriba del todo o abajo del todo del archivo)
+// --- UBICACIÓN: Después de los imports o al final del archivo ---
+const PaginationControls = ({ currentPage, totalPages, setCurrentPage }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination-wrapper">
+      <button
+        className="pagination-btn"
+        disabled={currentPage === 0}
+        onClick={() => {
+          setCurrentPage(prev => prev - 1);
+          window.scrollTo({ top: 400, behavior: 'smooth' });
+        }}
+      >
+        <span className="pagination-btn-inner">Anterior</span>
+      </button>
+
+      <span className="pagination-info">Página {currentPage + 1} de {totalPages}</span>
+
+      <button
+        className="pagination-btn"
+        disabled={currentPage >= totalPages - 1}
+        onClick={() => {
+          setCurrentPage(prev => prev + 1);
+          window.scrollTo({ top: 400, behavior: 'smooth' });
+        }}
+      >
+        <span className="pagination-btn-inner">Siguiente</span>
+      </button>
+    </div>
+  );
+};
+
+const getOptimizedUrl = (url, width = 500) => {
+  // Si no hay URL, o no es un texto, o no es de cloudinary, devuélvela tal cual
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
+    return url;
+  }
+
+  // Si la URL ya tiene parámetros de optimización, no hacemos nada para no duplicar
+  if (url.includes('f_auto')) {
+    return url;
+  }
+
+  try {
+    // Insertamos f_auto, q_auto y el ancho justo después de /upload/
+    // También quitamos la extensión (.png, .jpg) para que f_auto trabaje mejor
+    return url
+      .replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`)
+      .replace(/\.(png|jpg|jpeg|webp)$/i, '');
+  } catch (e) {
+    return url;
+  }
+};
 
 export default function Home() {
   const [imagenActiva, setImagenActiva] = useState(null)
@@ -16,6 +72,15 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [catLoading, setCatLoading] = useState(true)
   const [catError, setCatError] = useState(null)
+
+  //Paginado
+
+  // Dentro de Home()
+  const [currentPage, setCurrentPage] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalPages, setTotalPages] = useState(0);
+  const [showPopup, setShowPopup] = useState(true);
+  const PAGE_SIZE = 28;
 
   // productos
   const [products, setProducts] = useState([])
@@ -42,6 +107,35 @@ export default function Home() {
   const BASE = rawBase.replace(/\/+$/, '')
   const joinApi = (path) => `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
 
+  const getOptimizedUrl = (url, width = 600) => {
+    if (!url || !url.includes('cloudinary.com')) return url;
+
+    // 1. Limpiamos transformaciones previas y la extensión para forzar f_auto
+    // Al quitar el .png final, Cloudinary decide el mejor formato sin confusión
+    const baseUrl = url
+      .replace(/\/upload\/.*?\/(v\d+)/, '/upload/$1')
+      .replace(/\.(png|jpg|jpeg|webp|avif)$/i, '');
+
+    // 2. Aplicamos f_auto, q_auto y el ancho
+    return baseUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+  };
+
+useEffect(() => {
+  // 1. Verificamos si ya existe la marca en el navegador
+  const hasSeenPopup = localStorage.getItem('luna_popup_seen');
+
+  if (!hasSeenPopup) {
+    const timer = setTimeout(() => {
+      setShowPopup(true);
+      // 2. Guardamos la marca para la próxima vez
+      localStorage.setItem('luna_popup_seen', 'true');
+    }, 2000); // 2 segundos de espera para que cargue la mística del sitio
+
+    return () => clearTimeout(timer);
+  }
+}, []);
+
+
   // cargar saldo del usuario al montar
   useEffect(() => {
     async function loadUserBalance() {
@@ -64,7 +158,7 @@ export default function Home() {
             Authorization: `Bearer ${token}`
           }
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`) 
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         setUserBalance(data.balance ?? 0)
       } catch (err) {
@@ -111,19 +205,27 @@ export default function Home() {
 
         if (!mounted) return
         const normalized = Array.isArray(data)
-          ? data.map((c, i) => ({
-            id: c.id ?? c._id ?? i,
-            name: c.name ?? c.title ?? 'Sin nombre',
-            image: c.image ?? c.imageUrl ?? c.thumbnail ?? null,
-            status: (c.status ?? c.state ?? c.active ?? null)
-          }))
+          ? data.map((c, i) => {
+            const rawImg = c.image ?? c.imageUrl ?? c.thumbnail ?? null;
+            // Optimizamos la imagen de la categoría
+            const optimizedImg = (typeof rawImg === 'string' && rawImg.includes('cloudinary.com'))
+              ? rawImg.replace('/upload/', '/upload/f_auto,q_auto/')
+              : rawImg;
+
+            return {
+              id: c.id ?? c._id ?? i,
+              name: c.name ?? c.title ?? 'Sin nombre',
+              image: optimizedImg,
+              status: (c.status ?? c.state ?? c.active ?? null)
+            };
+          })
           : []
 
         const onlyActive = normalized.filter(c => {
           const s = (c.status ?? '').toString().toLowerCase()
           return s === 'active' || s === 'true' || s === 'enabled' || s === ''
         })
-        onlyActive.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
+        //onlyActive.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
         setCategories(onlyActive)
 
       } catch (err) {
@@ -140,83 +242,87 @@ export default function Home() {
   }, [BASE])
 
   // fetch productos (adaptado a ProductWithStockCountResponse)
-  useEffect(() => { fetchProducts() }, [selectedCategory])
-  async function fetchProducts() {
-    setProdLoading(true)
-    setProdError(null)
-    try {
-      const url = selectedCategory
-        ? joinApi(`/api/categories/products/${selectedCategory}/active`)
-        : joinApi('/api/categories/products/active')
-      const res = await fetch(url)
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}`) 
-      const data = await res.json()
+  useEffect(() => {
+    // Debounce: espera 400ms después de que el usuario deje de escribir
+    const delayDebounceFn = setTimeout(() => {
+      fetchProducts();
+    }, 400);
 
-      let raw = []
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, currentPage, selectedCategory]);
+
+  async function fetchProducts() {
+    setProdLoading(true);
+    setProdError(null);
+
+    try {
+      // 1. Determinar el endpoint base (si hay categoría seleccionada o no) [cite: 21, 22]
+      const baseEndpoint = selectedCategory
+        ? `/api/categories/products/${selectedCategory}/active`
+        : '/api/categories/products/active';
+
+      // 2. Construir la URL con 'query' para búsqueda y parámetros de paginación [cite: 22, 23]
+      const url = joinApi(`${baseEndpoint}?page=${currentPage}&size=${PAGE_SIZE}&query=${encodeURIComponent(searchTerm || '')}`);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      // 3. Extraer el array de resultados según la estructura de la respuesta (Paginada o Lista) [cite: 28, 29]
+      let raw = [];
       if (Array.isArray(data)) {
-        raw = data
-      } else if (Array.isArray(data?.content)) {
-        raw = data.content
-      } else if (Array.isArray(data?.items)) {
-        raw = data.items
-      } else if (Array.isArray(data?.rows)) {
-        raw = data.rows
+        raw = data;
+        setTotalPages(1);
+      } else if (data?.content && Array.isArray(data.content)) {
+        raw = data.content;
+        setTotalPages(data.totalPages || 0);
+      } else if (data?.items && Array.isArray(data.items)) {
+        raw = data.items;
+        setTotalPages(data.totalPages || 0);
       } else {
-        console.warn('[fetchProducts] respuesta no contiene array en content/items/rows', data)
-        raw = []
+        raw = [];
+        setTotalPages(0);
       }
 
-      // Normalizar respuesta nueva/antigua:
+      // 4. Normalización de los datos para el renderizado de las Cards 
       const normalized = raw.map((item) => {
-        // si viene la forma { product: {...}, availableStockCount: N }
-        const productWrapper = item.product ?? item
+        const productWrapper = item.product ?? item;
+
+        // Cálculo de stock disponible 
         const availableStockCount = typeof item.availableStockCount === 'number'
           ? item.availableStockCount
-          : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : null)
+          : (typeof productWrapper.availableStockCount === 'number' ? productWrapper.availableStockCount : 0);
 
-        // posible lista histórica de stockResponses
-        const inlineStockResponses = Array.isArray(item.stockResponses)
-          ? item.stockResponses
-          : Array.isArray(productWrapper.stockResponses)
-            ? productWrapper.stockResponses
-            : (Array.isArray(productWrapper.stocks) ? productWrapper.stocks : [])
-
-        const stockCount = availableStockCount != null
-          ? Number(availableStockCount)
-          : (Array.isArray(inlineStockResponses) ? inlineStockResponses.length : 0)
+        const rawUrl = productWrapper.imageUrl;
+        const optimizedUrl = (typeof rawUrl === 'string') ? rawUrl : '';
 
         return {
           id: productWrapper.id,
           name: productWrapper.name,
           salePrice: productWrapper.salePrice,
+          salePriceSoles: productWrapper.salePriceSoles,
           renewalPrice: productWrapper.renewalPrice,
           providerName: productWrapper.providerName,
           categoryId: productWrapper.categoryId,
-
           categoryName: productWrapper.categoryName,
-          imageUrl: productWrapper.imageUrl,
-          // conservamos stockResponses por compatibilidad si existieran
-          stockResponses: inlineStockResponses,
-          // stock ahora proviene de availableStockCount cuando esté presente
-          stock: stockCount,
-          // <-- guardamos el objeto product completo para usar en el modal
+          imageUrl: optimizedUrl,
+          stock: Number(availableStockCount),
           fullProduct: productWrapper,
           isOnRequest: productWrapper.isOnRequest ?? false,
-          // 💡 NUEVO: Añadimos la propiedad isRenewable
           isRenewable: productWrapper.isRenewable ?? false,
-          // 💡 ESTADO DEL PROVEEDOR (CAMBIO SOLICITADO)
-          providerStatus: productWrapper.providerStatus ?? null, 
-        }
-      })
+          providerStatus: productWrapper.providerStatus ?? null,
+        };
+      });
 
-      setProducts(normalized)
+      setProducts(normalized);
     } catch (err) {
-      console.error('Error cargando productos:', err)
-      setProdError('No se pudieron cargar los productos')
-      setProducts([])
+      console.error('Error cargando productos:', err);
+      setProdError('No se pudieron cargar los productos');
+      setProducts([]);
+      setTotalPages(0);
     } finally {
-      setProdLoading(false)
+      setProdLoading(false);
     }
   }
 
@@ -287,71 +393,75 @@ export default function Home() {
 
           <div className="circle-strip-wrapper" aria-hidden={catLoading}>
             {catLoading ? (
-                <div className="circle-strip skeleton-strip">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div className="circle-item skeleton" key={`skc-${i}`} />
-                  ))}
-                </div>
+              <div className="circle-strip skeleton-strip">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div className="circle-item skeleton" key={`skc-${i}`} />
+                ))}
+              </div>
 
-              ) : (
-                <div className="circle-strip-outer">
-                  <div className="fade left" style={{ display: hasOverflow ? 'block' : 'none' }} />
-                  <div className="circle-strip" ref={stripRef} role="list" tabIndex={0}>
-                    <div className="circle-item-wrap" role="listitem">
-                      <button
-                        key="circle-all"
-                        className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
-                        onClick={() => goToCategory(null)}
-                        title="Ver todos los productos"
-                        aria-label="Ver todos los productos"
-                        aria-pressed={selectedCategory === null}
-                      >
-                        <div className="circle-fallback">ALL</div>
-                      </button>
-                      <span className="circle-name">Todos</span>
-                    </div>
-
-                    {categories.map(cat => (
-                      <div className="circle-item-wrap" role="listitem"
-                        key={`wrap-${cat.id}`}>
-                        <button
-                          key={`circle-${cat.id}`}
-                          className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
-                          onClick={() => goToCategory(cat)}
-                          title={cat.name}
-                          aria-label={`Abrir ${cat.name}`}
-                          aria-pressed={selectedCategory === cat.id}
-                        >
-                          {cat.image ? (
-                              <img src={cat.image} alt={cat.name} loading="lazy" />
-                            ) : (
-                              <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
-                            )}
-                        </button>
-                        <span className="circle-name">{cat.name}</span>
-                      </div>
-                    ))}
-
+            ) : (
+              <div className="circle-strip-outer">
+                <div className="fade left" style={{ display: hasOverflow ? 'block' : 'none' }} />
+                <div className="circle-strip" ref={stripRef} role="list" tabIndex={0}>
+                  <div className="circle-item-wrap" role="listitem">
+                    <button
+                      key="circle-all"
+                      className={`circle-item ${selectedCategory === null ? 'active-cat' : ''}`}
+                      onClick={() => goToCategory(null)}
+                      title="Ver todos los productos"
+                      aria-label="Ver todos los productos"
+                      aria-pressed={selectedCategory === null}
+                    >
+                      <div className="circle-fallback">ALL</div>
+                    </button>
+                    <span className="circle-name">Todos</span>
                   </div>
-                  <div className="fade right" style={{ display: hasOverflow ? 'block' : 'none' }} />
-                  <button
-                    className="subtle-arrow left"
-                    onClick={() => stripRef.current && stripRef.current.scrollBy({ left: -200, behavior: 'smooth' })}
-                    aria-hidden={!hasOverflow}
-                    style={{ display: hasOverflow ? 'flex' : 'none' }}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    className="subtle-arrow right"
-                    onClick={() => stripRef.current && stripRef.current.scrollBy({ left: 200, behavior: 'smooth' })}
-                    aria-hidden={!hasOverflow}
-                    style={{ display: hasOverflow ? 'flex' : 'none' }}
-                  >
-                    ›
-                  </button>
+
+                  {categories.map(cat => (
+                    <div className="circle-item-wrap" role="listitem"
+                      key={`wrap-${cat.id}`}>
+                      <button
+                        key={`circle-${cat.id}`}
+                        className={`circle-item ${selectedCategory === cat.id ? 'active-cat' : ''}`}
+                        onClick={() => goToCategory(cat)}
+                        title={cat.name}
+                        aria-label={`Abrir ${cat.name}`}
+                        aria-pressed={selectedCategory === cat.id}
+                      >
+                        {cat.image ? (
+                          <img
+                            src={getOptimizedUrl(cat.image, 200)} // <--- Aquí aplicas el helper
+                            alt={cat.name}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="circle-fallback">{(cat.name || '').slice(0, 2).toUpperCase()}</div>
+                        )}
+                      </button>
+                      <span className="circle-name">{cat.name}</span>
+                    </div>
+                  ))}
+
                 </div>
-              )}
+                <div className="fade right" style={{ display: hasOverflow ? 'block' : 'none' }} />
+                <button
+                  className="subtle-arrow left"
+                  onClick={() => stripRef.current && stripRef.current.scrollBy({ left: -200, behavior: 'smooth' })}
+                  aria-hidden={!hasOverflow}
+                  style={{ display: hasOverflow ? 'flex' : 'none' }}
+                >
+                  ‹
+                </button>
+                <button
+                  className="subtle-arrow right"
+                  onClick={() => stripRef.current && stripRef.current.scrollBy({ left: 200, behavior: 'smooth' })}
+                  aria-hidden={!hasOverflow}
+                  style={{ display: hasOverflow ? 'flex' : 'none' }}
+                >
+                  ›
+                </button>
+              </div>
+            )}
           </div>
 
           <div
@@ -359,6 +469,24 @@ export default function Home() {
             <div className="products-header">
               <h3>{selectedCategory ? `Productos en la categoría` : 'Todos los productos activos'}</h3>
               <p className="muted">{prodLoading ? 'Cargando productos...' : (prodError ? prodError : `${products.length} resultados`)}</p>
+            </div>
+            {/* BUSCADOR CENTRALIZADO */}
+            {/* BUSCADOR CON DISEÑO MEJORADO */}
+            <div className="search-container">
+              <div className="search-wrapper">
+                <div className="search-glass-effect"></div>
+                <span className="search-icon-main">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Busca servicios, categorías o proveedores..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(0); // Reinicia a página 1 al buscar
+                  }}
+                  className="search-input-modern"
+                />
+              </div>
             </div>
             <div className="legend">
               <div className="legend-item">
@@ -370,6 +498,15 @@ export default function Home() {
                 <span>ENTREGA INMEDIATA</span>
               </div>
             </div>
+
+            {/* PAGINACIÓN SUPERIOR */}
+
+            <div style={{ height: '50px', width: '100%' }}></div>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
             <div className="cards-grid">
               {prodLoading && Array.from({ length: 8 }).map((_, i) => (
                 <article className="product-card skeleton" key={`psk-${i}`} />
@@ -383,8 +520,11 @@ export default function Home() {
 
                 const stockCount = Number(p.stock ?? 0)
                 const hasStock = stockCount > 0
+
+                const statusLower = p.providerStatus?.toLowerCase();
+                const isEmergency = statusLower === 'emergency';
                 const isInactiveForRequest = p.isOnRequest && (p.providerStatus?.toLowerCase() === 'inactive');
-                
+
                 const categoryName = p.categoryName ?? categories.find(c => String(c.id) === String(p.categoryId))?.name ??
                   'Sin categoría'
 
@@ -396,26 +536,34 @@ export default function Home() {
                 let buttonDisabled = false;
                 let showStockPill = hasStock;
 
-                if (isInactiveForRequest) {
-                    // 1. A Solicitud + Proveedor Inactivo (Botón Naranja Bloqueado con Tooltip)
-                    buttonTitle = "No se puede comprar este producto porque el proveedor no se encuentra activo";
-                    buttonAction = () => {}; 
-                    buttonDisabled = true;
-                    // Clase específica para el estilo naranja de botón inactivo
-                    buttonClass += ' disabled-provider-inactive-btn'; 
-                    showStockPill = false; 
-                } else if (!p.isOnRequest && !hasStock) {
-                    // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
-                    buttonText = 'SIN STOCK';
-                    buttonAction = () => {}; 
-                    buttonDisabled = true;
-                    buttonClass += ' out-stock disabled-sin-stock';
-                    showStockPill = false;
+
+                if (isEmergency) {
+    // 1. PRIORIDAD: Estado de Emergencia (Botón Rojo Brillante)
+    buttonText = 'NO DISPONIBLE';
+    buttonAction = () => {}; 
+    buttonDisabled = true;
+    buttonClass += ' btn-emergency-blocked'; // Clase para el color rojo brillante
+    showStockPill = false;
+                } else if (isInactiveForRequest) {
+                  // 1. A Solicitud + Proveedor Inactivo (Botón Naranja Bloqueado con Tooltip)
+                  buttonTitle = "No se puede comprar este producto porque el proveedor no se encuentra activo";
+                  buttonAction = () => { };
+                  buttonDisabled = true;
+                  // Clase específica para el estilo naranja de botón inactivo
+                  buttonClass += ' disabled-provider-inactive-btn';
+                  showStockPill = false;
+                } else if (!hasStock) {
+                  // 2. Entrega Inmediata + Sin Stock (Botón Rojo SIN STOCK)
+                  buttonText = 'SIN STOCK';
+                  buttonAction = () => { };
+                  buttonDisabled = true;
+                  buttonClass += ' out-stock disabled-sin-stock';
+                  showStockPill = false;
                 } else {
-                    // 3. Compra Normal (En stock O A Solicitud con proveedor activo)
-                    buttonClass += ' in-stock';
-                    buttonDisabled = false;
-                    // showStockPill se mantiene como 'hasStock'
+                  // 3. Compra Normal (En stock O A Solicitud con proveedor activo)
+                  buttonClass += ' in-stock';
+                  buttonDisabled = false;
+                  // showStockPill se mantiene como 'hasStock'
                 }
                 // --- Fin Lógica del Botón de Compra ---
 
@@ -428,7 +576,12 @@ export default function Home() {
 
                     <div className="product-media">
                       {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} loading="lazy" />
+                        <img
+                          src={getOptimizedUrl(p.imageUrl, 500)}
+                          alt={p.name}
+                          className="tu-clase-css"
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="product-media placeholder" />
                       )}
@@ -440,7 +593,7 @@ export default function Home() {
                       </div>
 
                       {p.providerName && (
-                       <div className="provider-name" title={p.providerName}>
+                        <div className="provider-name" title={p.providerName}>
                           {p.providerName}
                         </div>
                       )}
@@ -452,7 +605,11 @@ export default function Home() {
                             <>
                               <span className="status-emoji">😊</span> ACTIVO
                             </>
-                          ) : (
+                          ) : p.providerStatus.toLowerCase() === 'emergency' ? (
+      <>
+        <span className="status-emoji">❌</span> EMERGENCIA
+      </>
+    ) : (
                             <>
                               <span className="status-emoji">😴</span> DURMIENDO
                             </>
@@ -461,59 +618,66 @@ export default function Home() {
                       )}
                       {/* 💡 FIN: Estado del Proveedor */}
 
-                      {/* 💡 INICIO: Nueva estructura de Precios y Renovación */}
-                      <div className="price-wrapper">
-                        {/* Línea 1: Precio de Venta (Centrado) */}
-                        <div className="sale-price-badge">
-                          <span className="price-prefix">VENTA:</span> {formatPrice(p.salePrice)}
+                      <div className="price-wrapper dual-price">
+                        <div className="sale-price-container">
+                          {/* Precio en Dólares */}
+                          <div className="sale-price-badge usd">
+                            <span className="price-prefix">USD</span> {formatPrice(p.salePrice)}
+                          </div>
+
+                          {/* Precio en Soles (Nuevo campo del backend) */}
+                          {p.salePriceSoles && (
+                            <div className="sale-price-badge pen">
+                              <span className="price-prefix">PEN</span> S/ {p.salePriceSoles}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Línea 2: Estado de Renovación (Booleano) */}
+                        {/* Estado de Renovación */}
                         <div className={`renewal-status-tag ${p.isRenewable ? 'is-renewable' : 'not-renewable'}`}>
                           {p.isRenewable ? (
                             <>
-                              {/* Usamos RENOVABLE: y el precio si es renovable */}
                               <span className="renewal-prefix">RENOVABLE:</span> {formatPrice(p.renewalPrice)}
                             </>
                           ) : (
-                            /* Si NO es renovable, solo mostramos el texto */
                             <span>NO RENOVABLE</span>
                           )}
                         </div>
                       </div>
+
                       {/* 💡 FIN: Nueva estructura de Precios y Renovación */}
 
 
                       <div className="product-actions">
                         {(buttonDisabled && buttonText === 'SIN STOCK') ? (
-                            // SIN STOCK (Full width)
-                            <button
-                                className={buttonClass}
-                                aria-disabled="true"
-                                onClick={buttonAction}
-                            >
-                                {buttonText}
-                            </button>
+                          // SIN STOCK (Full width)
+                          <button
+                            className={buttonClass}
+                            aria-disabled="true"
+                            onClick={buttonAction}
+                          >
+                            {buttonText}
+                          </button>
                         ) : (
-                            // COMPRAR (Normal o Deshabilitado con Tooltip)
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                                <button
-                                    className={buttonClass}
-                                    onClick={buttonAction}
-                                    aria-disabled={buttonDisabled}
-                                    // Tooltip al pasar el cursor
-                                    title={buttonTitle || undefined} 
-                                >
-                                    <span className="btn-text">{buttonText}</span>
-                                </button>
-                                
-                                {showStockPill && (
-                                    <div className="stock-pill" aria-hidden>
-                                        <span className="stock-icon">📦</span>
-                                        <span className="stock-count-pill">{stockCount}</span>
-                                    </div>
-                                )}
-                            </div>
+                          // COMPRAR (Normal o Deshabilitado con Tooltip)
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                            <button
+                              className={buttonClass}
+                              onClick={buttonAction}
+                              aria-disabled={buttonDisabled}
+                              // Tooltip al pasar el cursor
+                              title={buttonTitle || undefined}
+                            >
+                              <span className="btn-text">{buttonText}</span>
+                            </button>
+
+                            {showStockPill && (
+                              <div className="stock-pill" aria-hidden>
+                                <span className="stock-icon">📦</span>
+                                <span className="stock-count-pill">{stockCount}</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -521,6 +685,12 @@ export default function Home() {
                 )
 
               })}
+              {/* PAGINACIÓN INFERIOR */}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+              />
             </div>
           </div>
         </section>
@@ -552,6 +722,12 @@ export default function Home() {
       )}
 
       <Footer />
+
+      <PopupModal 
+        isOpen={showPopup} 
+        onClose={() => setShowPopup(false)} 
+        imageSrc="/popup.jpeg" 
+      />
 
       <style jsx>{`
   :root{
@@ -666,24 +842,32 @@ padding: 8px 6px 48px;
 }
   .circle-item-wrap { flex: 0 0 auto; width: 120px; display: flex; flex-direction: column; align-items: center; gap: 8px; scroll-snap-align: center;
 }
-  .circle-item {
-    width: 120px; height: 120px; border-radius: 999px;
-/* Cambio de diseño: Fondo semi-transparente */
-    background: rgba(40, 40, 40, 0.6);
-backdrop-filter: blur(5px);
-    border: 1px solid rgba(255,255,255,0.08);
-    display: inline-flex; align-items: center; justify-content: center;
+.circle-item {
+    width: 120px; 
+    height: 120px; 
+    border-radius: 999px;
+    background: rgba(40, 40, 40, 0.6); /* Fondo semi-transparente */
+    backdrop-filter: blur(5px);
+    
+    /* EFECTO NEÓN: Borde y Sombra */
+    border: 1px solid var(--accent-1); /* Usamos el color cian definido en :root */
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); /* Resplandor suave inicial */
+    
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
     cursor: pointer;
-transition: transform 240ms ease, box-shadow 240ms ease;
+    transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
     -webkit-tap-highlight-color: transparent;
   }
-  .circle-item:hover {
+.circle-item:hover {
     transform: translateY(-4px);
-}
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6); /* Aumenta el brillo al hacer hover */
+  }
   .circle-item.active-cat {
-    border-color: var(--accent-1);
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
-}
+    border-color: #00ff88; /* Puedes cambiarlo a verde neón para diferenciar la activa */
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  }
   .circle-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 999px;
 }
   .circle-fallback {
@@ -730,7 +914,7 @@ text-transform: uppercase;
   .stock-cat-name { flex: 1; text-align: center; }
 
   .product-media { width:100%; aspect-ratio: 4/3; background: #0b0b0b; display:flex;
-align-items:center; justify-content:center; overflow:hidden; }
+align-items:center; justify-content:center; overflow:hidden; position: relative; overflow: hidden;}
   .product-media img { width:100%; height:100%; object-fit:cover; }
   .product-media.placeholder { background: linear-gradient(135deg,#1f2937,#111827); min-height: 140px;
 }
@@ -883,6 +1067,22 @@ justify-content:center;
     width: 100%; letter-spacing: 0.02em;
   }
 
+  .price-soles-tag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  background: rgba(16, 185, 129, 0.9); /* Un verde esmeralda semi-transparente */
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
   /* 💡 CAMBIO: Botón de COMPRAR deshabilitado por Proveedor Inactivo (Naranja/Ámbar) */
   .btn-primary.disabled-provider-inactive-btn[aria-disabled="true"] {
     /* Gradiente Naranja/Ámbar */
@@ -914,6 +1114,95 @@ border-radius: 999px;
   @keyframes shimmer { 0% { background-position: -200% 0;
 } 100% { background-position: 200% 0; } }
   .empty { color: var(--muted); padding: 20px; text-align: center;
+}
+
+/* Contenedor principal de precios */
+.price-wrapper.dual-price {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Fila de los dos badges */
+.sale-price-container {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap; /* Para que en móviles muy pequeños no se corten */
+}
+
+/* Ajuste al badge existente  */
+.sale-price-badge {
+  padding: 4px 10px;
+  border-radius: 8px; /* Un poco más cuadrado para optimizar espacio */
+  font-weight: 800;
+  font-size: 0.95rem; /* Reducimos ligeramente el tamaño para que quepan dos */
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Diferenciación por colores sutiles */
+.sale-price-badge.usd {
+  background: rgba(6, 182, 212, 0.15); /* Cian tenue */
+  color: #06b6d4;
+}
+
+.sale-price-badge.pen {
+  /* Fondo púrpura muy suave */
+  background: rgba(168, 85, 247, 0.15); 
+  /* Texto Púrpura vibrante */
+  color: #a855f7; 
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.sale-price-badge.pen .price-prefix {
+  background: #a855f7;
+  color: #fff;
+}
+/* Prefijos (USD/PEN) */
+.price-prefix {
+  font-size: 0.65rem;
+  margin-right: 5px;
+  opacity: 0.8;
+  letter-spacing: 0.05em;
+  background: rgba(255,255,255,0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+}
+
+/* Reemplaza o añade esto en los estilos de index.txt */
+
+.categories-container {
+  overflow-x: auto;
+  scrollbar-width: thin; /* Fallback para Firefox */
+  scrollbar-color: #8b5cf6 transparent; /* Color para Firefox*/
+}
+
+/* Scrollbar para Chrome, Safari y Edge (Webkit) */
+.categories-container::-webkit-scrollbar {
+  height: 12px; /* Grosor definido en Products  */
+}
+
+.categories-container::-webkit-scrollbar-track {
+  background: transparent; /* Fondo transparente*/
+}
+
+.categories-container::-webkit-scrollbar-thumb {
+  /* Gradiente moderno: Cian -> Violeta -> Verde */
+  background: linear-gradient(90deg, #06b6d4, #8b5cf6, #22c55e); 
+  border-radius: 999px; /* Forma de píldora  */
+  
+  /* Borde sólido que genera el efecto de margen visual  */
+  border: 3px solid rgba(22, 22, 22, 0.6); 
+}
+
+/* Efecto opcional para mejorar la interacción */
+.categories-container::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.1);
 }
 
   /* modal */
@@ -988,6 +1277,331 @@ white-space: normal;
 }
     .circle-item-wrap { width:72px; }
   }
+
+/* Estilos para el Buscador */
+.search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 40px 0;
+    padding: 0 20px;
+  }
+
+ .search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    z-index: 1;
+    
+    /* EFECTO NEÓN IGUAL A CATEGORÍAS */
+    padding: 3px; /* Grosor del borde */
+    border-radius: 16px;
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
+    background-size: 200% auto;
+    animation: neon-flow-border 4s linear infinite;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    overflow: hidden;
+  }
+    /* Capa interna oscura para el buscador */
+  .search-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 2px; /* Ajuste para que el borde se vea fino */
+    background: rgba(10, 10, 10, 0.9);
+    border-radius: 14px;
+    z-index: 0;
+  }
+
+  .search-glass-effect {
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(90deg, var(--accent-1), #9333ea);
+    border-radius: 16px;
+    z-index: -1;
+    opacity: 0.3;
+    filter: blur(8px);
+    transition: opacity 0.3s ease;
+  }
+
+  .search-wrapper:focus-within .search-glass-effect {
+    opacity: 0.8;
+    filter: blur(12px);
+  }
+
+/* Ajuste para que el input y el icono queden sobre el fondo */
+.search-input-modern {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    /* 55px a la izquierda para dejar espacio a la lupa centrada */
+    padding: 18px 50px 18px 55px; 
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 1.1rem;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .search-input-modern:focus {
+    background: rgba(15, 15, 15, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+.search-icon-main {
+    position: absolute;
+    left: 22px; /* Un poco más de espacio desde el borde neón */
+    top: 50%;
+    transform: translateY(-50%); /* Centrado vertical exacto */
+    color: var(--accent-1);
+    font-size: 1.2rem; /* Aumentamos un poco el tamaño para que no se pierda */
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    z-index: 2;
+    /* Efecto de brillo sutil para que resalte sobre el fondo oscuro */
+    text-shadow: 0 0 8px rgba(6, 182, 212, 0.6); 
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #aaa;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .search-clear:hover {
+    background: var(--accent-1);
+    color: #000;
+  }
+
+  /* Ajuste para móviles */
+@media (max-width: 480px) {
+    .search-icon-main {
+      left: 18px;
+      font-size: 1rem;
+    }
+    .search-input-modern {
+      padding: 15px 45px 15px 48px;
+    }
+  }
+.search-input {
+  width: 100%;
+  max-width: 500px;
+  padding: 12px 20px;
+  background: rgba(13, 13, 13, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  border-color: var(--accent-1);
+}
+
+/* === NUEVA PAGINACIÓN NEÓN MODERNA === */
+ :global(.pagination-wrapper) {
+    display: flex;
+    justify-content: flex-end; /* Alinea a la derecha */
+    align-items: center;
+    gap: 20px;
+    margin: 40px 0; /* Mayor separación (40px arriba y abajo) de los cards */
+    padding: 0 10px;
+    width: 100%;
+  }
+
+:global(.pagination-btn) {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(5px);
+  }
+
+ :global(.pagination-btn:hover:not(:disabled)) {
+    background: var(--accent-1);
+    color: var(--accent-contrast);
+    border-color: var(--accent-1);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+  }
+
+.pagination-btn-inner {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pagination-btn:not(:disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+  }
+
+  .pagination-btn:not(:disabled):hover .pagination-btn-inner {
+    background: transparent; /* Se vuelve todo neón al pasar el mouse */
+  }
+
+.pagination-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+:global(.pagination-info) {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  /* Asegúrate de que esta animación exista en tu CSS */
+  @keyframes neon-flow-border {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* Ajuste para móviles */
+  @media (max-width: 768px) {
+    .pagination-wrapper {
+      justify-content: center; /* Centrar en móviles para mejor UX */
+      padding-right: 0;
+      margin-top: 40px;
+    }
+  }
+
+//container categories
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.circle-strip-wrapper {
+    margin-bottom: 18px; 
+    position: relative;
+    border-radius: 16px;
+    /* El padding define el grosor del borde neón */
+    padding: 3px; 
+    
+    /* Gradiente con colores fosforescentes (Cian, Morado, Verde) */
+    background: linear-gradient(90deg, #00f2ff, #7000ff, #00ff88, #00f2ff);
+    background-size: 200% auto;
+    
+    /* Animación para que el color fluya */
+    animation: neon-flow-border 4s linear infinite;
+    
+    /* Brillo exterior (glow) */
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+    overflow: hidden;
+  }
+
+  /* Esta capa crea el fondo oscuro interno */
+  .circle-strip-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 2px; /* Grosor visual del borde */
+    background: rgba(13, 13, 13, 0.95);
+    border-radius: 14px;
+    z-index: 0;
+  }
+
+  /* Asegura que las categorías se vean encima del fondo negro */
+  .circle-strip-outer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  @keyframes neon-flow-border {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .subtle-arrow {
+    z-index: 10;
+    margin: 0 5px; /* Evita que toquen el borde neón */
+  }
+
+
+  /* Personalización del Scrollbar para Chrome, Safari y Edge */
+.circle-strip::-webkit-scrollbar {
+    height: 10px; /* Aumentado de 6px a 10px para que se vea mejor */
+  }
+
+.circle-strip::-webkit-scrollbar-track {
+    /* Fondo más oscuro para que el neón resalte por contraste */
+    background: rgba(0, 0, 0, 0.8); 
+    border-radius: 10px;
+    margin: 0 40px;
+  }
+
+.circle-strip::-webkit-scrollbar-thumb {
+    /* Gradiente con colores más puros y saturados */
+    background: linear-gradient(90deg, #00f2ff, #bc00ff, #00ff88);
+    background-size: 200% auto;
+    border-radius: 10px;
+    
+    /* EFECTO NEÓN CRÍTICO: Mayor radio de desenfoque y opacidad */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Brillo interno */
+    box-shadow: 0 0 15px #00f2ff, 0 0 5px #00f2ff; /* Doble sombra para intensidad */
+  }
+
+.circle-strip::-webkit-scrollbar-thumb:hover {
+    /* Al pasar el mouse, el brillo "explota" */
+    background: #00f2ff;
+    box-shadow: 0 0 25px #00f2ff, 0 0 10px #ffffff;
+    cursor: pointer;
+  }
+
+  .circle-strip {
+    scrollbar-width: auto;
+    scrollbar-color: #00f2ff rgba(13, 13, 13, 0.8);
+  }
+
+  /* Tag de estado en la card */
+.provider-status-tag.status-emergency {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d4d;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* Botón NO DISPONIBLE Rojo Brillante */
+.btn-primary.btn-emergency-blocked[aria-disabled="true"] {
+  background: linear-gradient(90deg, #ff0000, #cc0000);
+  color: #fff;
+  border: none;
+  opacity: 1;
+  cursor: not-allowed;
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+  width: 100%; /* Para que ocupe todo el ancho como el de SIN STOCK */
+}
+
+
 `}</style>
 
       <style jsx global>{`

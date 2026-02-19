@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthProvider';
@@ -142,12 +142,18 @@ export default function LoginSupplier() {
           )}
 
           <button 
-            type="submit" 
-            className="cta" 
-            disabled={loading || (turnstileSiteKey && !turnstileToken)}
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
+  type="submit" 
+  className="cta" 
+  style={{ 
+    position: 'relative', 
+    zIndex: 999999, 
+    pointerEvents: 'auto',
+    cursor: 'pointer'
+  }}
+  disabled={loading || (turnstileSiteKey && !turnstileToken)}
+>
+  {loading ? 'Ingresando...' : 'Ingresar'}
+</button>
 
           <p className="back-login">
             ¿No tienes cuenta?
@@ -173,7 +179,7 @@ export default function LoginSupplier() {
           max-width: 480px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
         .title {
           font-size: 1.8rem;
@@ -322,6 +328,44 @@ export default function LoginSupplier() {
           .card { padding: 20px; border-radius: 16px; }
           .title { font-size: 1.6rem; }
         }
+
+        .ad-wrapper {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 250px; /* Evita saltos de diseño cuando cargue */
+          width: 100%;
+          margin: 10px 0;
+          background: rgba(255, 255, 255, 0.02); /* Fondo sutil para el área */
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .ad-wrapper-box {
+          display: flex;
+          justify-content: center;
+          min-height: 250px;
+          margin: 10px 0;
+        }
+
+        .ad-footer-container {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          width: 100%;
+          margin-top: 30px;
+          padding-bottom: 20px;
+          overflow: hidden; /* Evita scroll horizontal si el banner es muy ancho */
+        }
+
+        /* Ajuste para móviles: escala el banner si la pantalla es pequeña */
+        @media (max-width: 768px) {
+          .ad-footer-container {
+            transform: scale(0.8); /* Reduce el tamaño visualmente para que quepa */
+            transform-origin: center;
+          }
+        }
+
       `}</style>
     </>
   );

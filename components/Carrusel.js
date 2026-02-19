@@ -4,9 +4,9 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
 const itemsCarrusel = [
-  { src: '/videos/SPO.mp4' },
-  { src: '/videos/DIS.mp4' },
   { src: '/videos/NET.mp4' },
+  { src: '/videos/DIS.mp4' },
+  { src: '/videos/SPO.mp4' },
   { src: '/videos/YOU.mp4' },
   { src: '/videos/CHR.mp4' },
   { src: '/videos/IPTV.mp4' },
@@ -55,7 +55,7 @@ export default function Carrusel() {
     slidesToShow: 1,
     slidesToScroll: 1,
     autoplay: true,
-    autoplaySpeed: 5000,
+    autoplaySpeed: 3000,
     pauseOnHover: true,
     adaptiveHeight: true,
 

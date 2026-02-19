@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FaUserAlt, FaWallet, FaShoppingCart, FaSignOutAlt } from 'react-icons/fa'
+import { FaUserAlt, FaWallet, FaShoppingCart, FaSignOutAlt, FaHome } from 'react-icons/fa'
 import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthProvider'
 import { useState, useEffect } from 'react'
@@ -104,15 +104,25 @@ export default function Navbar() {
       <div className={`nav-right ${menuOpen ? 'open' : ''}`}>
         <ul id="primary-navigation" className={`nav-items ${menuOpen ? 'open' : ''}`}>
           <li className="nav-item" onClick={closeMenu}>
-            <Link href="/" passHref legacyBehavior>
-              <a>
-                <FaUserAlt className="nav-icon" />
-                <span className="nav-text">Inicio</span>
-              </a>
-        
-     </Link>
-          </li>
+    <Link href="/" passHref legacyBehavior>
+      <a>
+        <FaHome className="nav-icon" />
+        <span className="nav-text">Inicio</span>
+      </a>
+    </Link>
+  </li>
 
+{/* PERFIL - Solo si el usuario existe, usando las mismas clases */}
+  {user && (
+    <li className="nav-item" onClick={closeMenu}>
+      <Link href="/perfil" passHref legacyBehavior>
+        <a>
+          <FaUserAlt className="nav-icon" />
+          <span className="nav-text">{user.username || 'Mi Perfil'}</span>
+        </a>
+      </Link>
+    </li>
+  )}
           <li className="nav-item" onClick={closeMenu}>
             <Link href="/billetera" passHref legacyBehavior>
               <a>
@@ -193,7 +203,7 @@ export default function Navbar() {
  filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image {
-          height: 60px;
+          height: 80px;
  object-fit: contain;
         }
 
@@ -264,15 +274,25 @@ export default function Navbar() {
         }
 
         .nav-icon {
-          color: #E0E0E0;
- font-size: 1.2rem;
-          transition: color 0.3s ease, filter 0.3s ease;
-        }
+  color: #E0E0E0; /* Color gris claro original */
+  font-size: 1.2rem; /* Tamaño fijo para todos */
+  width: 1.2rem; /* Forzamos el ancho para que el texto empiece en el mismo lugar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, filter 0.3s ease;
+}
         .nav-text {
-          color: #D1D1D1;
- text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
-          transition: color 0.3s ease, text-shadow 0.3s ease;
-        }
+  color: #D1D1D1;
+  font-size: 1rem; /* Asegura que el tamaño de fuente sea igual [cite: 41] */
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+  /* Añade esto para evitar que nombres largos deformen el navbar */
+  max-width: 100px; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
         .nav-item:hover {
           transform: scale(1.05);
@@ -341,9 +361,18 @@ export default function Navbar() {
         /* MOBILE STYLES */
         @media (max-width: 768px) {
           .navbar {
-            padding: 12px 16px;
- gap: 12px;
-          }
+    width: 92%; /* Deja un pequeño margen a los lados para que no toque los bordes */
+    margin: 10px auto; 
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .nav-right.open {
+    /* Elimina el width: 100% de aquí si solo lo usas para el dropdown */
+    position: absolute;
+    right: 0;
+    top: 100%; /* Para que el menú despliegue justo debajo del navbar */
+  }
 
           .hamburger {
             display: inline-flex;

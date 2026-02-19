@@ -1,3 +1,6 @@
+import React from 'react';
+import { FaWhatsapp } from 'react-icons/fa';
+
 export default function Footer() {
   return (
     <footer className="footer">
@@ -10,7 +13,8 @@ export default function Footer() {
           className="footer-icon"
           aria-label="WhatsApp"
         >
-          <img src="whatsapp.svg" alt="WhatsApp" />
+          {/* Usamos el componente FaWhatsapp en lugar de <img> */}
+          <FaWhatsapp className="whatsapp-icon" />
         </a>
         <p className="footer-text">© 2025 Luna Streaming</p>
       </div>
@@ -18,20 +22,16 @@ export default function Footer() {
       <style jsx>{`
         .footer {
           width: 100%;
-          max-width: 1200px; /* Limitar el ancho para que esté centrado como la Navbar */
-          margin: 40px auto 0 auto; /* 🚨 ESPACIO REDUCIDO: 40px margin-top, centrado */
-          padding: 24px 24px; /* 🚨 TAMAÑO REDUCIDO: 24px padding arriba/abajo */
-          
-          /* 🚨 TRANSPARENCIA: Fondo semi-transparente + efecto de cristal */
-          background-color: rgba(13, 13, 13, 0.8); /* Fondo semi-transparente oscuro */
-          backdrop-filter: blur(8px); /* Efecto Glassmorphism */
-
+          max-width: 1200px;
+          margin: 40px auto 0 auto;
+          padding: 24px 24px;
+          background-color: rgba(13, 13, 13, 0.8);
+          backdrop-filter: blur(8px);
           border-top: 1px solid #2E2E2E;
-          border-radius: 20px 20px 0 0; /* Bordes redondeados para que coincida con el estilo */
+          border-radius: 20px 20px 0 0;
           box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
         }
         
-        /* Aseguramos que el contenido esté centrado si limitamos el ancho */
         .footer-content {
           display: flex;
           flex-direction: column;
@@ -39,7 +39,6 @@ export default function Footer() {
           justify-content: center;
           gap: 16px;
           text-align: center;
-          /* Limitar ancho máximo del contenido */
           max-width: 600px; 
           margin: 0 auto;
         }
@@ -51,13 +50,22 @@ export default function Footer() {
           margin-bottom: 4px;
         }
 
-        .footer-icon img {
-          width: 60px; /* 🚨 TAMAÑO REDUCIDO: De 72px a 60px */
-          height: 60px;
+        /* Estilos específicos para el icono de React Icons */
+        .footer-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
           transition: transform 0.3s ease;
         }
 
-        .footer-icon:hover img {
+        :global(.whatsapp-icon) {
+          width: 60px;
+          height: 60px;
+          color: #25D366; /* Color oficial de WhatsApp */
+        }
+
+        .footer-icon:hover {
           transform: scale(1.15);
         }
 
@@ -69,14 +77,14 @@ export default function Footer() {
         }
         
         @media (max-width: 768px) {
-            .footer {
-                padding: 20px 16px; /* Padding reducido en móviles */
-                margin-top: 30px; /* Margen reducido en móviles */
-            }
-            .footer-icon img {
-                width: 50px; /* Aún más pequeño en móvil */
-                height: 50px;
-            }
+          .footer {
+            padding: 20px 16px;
+            margin-top: 30px;
+          }
+          :global(.whatsapp-icon) {
+            width: 50px;
+            height: 50px;
+          }
         }
       `}</style>
     </footer>

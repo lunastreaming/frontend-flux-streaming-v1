@@ -3,6 +3,7 @@ import '../styles/globals.css'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '../context/AuthProvider'
 import SupplierLayout from '../components/SupplierLayout'
+import { Analytics } from "@vercel/analytics/next" // 1. Importación
 
 export default function MyApp({ Component, pageProps, router }) {
   const path = router.pathname
@@ -22,7 +23,6 @@ export default function MyApp({ Component, pageProps, router }) {
         <SupplierLayout>
           <Component {...pageProps} />
         </SupplierLayout>
-        <Analytics />
       </AuthProvider>
     )
   }
@@ -31,7 +31,6 @@ export default function MyApp({ Component, pageProps, router }) {
   return (
     <AuthProvider>
       <Component {...pageProps} />
-      <Analytics />
     </AuthProvider>
   )
 }

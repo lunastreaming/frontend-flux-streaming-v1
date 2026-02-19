@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo } from 'react-icons/fa'
+import { FaEye, FaEyeSlash, FaWhatsapp, FaCog, FaRedo, FaEdit } from 'react-icons/fa'
 import SupportModal from '../SupportModal'
 import RenewModal from '../RenewModal'
+import EditPhoneModal from '../EditPhoneModal'
+import EditNameModal from '../EditNameModal'; 
 
 export default function ComprasTable({ endpoint = 'purchases', balance, search = '' }) {
   const [items, setItems] = useState([])
@@ -20,6 +22,24 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
+
+  // ... dentro de la función ComprasTable
+  const [showEditPhoneModal, setShowEditPhoneModal] = useState(false);
+  const [phoneToEdit, setPhoneToEdit] = useState({ id: null, currentPhone: '' });
+
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [nameToEdit, setNameToEdit] = useState({ id: null, currentName: '' });
+
+  const openEditName = (id, name) => {
+  setNameToEdit({ id, currentName: name });
+  setShowEditNameModal(true);
+};
+
+  const openEditPhone = (id, phone) => {
+    setPhoneToEdit({ id, currentPhone: phone });
+    setShowEditPhoneModal(true);
+  };
+
   const SIZE = 50
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
@@ -45,24 +65,24 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const formatDateLocal = (v) => {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ''
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return d.toLocaleString('es-PE', {
-      timeZone: userTimeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  } catch {
-    return ''
+    if (!v) return ''
+    try {
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      return d.toLocaleString('es-PE', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    } catch {
+      return ''
+    }
   }
-}
 
   // Si quisieras ver el ISO exacto del backend (incluye milisegundos y 'Z'), usa esta:
   // const formatIsoUTC = (value) => {
@@ -178,9 +198,9 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
       <div className="no-results">
         <img src="/SinCompras.png" alt="No hay compras registradas" className="no-results-image" />
         <p className="no-results-text">
-          {search ? 
-           `No se encontraron compras que coincidan con "${search}".` : 
-           'Aún no tienes compras registradas.'
+          {search ?
+            `No se encontraron compras que coincidan con "${search}".` :
+            'Aún no tienes compras registradas.'
           }
         </p>
         <style jsx>{`
@@ -243,13 +263,23 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
               const isVisible = visiblePasswords.has(row.id)
               const masked = row.password ? '••••••••' : ''
 
+              const formatDateMsg = (dateStr) => {
+                if (!dateStr) return ''
+                // Extrae YYYY-MM-DD y lo reordena
+                const [year, month, day] = dateStr.split('T')[0].split('-')
+                return `${day}/${month}/${year}`
+              }
+
               const whatsappMsg = `Hola ${row.clientName ?? ''} 👋🏻
 🍿De ${row.productName ?? ''}🍿
 ✉ usuario: ${row.username ?? ''}
 🔐 Contraseña: ${row.password ?? ''}
 🌍 Url: ${row.url ?? ''}
 👥 Perfil: ${row.numeroPerfil ?? ''}
-🔐 Pin: ${row.pin ?? ''}`
+🔐 Pin: ${row.pin ?? ''}
+⏳ Contratado: ${row.daysRemaining ?? ''} días
+🗓 Compra: ${formatDateMsg(row.startAt)}
+🗓 Vencimiento: ${formatDateMsg(row.endAt)}`
 
               const onClickWhatsAppClient = () => {
                 const phoneRaw = row.clientPhone ?? ''
@@ -291,7 +321,18 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                   <td><div className="row-inner">{formatDateLocal(row.endAt)}</div></td>
                   <td><div className="row-inner">{row.daysRemaining ?? ''}</div></td>
                   <td><div className="row-inner">{formatPrice(row.refund)}</div></td>
-                  <td><div className="row-inner">{row.clientName || ''}</div></td>
+                  <td>
+  <div className="row-inner client-cell">
+    <span>{row.clientName || ''}</span>
+    <button
+      className="edit-phone-btn" // Reutilizamos el estilo del botón de edición
+      onClick={() => openEditName(row.id, row.clientName)}
+      title="Editar nombre"
+    >
+      <FaEdit />
+    </button>
+  </div>
+</td>
                   <td>
                     <div className="row-inner whatsapp-cell">
                       <button
@@ -302,6 +343,15 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                         <FaWhatsapp />
                       </button>
                       <div className="wa-number">{row.clientPhone || ''}</div>
+
+                      {/* NUEVO BOTÓN DE EDICIÓN */}
+                      <button
+                        className="edit-phone-btn"
+                        onClick={() => openEditPhone(row.id, row.clientPhone)}
+                        title="Editar teléfono"
+                      >
+                        <FaEdit />
+                      </button>
                     </div>
                   </td>
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
@@ -364,6 +414,26 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
           }}
         />
       )}
+
+      {showEditPhoneModal && (
+        <EditPhoneModal
+          isOpen={showEditPhoneModal}
+          onClose={() => setShowEditPhoneModal(false)}
+          stockId={phoneToEdit.id}
+          currentPhone={phoneToEdit.currentPhone}
+          onSuccess={() => fetchData(page)} // Recarga la tabla para ver el cambio
+        />
+      )}
+
+      {showEditNameModal && (
+  <EditNameModal
+    isOpen={showEditNameModal}
+    onClose={() => setShowEditNameModal(false)}
+    stockId={nameToEdit.id}
+    currentName={nameToEdit.currentName}
+    onSuccess={() => fetchData(page)} // Recarga la tabla tras el cambio [cite: 15, 59]
+  />
+)}
 
       {showRenewModal && (
         <RenewModal
@@ -433,6 +503,20 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
         }
         .pagination-extra input { width:80px; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
         color:#fff; }
+        .edit-phone-btn {
+  background: none;
+  border: none;
+  color: #9fb4c8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  transition: color 0.2s;
+}
+.edit-phone-btn:hover {
+  color: #3b82f6;
+}
       `}</style>
     </div>
   )

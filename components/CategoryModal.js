@@ -31,27 +31,49 @@ export default function CategoryModal({
   const title = mode === 'create' ? '📝 Nueva categoría' : '✏️ Editar categoría'
   const submitLabel = mode === 'create' ? 'Crear' : 'Modificar'
 
-  const handleImageUpload = async (file) => {
-    setUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
+const handleImageUpload = async (file) => {
+  if (!file) return;
 
-    try {
-      const res = await fetch(CLOUDINARY_URL, {
-        method: 'POST',
-        body: formData
-      })
-      const data = await res.json()
-      if (data.secure_url) {
-        setCategory(prev => ({ ...prev, imageUrl: data.secure_url }))
-      }
-    } catch (err) {
-      console.error('Error subiendo imagen a Cloudinary:', err)
-    } finally {
-      setUploading(false)
-    }
+  // 1. Validar que sea una imagen estática (Bloquea Videos y GIFs)
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    alert("❌ Error: Solo se permiten imágenes estáticas (JPG, PNG, WEBP). Los GIFs y Videos no están permitidos.");
+    return;
   }
+
+  // 2. Validar el peso máximo (Ejemplo: 2MB)
+  const maxSize = 2 * 1024 * 1024; // 2 Megabytes
+  if (file.size > maxSize) {
+    alert("❌ Error: La imagen es muy pesada. El máximo permitido es 2MB.");
+    return;
+  }
+
+  setUploading(true);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  try {
+    const res = await fetch(CLOUDINARY_URL, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (data.secure_url) {
+      // Guardamos la URL en el estado de la categoría
+      setCategory({ ...category, imageUrl: data.secure_url });
+    } else {
+      alert("Hubo un error al obtener la URL de la imagen.");
+    }
+  } catch (err) {
+    console.error("Error subiendo imagen:", err);
+    alert("Error de conexión al subir la imagen.");
+  } finally {
+    setUploading(false);
+  }
+};
     return ReactDOM.createPortal(
     <div
       style={{
@@ -126,7 +148,7 @@ export default function CategoryModal({
           />
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg, image/png, image/webp"
             onChange={(e) => {
               const file = e.target.files[0]
               if (file) handleImageUpload(file)
@@ -140,12 +162,15 @@ export default function CategoryModal({
           />
           {uploading && <div style={{ fontSize: '0.9rem', color: '#555' }}>Subiendo imagen…</div>}
           {category.imageUrl && (
-            <img
-              src={category.imageUrl}
-              alt="Preview"
-              style={{ width: '100%', borderRadius: '6px', marginTop: '0.5rem' }}
-            />
-          )}
+  <img
+    src={category.imageUrl.includes('cloudinary.com') 
+      ? category.imageUrl.replace('/upload/', '/upload/f_auto,q_auto,w_400/') 
+      : category.imageUrl
+    }
+    alt="Preview"
+    style={{ width: '100%', borderRadius: '6px', marginTop: '0.5rem' }}
+  />
+)}
         </div>
 
         <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>

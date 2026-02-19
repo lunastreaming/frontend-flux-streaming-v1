@@ -1,8 +1,7 @@
-// pages/supplier/stocks.js
 import { useState, useEffect } from 'react'
 import StockModal from '../../components/StockModal'
 import ConfirmModal from '../../components/ConfirmModal'
-import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt } from 'react-icons/fa'
+import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt, FaCheckDouble, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([])
@@ -10,287 +9,163 @@ export default function StocksPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingStock, setEditingStock] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmPayload, setConfirmPayload] = useState({ id: null, name: '', action: '', stock: null })
+  const [confirmPayload, setConfirmPayload] = useState({ id: null, name: '', action: '', stock: null, customMessage: '' })
   const [confirmLoading, setConfirmLoading] = useState(false)
 
-  // Paginación
+  // Paginación 
   const [page, setPage] = useState(0)
-  const [size] = useState(50) // 50 por página
+  const [size] = useState(50) 
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
 
+  const [selectedIds, setSelectedIds] = useState([])
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    fetchStocks(page)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page])
+    fetchStocks(page, search)
+    setSelectedIds([]) 
+  }, [page, search])
 
   function getAuthHeaders() {
     const token = localStorage.getItem('accessToken')
-    if (!token) return null
-    return { Authorization: `Bearer ${token}` }
+    return token ? { Authorization: `Bearer ${token}` } : null 
   }
 
   function normalizeStock(raw) {
     if (!raw) return null
-    const s = raw?.stock ?? raw
-    const profileNumber =
-      s?.numeroPerfil ?? s?.profileNumber ?? s?.numberProfile ?? s?.numero_perfil ?? null
-
-    const statusString = s?.status ?? (typeof s?.published !== 'undefined' ? (s.published ? 'active' : 'inactive') : null)
-    const publishedBool = typeof s?.published !== 'undefined' ? s.published : (statusString ? statusString.toLowerCase() === 'active' : false)
-
+    const s = raw?.stock ?? raw 
     return {
-      id: s?.id ?? raw?.id ?? null,
-      productId: s?.productId ?? raw?.productId ?? s?.product_id ?? raw?.product_id ?? null,
+      id: s?.id ?? raw?.id ?? null, 
       productName: s?.productName ?? raw?.productName ?? raw?.product?.name ?? s?.product?.name ?? null,
-      username: s?.username ?? raw?.username ?? null,
-      password: s?.password ?? raw?.password ?? null,
+      username: s?.username ?? raw?.username ?? null, 
+      password: s?.password ?? raw?.password ?? null, 
       url: s?.url ?? raw?.url ?? null,
-      tipo: s?.tipo ?? raw?.tipo ?? null,
-      profileNumber: profileNumber,
+      profileNumber: s?.numeroPerfil ?? s?.profileNumber ?? s?.numberProfile ?? s?.numero_perfil ?? null,
       pin: s?.pin ?? raw?.pin ?? null,
-      status: statusString,
-      published: publishedBool,
+      status: (s?.status ?? (s?.published ? 'active' : 'inactive')).toLowerCase(),
       raw: raw
     }
   }
 
-  const fetchStocks = async (p = 0) => {
-    try {
-      const headers = getAuthHeaders()
-      if (!headers) return
+  const fetchStocks = async (p = 0, searchTerm = '') => {
+  try {
+    const headers = getAuthHeaders()
+    if (!headers) return
+    
+    // Añade el parámetro &search= a la URL
+    const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}&search=${searchTerm}`, { headers })
+    const payload = await res.json()
+    
+    const content = Array.isArray(payload?.content) ? payload.content : []
+    
+    setStocks(content.map(normalizeStock).filter(Boolean))
+    setPage(Number(payload?.number ?? p))
+    setTotalElements(Number(payload?.totalElements ?? content.length))
+    setTotalPages(Number(payload?.totalPages ?? 1))
+  } catch (err) {
+    console.error('Error al cargar stocks:', err)
+  }
+}
 
-      const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}`, { headers })
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        console.error('[fetchStocks] fetch failed', res.status, txt)
-        throw new Error(`Error ${res.status} ${txt}`)
-      }
+const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inactive')
 
-      const text = await res.text()
-      const payload = text ? JSON.parse(text) : {}
-
-      const content = Array.isArray(payload?.content) ? payload.content : (Array.isArray(payload) ? payload : [])
-      const normalized = content.map(item => normalizeStock(item)).filter(Boolean)
-
-      setStocks(normalized)
-      setPage(Number(payload?.number ?? p))
-      setTotalElements(Number(payload?.totalElements ?? payload?.total ?? content.length))
-      const totalPagesCalc = Math.ceil((payload?.totalElements ?? content.length) / size) || 1
-      setTotalPages(Number(payload?.totalPages ?? totalPagesCalc))
-    } catch (err) {
-      console.error('Error al cargar stocks:', err)
-      setStocks([])
-      setTotalElements(0)
-      setTotalPages(1)
-    }
+  const selectableOnPage = filtered.filter(s => s.status === 'inactive')
+  const handleSelectAll = (e) => setSelectedIds(e.target.checked ? selectableOnPage.map(s => s.id) : [])
+  const handleSelectOne = (id, status) => {
+    if (status !== 'inactive') return
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
 
-  const filtered = stocks.filter(s => {
-    const status = (s.status ?? '').toLowerCase()
-    const isVisible = status === 'active' || status === 'inactive'
-    const productName = (s.productName ?? s.name ?? '').toString().toLowerCase()
-    return isVisible && productName.includes(search.toLowerCase())
-  })
-
-  
-  const confirmToggleStatus = (stock) => {
-    const currentStatus = (stock?.status ?? (stock.published ? 'active' : 'inactive'))?.toString().toLowerCase()
-    const target = currentStatus === 'active' ? 'inactive' : 'active'
+  const triggerBulkActivate = () => {
     setConfirmPayload({
-      id: stock.id,
-      name: stock.productName ?? stock.name ?? '',
-      action: 'toggleStatus',
-      stock: { ...stock, targetStatus: target }
+      action: 'bulkActivate',
+      customMessage: `Has seleccionado ${selectedIds.length} ítems. Al activarlos, estarán disponibles para la venta. ¿Deseas continuar?`
     })
     setConfirmOpen(true)
   }
 
-  const confirmRemove = (stock) => {
+  const triggerToggleStatus = (s) => {
+    const target = s.status === 'active' ? 'inactive' : 'active' 
     setConfirmPayload({
-      id: stock.id,
-      name: stock.productName ?? stock.name ?? '',
-      action: 'remove',
-      stock
+      id: s.id, name: s.productName, action: 'toggleStatus', stock: { ...s, targetStatus: target },
+      customMessage: `¿Seguro que quieres cambiar el estado de "${s.productName}" a ${target.toUpperCase()}?`
     })
     setConfirmOpen(true)
   }
 
   const handleConfirm = async () => {
-    if (!confirmPayload || !confirmPayload.id) {
-      setConfirmOpen(false)
-      return
-    }
-
     setConfirmLoading(true)
-
     try {
       const headers = getAuthHeaders()
-      if (!headers) {
-        alert('No autorizado. Inicia sesión nuevamente.')
-        setConfirmLoading(false)
-        setConfirmOpen(false)
-        return
-      }
-
-      if (confirmPayload.action === 'toggleStatus') {
-        const stock = confirmPayload.stock
-        const targetStatus = stock.targetStatus || (stock.status === 'active' ? 'inactive' : 'active')
-
-        const res = await fetch(`${BASE_URL}/api/stocks/${confirmPayload.id}/status`, {
+      if (confirmPayload.action === 'bulkActivate') {
+        await fetch(`${BASE_URL}/api/stocks/bulk-activate`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...headers
-          },
-          body: JSON.stringify({ status: targetStatus })
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({ ids: selectedIds })
         })
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => '')
-          console.error('[handleConfirm][toggleStatus] failed', res.status, txt)
-          throw new Error(`Error ${res.status} ${txt}`)
-        }
-
-        const updated = await res.json()
-        const norm = normalizeStock(updated) ?? updated
-        setStocks(prev => prev.map(s => s.id === (norm.id ?? updated.id) ? norm : s))
-
+        setSelectedIds([])
+      } else if (confirmPayload.action === 'toggleStatus') {
+        await fetch(`${BASE_URL}/api/stocks/${confirmPayload.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({ status: confirmPayload.stock.targetStatus })
+        })
       } else if (confirmPayload.action === 'remove') {
-        const res = await fetch(`${BASE_URL}/api/stocks/remove/${confirmPayload.id}`, {
-          method: 'DELETE',
-          headers: {
-            ...headers
-          }
-        })
-        if (!res.ok) {
-          const txt = await res.text().catch(() => '')
-          console.error('[handleConfirm][remove] failed', res.status, txt)
-          throw new Error(`Error ${res.status} ${txt}`)
-        }
-        setStocks(prev => prev.filter(s => s.id !== confirmPayload.id))
+        await fetch(`${BASE_URL}/api/stocks/remove/${confirmPayload.id}`, { method: 'DELETE', headers })
       }
-
-    } catch (err) {
-      console.error('Error en acción confirmada:', err)
-      alert('No se pudo completar la acción: ' + (err.message || err))
-    } finally {
-      setConfirmLoading(false)
-      setConfirmOpen(false)
-      setConfirmPayload({ id: null, name: '', action: '', stock: null })
+      fetchStocks(page)
+    } catch (err) { alert(err.message) }
+    finally { 
+      setConfirmLoading(false);
+      setConfirmOpen(false) 
     }
   }
 
-  const handleCancelConfirm = () => {
-    setConfirmOpen(false)
-    setConfirmPayload({ id: null, name: '', action: '', stock: null })
-  }
-
-  const handleEdit = (stock) => {
-    setEditingStock(stock)
-    setShowModal(true)
-  }
-
-  const handleModalSuccess = (createdOrUpdated) => {
-    if (!createdOrUpdated) {
-      setShowModal(false)
-      setEditingStock(null)
-      return
-    }
-
-    if (Array.isArray(createdOrUpdated)) {
-      const normalized = createdOrUpdated.map(item => normalizeStock(item) ?? item)
-      setStocks(prev => [...normalized, ...prev])
-    } else {
-      const normalizedItem = normalizeStock(createdOrUpdated) ?? createdOrUpdated
-      setStocks(prev => {
-        const exists = prev.some(s => s.id === normalizedItem.id)
-        if (exists) {
-          return prev.map(s => s.id === normalizedItem.id ? normalizedItem : s)
-        }
-        return [normalizedItem, ...prev]
-      })
-    }
-
-    setShowModal(false)
-    setEditingStock(null)
-  }
-
-  const confirmMessage = () => {
-    if (!confirmPayload) return ''
-    if (confirmPayload.action === 'toggleStatus') {
-      const target = confirmPayload.stock?.targetStatus ?? 'active'
-      return `¿Seguro que quieres cambiar el estado de “${confirmPayload.name}” a ${target.toUpperCase()}?`
-    }
-    if (confirmPayload.action === 'remove') {
-      return `¿Seguro que quieres eliminar el stock “${confirmPayload.name}”? Esta acción es irreversible.`
-    }
-    return ''
-  }
-
-  const confirmButtonText = () => {
-    if (!confirmPayload) return 'Confirmar'
-    if (confirmPayload.action === 'toggleStatus') {
-      return confirmPayload.stock?.targetStatus === 'active' ? 'Publicar' : 'Dejar de publicar'
-    }
-    if (confirmPayload.action === 'remove') return 'Eliminar'
-    return 'Confirmar'
-  }
-
-  const displayUrl = (rawUrl, max = 48) => {
-    if (!rawUrl) return ''
-    const s = String(rawUrl)
-    if (s.length <= max) return s
-    const start = s.slice(0, Math.floor(max * 0.6))
-    const end = s.slice(-Math.floor(max * 0.4))
-    return `${start}…${end}`
-  }
+  const displayUrl = (u) => u ? (u.length > 48 ? u.substring(0, 28) + '…' + u.slice(-16) : u) : '' 
 
   return (
     <div className="min-h-screen text-white font-inter">
       <main className="px-6 py-10 max-w-7xl mx-auto">
-        <div className="header-row">
+        <div className="header-row"> 
           <div className="search-bar">
             <FaSearch className="search-icon-inline" />
-            <input
-              type="text"
-              placeholder="Buscar stock…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="search-input-inline"
-            />
+            <input type="text" placeholder="Buscar stock…" value={search} onChange={e => setSearch(e.target.value)} className="search-input-inline" /> 
           </div>
-          <button className="btn-primary" onClick={() => { setEditingStock(null); setShowModal(true) }}>
-            <FaPlus className="btn-icon" />
-            <span className="btn-text">AGREGAR STOCK</span>
-          </button>
+          <div className="header-actions">
+            {selectedIds.length > 0 && (
+              <button className="btn-bulk" onClick={triggerBulkActivate}>
+                <FaCheckDouble className="btn-icon" />
+                <span className="btn-text">ACTIVAR ({selectedIds.length})</span>
+              </button>
+            )}
+            <button className="btn-primary" onClick={() => { setEditingStock(null); setShowModal(true) }}>
+              <FaPlus className="btn-icon" />
+              <span className="btn-text">AGREGAR STOCK</span>
+            </button>
+          </div>
         </div>
 
-        <StockModal
-          visible={showModal}
-          onClose={() => { setShowModal(false); setEditingStock(null) }}
-          onSuccess={handleModalSuccess}
-          initialData={editingStock}
-        />
+        {/* --- PAGINACIÓN SUPERIOR --- */}
+        <div className="pagination-wrapper" style={{ marginBottom: '16px' }}>
+          <div className="pagination-info">
+            Mostrando <b>{stocks.length}</b> de <b>{totalElements}</b> registros
+          </div>
+          <div className="pagination-controls">
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.max(0, prev - 1))} disabled={page === 0}>
+              <FaChevronLeft /> Anterior
+            </button>
+            <span className="page-indicator">Página <b>{page + 1}</b> de <b>{totalPages}</b></span>
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))} disabled={page >= totalPages - 1}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
+        </div>
 
-        <div className="table-wrapper">
-          <table>
-            <colgroup>
-              <col style={{ width: '40px' }} />
-              <col />
-              <col style={{ width: '160px' }} />
-              <col style={{ width: '140px' }} />
-              <col />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '80px' }} />
-              <col style={{ width: '140px' }} />
-              <col style={{ width: '160px' }} />
-            </colgroup>
-
+        <div className="table-wrapper"> 
+          <table> 
             <thead>
               <tr className="thead-row">
+                <th style={{ width: '45px' }}><input type="checkbox" onChange={handleSelectAll} checked={selectableOnPage.length > 0 && selectedIds.length === selectableOnPage.length} disabled={selectableOnPage.length === 0}/></th>
                 <th>#</th>
                 <th>Nombre</th>
                 <th>Usuario</th>
@@ -302,79 +177,32 @@ export default function StocksPage() {
                 <th>Config</th>
               </tr>
             </thead>
-
             <tbody>
               {filtered.map((s, i) => (
                 <tr key={s.id} className="body-row">
-                  <td>
-                    <div className="row-inner">{i + 1}</div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner td-name">{s.productName ?? s.name ?? ''}</div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner">{s.username ?? ''}</div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner" style={{ fontFamily: 'monospace', gap: 8 }}>
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {s.password ?? ''}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner url-cell">
-                      {s.url ? (
-                        <span className="url-text" title={s.url}>
-                          {displayUrl(s.url, 48)}
-                        </span>
-                      ) : (
-                        <span className="url-empty" aria-hidden="true"></span>
-                      )}
-                    </div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner">{s.profileNumber ?? ''}</div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner">{s.pin ?? ''}</div>
-                  </td>
-
-                  <td>
-                    <div className="row-inner">
-                      <span className={`status-badge ${(s.status ?? (s.published ? 'active' : 'inactive')).toLowerCase()}`}>
-                        {(s.status ?? (s.published ? 'active' : 'inactive')).toUpperCase()}
-                      </span>
-                    </div>
-                  </td>
-
+                  <td><div className="row-inner"><input type="checkbox" checked={selectedIds.includes(s.id)} onChange={() => handleSelectOne(s.id, s.status)} disabled={s.status !== 'inactive'} /></div></td>
+                  <td><div className="row-inner">{(page * size) + (i + 1)}</div></td>
+                  <td><div className="row-inner td-name">{s.productName}</div></td>
+                  <td><div className="row-inner">{s.username}</div></td>
+                  <td><div className="row-inner" style={{fontFamily:'monospace'}}>{s.password}</div></td>
+                  <td><div className="row-inner url-text">{displayUrl(s.url)}</div></td> 
+                  <td><div className="row-inner">{s.profileNumber || '-'}</div></td> 
+                  <td><div className="row-inner">{s.pin || '-'}</div></td> 
+                  <td><div className="row-inner"><span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span></div></td> 
                   <td>
                     <div className="row-inner actions">
-                      {!(s.status ?? (s.published ? 'active' : 'inactive')) || (s.status ?? '').toLowerCase() !== 'active' ? (
-                        <button className="btn-action" title="Publicar" onClick={() => confirmToggleStatus(s)}>
-                          <FaUpload />
-                        </button>
-                      ) : (
-                        <button className="btn-action" title="Despublicar" onClick={() => confirmToggleStatus(s)}>
-                          <FaRedoAlt />
-                        </button>
-                      )}
-                      <button className="btn-edit" title="Editar" onClick={() => handleEdit(s)}>
+                      <button className="btn-action" onClick={() => triggerToggleStatus(s)}>
+                        {s.status === 'active' ? <FaRedoAlt /> : <FaUpload />} 
+                      </button>
+                      <button className="btn-edit" onClick={() => { setEditingStock(s); setShowModal(true); }}>
                         <FaEdit />
                       </button>
-
-                      {(s.status ?? '').toLowerCase() === 'inactive' && (
-                        <button className="btn-delete" title="Eliminar" onClick={() => confirmRemove(s)}>
-                          <FaTrashAlt />
-                        </button>
+                      {s.status === 'inactive' && (
+                        <button className="btn-delete" onClick={() => {
+                          setConfirmPayload({ id: s.id, name: s.productName, action: 'remove', customMessage: `¿Eliminar "${s.productName}" permanentemente?` });
+                          setConfirmOpen(true);
+                        }}><FaTrashAlt /></button>
                       )}
-
                     </div>
                   </td>
                 </tr>
@@ -383,268 +211,71 @@ export default function StocksPage() {
           </table>
         </div>
 
-        {/* Paginación */}
-        <div className="pager-row">
-          <div className="pager-info">
-            Mostrando {filtered.length} de {totalElements}
+        {/* --- PAGINACIÓN INFERIOR --- */}
+        <div className="pagination-wrapper" style={{ marginTop: '24px' }}>
+          <div className="pagination-info">
+            Mostrando <b>{stocks.length}</b> de <b>{totalElements}</b> registros
           </div>
-          <div className="pager-controls">
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              className="pager-btn"
-              disabled={page <= 0}
-            >
-              Anterior
+          <div className="pagination-controls">
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.max(0, prev - 1))} disabled={page === 0}>
+              <FaChevronLeft /> Anterior
             </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              className="pager-btn"
-              disabled={page >= totalPages - 1}
-            >
-              Siguiente
+            <span className="page-indicator">Página <b>{page + 1}</b> de <b>{totalPages}</b></span>
+            <button className="btn-pagination" onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))} disabled={page >= totalPages - 1}>
+              Siguiente <FaChevronRight />
             </button>
           </div>
         </div>
 
-        <ConfirmModal
-          open={confirmOpen}
-          title={confirmPayload.action === 'remove' ? 'Confirmar eliminación' : 'Confirmar cambio de estado'}
-          message={confirmMessage()}
-          confirmText={confirmButtonText()}
-          cancelText="Cancelar"
-          onConfirm={handleConfirm}
-          onCancel={handleCancelConfirm}
-          loading={confirmLoading}
+        <ConfirmModal 
+          open={confirmOpen} 
+          title="Confirmar Acción" 
+          message={confirmPayload.customMessage} 
+          onConfirm={handleConfirm} 
+          onCancel={() => setConfirmOpen(false)} 
+          loading={confirmLoading} 
         />
+        <StockModal visible={showModal} onClose={() => setShowModal(false)} onSuccess={() => fetchStocks(page)} initialData={editingStock} />
       </main>
 
       <style jsx>{`
-        .header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          margin-bottom: 32px;
-        }
-
-        .search-bar {
-          display: flex;
-          align-items: center;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px;
-          padding: 0 12px;
-          height: 38px;
-          max-width: 420px;
-          width: 100%;
-          margin: 0; /* Ajustado */
-        }
-
-        .search-icon-inline { color: #ccc; font-size: 0.85rem; margin-right: 8px; }
-
-        .search-input-inline {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: #fff;
-          font-size: 0.85rem;
-          outline: none;
-        }
-
-        .btn-primary {
-          height: 38px;
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          padding: 0 16px;
-          background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #22c55e 100%);
-          color: #0d0d0d;
-          border: none;
-          border-radius: 10px;
-          font-weight: 800;
-          font-size: 0.85rem;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          box-shadow: 0 12px 28px rgba(34,211,238,0.06), 0 6px 12px rgba(0,0,0,0.35);
-          cursor: pointer;
-        }
-
-        .btn-icon { width: 18px; height: 18px; color: inherit; }
-        .btn-text { font-weight: 800; font-size: 0.86rem; }
-
-        .table-wrapper {
-          overflow-x: auto;
-          overflow-y: auto; /* Permite scroll vertical si la tabla es muy alta */
-          max-height: calc(100vh - 240px); /* Límite de altura para scroll vertical */
-          background: rgba(22,22,22,0.6);
-          border: 1px solid rgba(255,255,255,0.08);
-          backdrop-filter: blur(12px);
-          border-radius: 12px;
-          padding: 16px;
-          box-shadow: 0 12px 24px rgba(0,0,0,0.4);
-        }
-
-        /* Estilo para el scrollbar horizontal (Scroll Moderno) */
-        .table-wrapper::-webkit-scrollbar { height: 12px; width: 10px; }
-        .table-wrapper::-webkit-scrollbar-track { background: transparent; }
-        .table-wrapper::-webkit-scrollbar-thumb {
-          /* Usar un degradado para el look moderno */
-          background: linear-gradient(90deg, #06b6d4, #8b5cf6, #22c55e); 
-          border-radius: 999px;
-          /* El borde coincide con el fondo del wrapper para crear un efecto de margen */
-          border: 3px solid rgba(22,22,22,0.6); 
-        }
-        /* Fallback para Firefox */
-        .table-wrapper { 
-          scrollbar-width: thin; 
-          scrollbar-color: #8b5cf6 transparent; 
-        }
-
-        table { 
-          width: 100%; 
-          border-collapse: separate; 
-          border-spacing: 0 12px; 
-          color: #e1e1e1;
-          table-layout: auto; /* Cambiado de fixed a auto */
-          min-width: 1300px; /* Ancho mínimo para forzar el scroll horizontal */
-        }
-
-        thead tr {
-          background: rgba(30,30,30,0.8);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          color: #cfcfcf;
-          font-size: 0.72rem;
-          border-radius: 10px;
-        }
-
-        thead th {
-          padding: 10px;
-          text-align: left;
-          font-weight: 700;
-          vertical-align: middle;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        td {
-          padding: 0;
-          vertical-align: middle;
-          overflow: hidden;
-        }
-
-        .row-inner {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px;
-          background-color: rgba(22,22,22,0.6);
-          border-radius: 12px;
-          box-shadow: 0 6px 14px rgba(0,0,0,0.16) inset;
-          min-height: 36px;
-        }
-
-        .td-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight:700; color:#fff; }
-
-        .status-badge {
-          display: inline-block;
-          padding: 6px 10px;
-          border-radius: 999px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
+        .header-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 32px; }
+        .search-bar { flex: 1; display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0 12px; height: 38px; max-width: 420px; }
+        .search-input-inline { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.85rem; outline: none; } 
+        .header-actions { display: flex; gap: 12px; } 
+        .btn-primary, .btn-bulk { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; } 
+        .btn-primary { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #22c55e 100%); color: #000; } 
+        .btn-bulk { background: #22c55e; color: #000; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); } 
+        .btn-primary:hover, .btn-bulk:hover { transform: scale(1.02); } 
+        .table-wrapper { overflow-x: auto; background: rgba(22,22,22,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; backdrop-filter: blur(12px); } 
+        table { width: 100%; border-collapse: separate; border-spacing: 0 12px; min-width: 1300px; }
+        thead th { padding: 10px; text-align: left; color: #cfcfcf; font-size: 0.72rem; text-transform: uppercase; }
+        .row-inner { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(22,22,22,0.6); border-radius: 12px; min-height: 36px; color: #fff; font-size: 0.85rem; }
+        .td-name { font-weight: 700; color: #fff; } 
+        .url-text { color: #ccc; } 
+        .status-badge { padding: 6px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
         .status-badge.active { background: rgba(34,197,94,0.12); color: #4ade80; }
         .status-badge.inactive { background: rgba(239,68,68,0.12); color: #ef4444; }
-
-        .actions { display: flex; gap: 8px; justify-content: center; align-items: center; }
-
-        .btn-action, .btn-edit, .btn-delete {
-          padding: 8px;
-          border-radius: 8px;
-          min-width: 36px;
-          height: 36px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          border: none;
-          font-weight: 700;
-        }
-
-        .btn-action { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: #0d0d0d; }
-        .btn-edit { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: #0d0d0d; }
-        .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); color: #fff; }
-
-        .url-cell { min-width: 0; }
-        .url-text {
-          color: inherit;
-          display: inline-block;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .url-empty { display: inline-block; width: 0; height: 0; }
-
-        /* Paginación */
-        .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
-        .pager-info { color:#cbd5e1; }
-        .pager-controls { display:flex; gap:8px; }
-        .pager-btn {
-          padding:8px 12px;
-          border-radius:8px;
-          border:none;
-          background:rgba(255,255,255,0.08);
-          color:#e1e1e1;
-          cursor:pointer;
-          font-weight:700;
-        }
-        .pager-btn:disabled { opacity:0.45; cursor:not-allowed; }
-
-
-        /* --- AJUSTES PARA TABLET (MAX-WIDTH: 980PX) --- */
-        @media (max-width: 980px) {
-          /* Ajuste de anchos de columna */
-          col:nth-child(3) { width: 120px; }
-          col:nth-child(4) { width: 120px; }
-          col:nth-child(6) { width: 80px; }
-          col:nth-child(7) { width: 64px; }
-
-          /* Adaptar Header para Tablet */
-          .header-row { flex-wrap: wrap; }
-          .search-bar { max-width: none; }
-          .btn-primary { width: 100%; margin-top: 12px; }
-        }
-
-        /* --- AJUSTES PARA VISTA MÓVIL (MAX-WIDTH: 640PX) --- */
+        .actions { display: flex; gap: 8px; } 
+        .btn-action, .btn-edit, .btn-delete { padding: 8px; border-radius: 8px; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; } 
+        .btn-action { background: linear-gradient(135deg, #06b6d4, #8b5cf6); color: #000; } 
+        .btn-edit { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
+        .btn-delete { background: linear-gradient(135deg, #ef4444, #f87171); color: #fff; }
+        .pagination-wrapper { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .pagination-info { font-size: 0.85rem; color: #999; }
+        .pagination-info b { color: #fff; }
+        .pagination-controls { display: flex; align-items: center; gap: 16px; }
+        .btn-pagination { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+        .btn-pagination:hover:not(:disabled) { background: rgba(255,255,255,0.12); border-color: #8b5cf6; }
+        .btn-pagination:disabled { opacity: 0.3; cursor: not-allowed; }
+        .page-indicator { font-size: 0.85rem; color: #999; }
+        .page-indicator b { color: #8b5cf6; }
         @media (max-width: 640px) {
-          /* 1. Adaptabilidad del Encabezado */
-          .header-row { 
-            flex-wrap: nowrap;
-            gap: 12px; 
-            align-items: center; 
-          }
-          .search-bar { 
-            flex: 1; 
-            width: auto;
-            margin: 0; 
-          }
-          .btn-primary { 
-            width: auto; 
-            flex-shrink: 0; 
-            margin-top: 0;
-            padding: 0 10px; /* Reducir padding */
-          }
-          .btn-primary .btn-text {
-            display: none; /* Ocultar el texto del botón en móvil */
-          }
-
-          /* 2. Scroll Horizontal: Quitar estilos de apilamiento */
-          /* Importante: Mantenemos el display: table/tr/td por defecto y el scroll-x del wrapper */
-          .table-wrapper { padding: 8px; } /* Reducir padding para más espacio */
+          .btn-text { display: none; } 
+          .btn-primary, .btn-bulk { padding: 0; width: 38px; justify-content: center; border-radius: 10px; }
+          .header-row { flex-wrap: nowrap; gap: 8px; } 
+          .search-bar { max-width: none; } 
+          .pagination-wrapper { flex-direction: column; gap: 16px; text-align: center; }
         }
       `}</style>
     </div>

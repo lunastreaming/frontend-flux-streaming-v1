@@ -89,7 +89,20 @@ export default function PublishModal({
         throw new Error(msg)
       }
 
-      const updated = text ? JSON.parse(text) : null
+      // Dentro de handleConfirm, después de JSON.parse(text)
+const updated = text ? JSON.parse(text) : null;
+
+// Si el backend devolvió el nuevo ProductResponse, extraemos el balance
+if (updated?.product) {
+    // Buscamos el balance dentro del DTO del producto si existe allí
+    setBalance(updated.product.providerBalance ?? updated.product.balance ?? balance);
+}
+
+if (typeof onPublished === 'function') {
+    // IMPORTANTE: Enviamos updated.product para que la tabla/fila 
+    // reciba el DTO que espera y no el objeto envoltorio.
+    onPublished(updated?.product ?? updated ?? product);
+}
 
       // actualizar balance si backend lo devuelve
       setBalance(updated?.providerBalance ?? updated?.userBalance ?? updated?.balance ?? balance)

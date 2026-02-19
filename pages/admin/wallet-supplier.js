@@ -266,7 +266,16 @@ export default function WalletSupplierPending() {
                   </div>
 
                   <div className="card-right">
-                    <div className="amount">{formatItemAmount(item)}</div>
+                    <div className="amount-container">
+    <div className="amount">{formatItemAmount(item)}</div>
+    
+    {/* Nuevo: Mostrar monto en soles si existe */}
+    {item.amountSoles !== undefined && item.amountSoles !== null && (
+      <div className="amount-soles">
+        S/ {parseToNumber(item.amountSoles).toFixed(2)}
+      </div>
+    )}
+  </div>
 
                     <div className="actions">
                       <button
@@ -362,23 +371,57 @@ export default function WalletSupplierPending() {
         }
 
         .card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          padding: 14px;
-          border-radius: 12px;
-          background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-          border: 1px solid rgba(255,255,255,0.04);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-        }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+/* Agrega este Media Query o modifica el existente */
+@media (max-width: 640px) {
+  .card {
+    flex-direction: column; /* Apila el contenido verticalmente */
+    align-items: flex-start; /* Alinea todo a la izquierda */
+  }
+  
+  .card-right {
+    width: 100%; /* Ocupa todo el ancho */
+    justify-content: space-between; /* Separa el monto de los botones */
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05); /* Separador visual */
+  }
+}
 
         .card-left { display:flex; flex-direction:column; gap:6px; }
         .user { font-weight:800; color:#fff; }
         .meta { color:#bdbdbd; font-size:0.9rem; text-transform: none; }
         .date { color:#9aa0a6; font-size:0.8rem; }
 
-        .card-right { display:flex; align-items:center; gap:12px; }
+        .card-right { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .amount-container {
+    align-items: flex-start; /* En móvil queda mejor a la izquierda */
+  }
+}
+
+/* Estilo para el nuevo monto en soles */
+.amount-soles {
+  font-size: 0.85rem;
+  color: #9aa0a6; /* Gris, menos resaltado que el blanco */
+  font-weight: 400; /* No negrita */
+  margin-top: 2px;
+}
         .amount { font-weight:900; color:#fff; font-size:1.05rem; min-width:120px; text-align:right; }
 
         .actions { display:flex; gap:8px; align-items:center; }

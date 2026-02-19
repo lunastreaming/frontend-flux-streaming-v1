@@ -59,6 +59,27 @@ function SingleValueWithFlag(props) {
   )
 }
 
+
+const termsButtonStyle = {
+  background: 'linear-gradient(90deg, #F97316 0%, #FBBF24 100%)',
+  color: '#021018',
+  border: 'none',
+  borderRadius: '10px',
+  padding: '8px 16px', // Padding más ajustado para que no sea gigante
+  fontSize: '13px',
+  fontWeight: '700',
+  cursor: 'pointer',
+  display: 'inline-flex', // Cambiado de 'flex' a 'inline-flex'
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.3s ease',
+  marginTop: '15px',
+  width: 'fit-content', // <--- ESTO hace que no ocupe todo el espacio
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  boxShadow: '0 4px 12px rgba(249, 115, 22, 0.2)',
+};
+
 const selectStyles = {
   control: (base) => ({
     ...base,
@@ -98,6 +119,9 @@ const selectStyles = {
 
 export default function PurchaseModal({ product, balance, onClose, onSuccess }) {
   const { ensureValidAccess } = useAuth()
+
+  // AÑADE ESTA LÍNEA AQUÍ PARA CORREGIR EL ERROR
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -428,9 +452,23 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
 
           {/* LÍNEA 1: Términos y condiciones (centrado) */}
           <div style={termsWrapper}>
-            <button onClick={() => setTermsOpen(true)} style={termsBtn} type="button">
-              Términos y condiciones
-            </button>
+            {/* Botón de Términos y Condiciones con estilo Naranja/Ámbar */}
+<button
+  type="button"
+  onClick={() => setTermsOpen(true)} 
+  style={termsButtonStyle}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = 'translateY(-2px)';
+    e.currentTarget.style.boxShadow = '0 6px 15px rgba(249, 115, 22, 0.4)';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = 'translateY(0)';
+    e.currentTarget.style.boxShadow = '0 4px 12px rgba(249, 115, 22, 0.2)';
+  }}
+>
+  <i className="fas fa-file-contract" style={{ marginRight: '8px' }}></i>
+  Leer Términos y Condiciones
+</button>
           </div>
 
           {/* LÍNEA 2: Cerrar (izq) y Confirmar (der) */}
@@ -458,9 +496,17 @@ export default function PurchaseModal({ product, balance, onClose, onSuccess }) 
         <div style={termsBackdrop} role="dialog" aria-modal="true" aria-labelledby="terms-title">
           <div style={termsCard}>
             <header style={termsHeader}>
-              <h3 id="terms-title" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Términos y condiciones</h3>
-              <button onClick={() => setTermsOpen(false)} aria-label="Cerrar términos" style={termsClose}>✕</button>
-            </header>
+  <h3 id="terms-title" style={{ 
+    margin: 0, 
+    fontSize: 18, 
+    fontWeight: 800, 
+    color: '#FBBF24', // Color Ámbar
+    textShadow: '0 0 10px rgba(249, 115, 22, 0.5)' // Brillo neón naranja
+  }}>
+    Términos y condiciones
+  </h3>
+  <button onClick={() => setTermsOpen(false)} aria-label="Cerrar términos" style={termsClose}>✕</button>
+</header>
 
             <div style={termsContent} className="custom-dark-scrollbar">
               {!hasAnyTerms ? (
