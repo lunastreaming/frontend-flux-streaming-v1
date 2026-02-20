@@ -5,7 +5,7 @@ import { FaTimes, FaCloudUploadAlt } from 'react-icons/fa'
 
 // Cloudinary config (ajusta si hace falta)
 const CLOUDINARY_UPLOAD_PRESET = 'streamingluna_unsigned'
-const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dgzmzsgi8/image/upload'
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dgxzaeuaq/image/upload'
 
 const initialForm = {
   name: '',

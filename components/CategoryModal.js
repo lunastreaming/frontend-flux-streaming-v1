@@ -14,7 +14,7 @@ export default function CategoryModal({
   const [uploading, setUploading] = useState(false)
 
   const CLOUDINARY_UPLOAD_PRESET = 'streamingluna_unsigned'
-  const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dgzmzsgi8/image/upload'
+  const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dgxzaeuaq/image/upload'
 
   useEffect(() => {
     setMounted(true)
