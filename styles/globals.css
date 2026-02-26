@@ -18,7 +18,7 @@ html {
     /* APLICA EL FONDO: Degradado sutil (0.3 a 0.7) + Tu imagen */
     background: 
       linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%), 
-      url('/background.png') center center no-repeat;
+      url('/background.jpeg') center center no-repeat;
     
     background-size: cover;
     background-attachment: fixed;

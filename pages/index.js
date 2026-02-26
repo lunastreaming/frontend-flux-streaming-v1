@@ -1584,7 +1584,7 @@ white-space: normal;
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
         body { 
-          /* CRUCIAL para ver el fondo global (background.png) */
+          /* CRUCIAL para ver el fondo global (background.jpeg) */
           background-color: transparent;
 margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: #D1D1D1;
         }
