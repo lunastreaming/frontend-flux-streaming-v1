@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="footer-content">
         <p className="footer-message">¿Necesitas ayuda? Escríbenos por WhatsApp</p>
         <a
-          href="https://wa.me/51902229594"
+          href="https://wa.me/51906844368"
           target="_blank"
           rel="noopener noreferrer"
           className="footer-icon"

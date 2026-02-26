@@ -37,7 +37,7 @@ export default function Carrusel() {
       <div className="media-frame">
         <video
           ref={videoRef}
-          src="/videos/intro.mp4"
+          src="/videos/INTRO.mp4"
           className="video-media"
           muted
           loop
