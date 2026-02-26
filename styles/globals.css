@@ -2,41 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * 1. Elemento HTML: Capa base de fondo. Aplica la imagen y el degradado.
- */
 html {
-    /* Estilos base */
+    /* Mantenemos la fuente en la raíz */
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     color: #e5e5e5;
-    min-height: 100vh;
+    
+    /* Cambiamos min-height por height: auto para permitir que el contenido crezca */
+    height: auto;
+    min-height: 100%; 
     width: 100%;
     margin: 0;
     padding: 0;
+    
+    /* Evita scroll horizontal pero PERMITE el vertical */
     overflow-x: hidden;
+    overflow-y: auto;
 
-    /* APLICA EL FONDO: Degradado sutil (0.3 a 0.7) + Tu imagen */
+    /* OPTIMIZACIÓN DE FONDO */
     background: 
       linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%), 
       url('/background.jpeg') center center no-repeat;
     
     background-size: cover;
+    /* attachment: fixed es pesado para móviles, pero si lo mantienes, 
+       asegúrate de que el body no tenga alturas raras */
     background-attachment: fixed;
 }
 
-/*
- * 2. Elemento BODY: Debe ser transparente para que se filtre el fondo HTML.
- */
 body {
-    /* CRUCIAL: Debe ser transparente. */
     background-color: transparent; 
-
-    /* Asegurar que se mantengan los estilos de layout */
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    color: #e5e5e5;
-    min-height: 100vh;
-    width: 100%;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
+    width: 100%;
+    
+    /* IMPORTANTE: Eliminamos min-height: 100vh del body si el contenido 
+       es dinámico para evitar que se bloquee el scroll 
+    */
+    min-height: 100%;
+    
+    /* Asegura que el scroll se comporte bien en iOS y Chrome */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* AÑADIR ESTO: 
+   A veces el contenedor principal de Next.js (__next) 
+   es el que bloquea el flujo si no se define bien.
+*/
+#__next {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }

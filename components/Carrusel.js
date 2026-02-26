@@ -5,12 +5,30 @@ export default function Carrusel() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // 1. Iniciamos la reproducción
-    if (videoRef.current) {
-      videoRef.current.muted = true;
-      videoRef.current.play().catch(() => {
-        // Fallo silencioso si el navegador bloquea autoplay
-      });
+    const video = videoRef.current;
+    if (video) {
+      // 1. Configuración de mute estricta para asegurar Autoplay
+      video.muted = true;
+      video.defaultMuted = true;
+
+      // 2. Usamos un retraso de 50ms para permitir que React termine 
+      // de montar los scripts pesados (Navbar, Iconos) antes de pedir el video.
+      const timer = setTimeout(() => {
+        const playPromise = video.play();
+
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              // Si ya se está reproduciendo, forzamos visibilidad
+              setIsLoaded(true);
+            })
+            .catch((error) => {
+              console.log("Autoplay esperando interacción o carga:", error);
+            });
+        }
+      }, 50);
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -25,15 +43,9 @@ export default function Carrusel() {
           loop
           playsInline
           autoPlay
-          /* CAMBIO CLAVE 1: preload="metadata" 
-            Evita que el navegador descargue todo el video al inicio. 
-            Solo descarga los primeros bytes para saber dimensiones y duración.
-          */
-          preload="metadata"
-          /* CAMBIO CLAVE 2: onCanPlay 
-            Solo mostramos el video con opacidad cuando esté listo para no ver saltos.
-          */
-          onCanPlay={() => setIsLoaded(true)}
+          preload="auto"
+          /* Se activa en cuanto el primer frame está listo para mostrarse */
+          onLoadedData={() => setIsLoaded(true)} 
         />
         <div className="media-overlay" />
       </div>
@@ -41,26 +53,27 @@ export default function Carrusel() {
       <style jsx>{`
         .video-container {
           width: 100%;
-          max-width: 1500px;
+          max-width: 1200px;
+          /* Mantiene el espacio reservado para evitar saltos de scroll */
           aspect-ratio: 3 / 1; 
           margin: 40px auto;
           border-radius: 20px;
-          overflow: visible;
-          display: block;    /* Asegura que ocupe su lugar en el flujo */
-          clear: both;       /* Evita que elementos flotantes se encimen */
-          box-shadow: 0 18px 48px rgba(0,0,0,0.55);
+          overflow: hidden;
+          display: block;
           position: relative;
           background-color: #0f0f10;
-          /* CAMBIO CLAVE 3: Opacidad inicial. 
-             La caja ya ocupa su lugar (aspect-ratio) pero el contenido 
-             no distrae al navegador hasta estar listo.
-          */
+          box-shadow: 0 18px 48px rgba(0,0,0,0.55);
+          
+          /* Animación suave para que no aparezca de golpe */
           opacity: 0;
-          transition: opacity 1s ease-in-out;
+          transform: translateY(5px);
+          transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
         }
 
+        /* Clase que se activa cuando el video está listo */
         .video-container.loaded {
           opacity: 1;
+          transform: translateY(0);
         }
 
         .media-frame {
@@ -74,24 +87,22 @@ export default function Carrusel() {
           height: 100%;
           object-fit: cover;
           display: block;
-          transform: scale(1.02);
         }
 
         .media-overlay {
           position: absolute;
           inset: 0;
           z-index: 2;
-          background: transparent;
+          background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4));
+          pointer-events: none;
         }
 
         @media (max-width: 768px) {
           .video-container {
-            border-radius: 12px;
-            margin: 12px auto;
-            /* CONSEJO: En móvil 3G, el 3:1 puede ser muy pequeño. 
-               Si quieres que se vea más alto en móviles, usa 16/9:
-            */
+            width: 92%;
+            margin: 15px auto 40px auto; /* Mayor margen abajo para liberar el scroll */
             aspect-ratio: 16 / 9;
+            border-radius: 12px;
           }
         }
       `}</style>
