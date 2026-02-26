@@ -13,6 +13,7 @@ export default function Navbar() {
   const [hasMounted, setHasMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  // Marcamos cuando el componente se monta en el cliente
   useEffect(() => {
     setHasMounted(true)
   }, [])
@@ -20,9 +21,11 @@ export default function Navbar() {
   // Cerrar menú al cambiar de ruta
   useEffect(() => {
     const handleRouteChange = () => setMenuOpen(false)
-    router.events.on('routeChangeComplete', handleRouteChange)
-    return () => {
-      router.events.off('routeChangeComplete', handleRouteChange)
+    if (router.events) {
+      router.events.on('routeChangeComplete', handleRouteChange)
+      return () => {
+        router.events.off('routeChangeComplete', handleRouteChange)
+      }
     }
   }, [router.events])
 
@@ -34,9 +37,6 @@ export default function Navbar() {
     if (menuOpen) window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
-
-  // Evitamos render en SSR para prevenir mismatches de hidratación
-  if (!hasMounted) return null
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -53,7 +53,6 @@ export default function Navbar() {
       const headers = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      // Intentamos llamar al endpoint de logout; fallos no deben bloquear limpieza local
       await fetch(logoutEndpoint, {
         method: 'POST',
         headers,
@@ -65,8 +64,10 @@ export default function Navbar() {
       try {
         logout()
       } catch {
-        
- try { localStorage.removeItem('accessToken'); localStorage.removeItem('refreshToken') } catch {}
+        try { 
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken') 
+        } catch {}
       }
       setLoggingOut(false)
       router.push('/')
@@ -80,12 +81,11 @@ export default function Navbar() {
     <nav className="navbar" role="navigation" aria-label="Barra de navegación principal">
       <Link href="/" passHref legacyBehavior>
         <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
-          <img src="/logo.png" alt="Flux Streaming Logo" className="logo-image" />
-   
-      </a>
+          {/* loading="eager" para que sea lo primero en cargar en el navegador */}
+          <img src="/logo.png" alt="Flux Streaming Logo" className="logo-image" loading="eager" />
+        </a>
       </Link>
 
-      {/* Botón hamburger visible solo en mobile */}
       <button
         className={`hamburger ${menuOpen ? 'open' : ''}`}
         aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
@@ -94,42 +94,40 @@ export default function Navbar() {
         onClick={toggleMenu}
         type="button"
       >
-     
-      <span className="hamburger-box" aria-hidden="true">
+        <span className="hamburger-box" aria-hidden="true">
           <span className="hamburger-inner" />
         </span>
       </button>
 
-      {/* Importante: Añadir clase 'open' al contenedor nav-right */}
       <div className={`nav-right ${menuOpen ? 'open' : ''}`}>
         <ul id="primary-navigation" className={`nav-items ${menuOpen ? 'open' : ''}`}>
           <li className="nav-item" onClick={closeMenu}>
-    <Link href="/" passHref legacyBehavior>
-      <a>
-        <FaHome className="nav-icon" />
-        <span className="nav-text">Inicio</span>
-      </a>
-    </Link>
-  </li>
+            <Link href="/" passHref legacyBehavior>
+              <a>
+                <FaHome className="nav-icon" />
+                <span className="nav-text">Inicio</span>
+              </a>
+            </Link>
+          </li>
 
-{/* PERFIL - Solo si el usuario existe, usando las mismas clases */}
-  {user && (
-    <li className="nav-item" onClick={closeMenu}>
-      <Link href="/perfil" passHref legacyBehavior>
-        <a>
-          <FaUserAlt className="nav-icon" />
-          <span className="nav-text">{user.username || 'Mi Perfil'}</span>
-        </a>
-      </Link>
-    </li>
-  )}
+          {/* Solo mostramos el perfil si ya cargó el cliente y hay usuario */}
+          {hasMounted && user && (
+            <li className="nav-item" onClick={closeMenu}>
+              <Link href="/perfil" passHref legacyBehavior>
+                <a>
+                  <FaUserAlt className="nav-icon" />
+                  <span className="nav-text">{user.username || 'Mi Perfil'}</span>
+                </a>
+              </Link>
+            </li>
+          )}
+
           <li className="nav-item" onClick={closeMenu}>
             <Link href="/billetera" passHref legacyBehavior>
               <a>
                 <FaWallet className="nav-icon" />
                 <span className="nav-text">Billetera</span>
-          
-     </a>
+              </a>
             </Link>
           </li>
 
@@ -137,21 +135,24 @@ export default function Navbar() {
             <Link href="/compras" passHref legacyBehavior>
               <a>
                 <FaShoppingCart className="nav-icon" />
-               
- <span className="nav-text">Compras</span>
+                <span className="nav-text">Compras</span>
               </a>
             </Link>
           </li>
 
-          {!user ? (
+          {/* Renderizado condicional del botón de Login/Logout sin bloquear el resto del Navbar */}
+          {!hasMounted ? (
+            <li className="nav-item">
+              <div className="login-placeholder" />
+            </li>
+          ) : !user ? (
             <li className="nav-item" onClick={closeMenu}>
               <Link href="/login" passHref legacyBehavior>
                 <a className="login-box" aria-label="Iniciar sesión">Login</a>
               </Link>
             </li>
           ) : (
-            
- <li className="nav-item" onClick={closeMenu}>
+            <li className="nav-item" onClick={closeMenu}>
               <button
                 className="login-box logout"
                 onClick={handleLogout}
@@ -164,53 +165,56 @@ export default function Navbar() {
               </button>
             </li>
           )}
-      
-     </ul>
+        </ul>
       </div>
 
       <style jsx>{`
         .navbar {
           width: 100%;
- max-width: 1200px;
+          max-width: 1200px;
           margin: 32px auto;
           padding: 16px 32px;
-          /* 🚨 CAMBIO DE OPACIDAD: De 0.8 a 0.4 (más transparente) */
           background-color: rgba(26, 26, 26, 0.4);
- backdrop-filter: blur(12px);
+          backdrop-filter: blur(12px);
           border-radius: 20px;
           border: 1px solid #2E2E2E;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
           display: flex;
           justify-content: space-between;
- align-items: center;
+          align-items: center;
           flex-wrap: nowrap;
           font-family: 'Inter', sans-serif;
           animation: fadeIn 0.6s ease-out;
           gap: 16px;
           position: relative;
- /* importante para posicionar el dropdown */
           z-index: 1000;
           overflow: visible;
- /* permitir que el dropdown se muestre fuera */
+        }
+
+        /* Placeholder para evitar saltos visuales antes de la hidratación */
+        .login-placeholder {
+          width: 90px;
+          height: 38px;
+          background: rgba(255,255,255,0.05);
+          border-radius: 12px;
         }
 
         .logo-container {
           display: inline-block;
- transition: transform 0.4s ease, filter 0.4s ease;
+          transition: transform 0.4s ease, filter 0.4s ease;
         }
         .logo-container:hover {
           transform: scale(1.05);
- filter: drop-shadow(0 0 8px #BFBFBF);
+          filter: drop-shadow(0 0 8px #BFBFBF);
         }
         .logo-image {
           height: 80px;
- object-fit: contain;
+          object-fit: contain;
         }
 
-        /* HAMBURGER */
         .hamburger {
           display: none;
- background: transparent;
+          background: transparent;
           border: none;
           padding: 8px;
           margin-left: 8px;
@@ -218,40 +222,31 @@ export default function Navbar() {
           border-radius: 8px;
           z-index: 1200;
         }
-        .hamburger:focus { outline: 2px solid rgba(191,191,191,0.25);
-        }
-        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative;
-        }
+        .hamburger-box { display: inline-block; width: 28px; height: 18px; position: relative; }
         .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after {
           width: 28px;
- height: 2px;
+          height: 2px;
           background-color: #E0E0E0;
           position: absolute;
           left: 0;
           transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
         }
-        .hamburger-inner { top: 50%; transform: translateY(-50%);
-        }
-        .hamburger-inner::before { content: ''; top: -8px;
-        }
-        .hamburger-inner::after { content: ''; top: 8px;
-        }
-        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%;
-        }
-        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0;
-        }
-        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0;
-        }
+        .hamburger-inner { top: 50%; transform: translateY(-50%); }
+        .hamburger-inner::before { content: ''; top: -8px; }
+        .hamburger-inner::after { content: ''; top: 8px; }
+        .hamburger.open .hamburger-inner { transform: rotate(45deg); top: 50%; }
+        .hamburger.open .hamburger-inner::before { transform: rotate(90deg); top: 0; opacity: 0; }
+        .hamburger.open .hamburger-inner::after { transform: rotate(-90deg); top: 0; }
 
         .nav-right {
           display: flex;
- align-items: center;
+          align-items: center;
           gap: 24px;
         }
 
         .nav-items {
           display: flex;
- gap: 32px;
+          gap: 32px;
           list-style: none;
           margin: 0;
           padding: 0;
@@ -262,62 +257,61 @@ export default function Navbar() {
 
         .nav-item {
           cursor: pointer;
- transition: all 0.3s ease;
+          transition: all 0.3s ease;
           padding: 6px 12px;
           border-radius: 12px;
         }
         .nav-item a {
           display: flex;
- align-items: center;
+          align-items: center;
           gap: 8px;
           text-decoration: none;
         }
 
         .nav-icon {
-  color: #E0E0E0; /* Color gris claro original */
-  font-size: 1.2rem; /* Tamaño fijo para todos */
-  width: 1.2rem; /* Forzamos el ancho para que el texto empiece en el mismo lugar */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.3s ease, filter 0.3s ease;
-}
+          color: #E0E0E0;
+          font-size: 1.2rem;
+          width: 1.2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.3s ease, filter 0.3s ease;
+        }
         .nav-text {
-  color: #D1D1D1;
-  font-size: 1rem; /* Asegura que el tamaño de fuente sea igual [cite: 41] */
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
-  transition: color 0.3s ease, text-shadow 0.3s ease;
-  /* Añade esto para evitar que nombres largos deformen el navbar */
-  max-width: 100px; 
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+          color: #D1D1D1;
+          font-size: 1rem;
+          text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
+          transition: color 0.3s ease, text-shadow 0.3s ease;
+          max-width: 120px; 
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
 
         .nav-item:hover {
           transform: scale(1.05);
- background-color: rgba(255, 255, 255, 0.05);
+          background-color: rgba(255, 255, 255, 0.05);
           box-shadow: 0 0 12px rgba(191, 191, 191, 0.15);
         }
         .nav-item:hover .nav-icon {
           color: #BFBFBF;
- filter: drop-shadow(0 0 6px rgba(191, 191, 191, 0.5));
+          filter: drop-shadow(0 0 6px rgba(191, 191, 191, 0.5));
         }
         .nav-item:hover .nav-text {
           color: #BFBFBF;
- text-shadow: 0 0 8px rgba(191, 191, 191, 0.6);
+          text-shadow: 0 0 8px rgba(191, 191, 191, 0.6);
         }
 
         .login-box {
           display: inline-flex;
- align-items: center;
+          align-items: center;
           gap: 10px;
           background-color: rgba(26, 26, 26, 0.6);
           border: 1px solid #2E2E2E;
           color: #D1D1D1;
           padding: 8px 16px;
           border-radius: 12px;
- font-weight: 600;
+          font-weight: 600;
           text-decoration: none;
           box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
           transition: all 0.3s ease;
@@ -325,128 +319,55 @@ export default function Navbar() {
         }
         .login-box:hover {
           background-color: rgba(46, 46, 46, 0.6);
- box-shadow: 0 0 12px rgba(191, 191, 191, 0.2);
+          box-shadow: 0 0 12px rgba(191, 191, 191, 0.2);
           transform: translateY(-1px);
         }
 
         .login-box.logout {
           background: linear-gradient(135deg, #ff4d6d 0%, #ff233f 100%);
- color: #ffffff;
+          color: #ffffff;
           border: 1px solid rgba(255, 35, 63, 0.18);
           box-shadow: 0 8px 20px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
-          transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
-        }
-        .login-box.logout:hover {
-          transform: translateY(-2px);
- box-shadow: 0 14px 30px rgba(255, 35, 63, 0.16), 0 4px 12px rgba(0,0,0,0.38);
-          filter: saturate(1.05);
-        }
-        .login-box.logout:active {
-          transform: translateY(0);
- box-shadow: 0 8px 18px rgba(255, 35, 63, 0.12), 0 2px 6px rgba(0,0,0,0.35);
         }
 
-        .logout-icon { font-size: 1rem; color: rgba(255,255,255,0.95);
-        }
-        .logout-text { color: #fff; font-weight: 700;
-        }
+        .logout-text { color: #fff; font-weight: 700; }
 
         @keyframes fadeIn {
-          from { opacity: 0;
- transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0);
-        }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
-        /* MOBILE STYLES */
         @media (max-width: 768px) {
           .navbar {
-    width: 92%; /* Deja un pequeño margen a los lados para que no toque los bordes */
-    margin: 10px auto; 
-    padding: 12px 16px;
-    gap: 8px;
-  }
-
-  .nav-right.open {
-    /* Elimina el width: 100% de aquí si solo lo usas para el dropdown */
-    position: absolute;
-    right: 0;
-    top: 100%; /* Para que el menú despliegue justo debajo del navbar */
-  }
-
-          .hamburger {
-            display: inline-flex;
- align-items: center;
-            justify-content: center;
+            width: 92%;
+            margin: 10px auto; 
+            padding: 12px 16px;
           }
-
-          /* Por defecto ocultamos el contenedor de escritorio (.nav-right) */
-          .nav-right {
-            display: none;
-          }
-
-          /* 🛑 CORRECCIÓN CLAVE: Al abrir, sacamos .nav-right del flujo de layout con position: absolute */
+          .hamburger { display: inline-flex; }
+          .nav-right { display: none; }
           .nav-right.open {
             display: block; 
-            position: absolute; /* Esto evita que interfiera con el space-between del .navbar */
-            top: 0; /* Aseguramos que se posicione desde el inicio del navbar */
+            position: absolute;
+            top: 0;
             right: 0;
-            width: 100%; /* Ocupa todo el ancho si es necesario, aunque el ul.nav-items será el que flote */
-            height: 0; /* No queremos que ocupe espacio, solo que sirva de contenedor absoluto */
+            width: 100%;
           }
-          
-          /* Ocultamos los items por defecto en mobile */
-          .nav-items {
-            display: none;
-          }
-
-          /* Cuando el menú está abierto mostramos los items en columna (dropdown absoluto) */
+          .nav-items { display: none; }
           .nav-items.open {
             display: flex;
-            
-            /* Usamos position: absolute para el menú desplegable (ul) */
             position: absolute;
-            top: 55px; /* Ajuste manual para que baje desde el botón (la altura del navbar es aprox 40px + padding) */
-            
-            /* Anclaje a la derecha, para que coincida con el botón */
-            right: 16px;
-            left: auto; 
-
+            top: 65px;
+            right: 0;
             background: rgba(20,20,20,0.98);
-            border: 1px solid rgba(255,255,255,0.04);
+            border: 1px solid #2E2E2E;
             border-radius: 12px;
             padding: 12px;
             flex-direction: column;
             gap: 8px;
-            min-width: 220px;
-            z-index: 1100;
+            min-width: 200px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           }
-          
-          /* Ajuste para que el menú salga desde el div.nav-right absoluto */
-          /* Es necesario porque el padre ahora tiene position: absolute; */
-          .nav-right.open .nav-items.open {
-              top: 55px; /* Se queda igual, pero ahora se posiciona respecto al <body> si .nav-right.open no tiene position: relative; */
-              /* Si queremos que se posicione respecto al .navbar, debemos añadir: */
-              /* .navbar { position: relative; } */
-              /* (¡Esto ya está en tu código!) */
-          }
-
-
-          .nav-item {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 8px;
-          }
-
-          .nav-item a { width: 100%;
-          }
-          
-          /* Ajustes para que el login/logout se vea bien en mobile */
-          .login-box {
-            padding: 10px 12px;
-            font-size: 0.95rem;
-          }
+          .nav-item { width: 100%; }
         }
       `}</style>
     </nav>
