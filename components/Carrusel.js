@@ -1,165 +1,41 @@
-import { useRef, useEffect, useState } from 'react';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
-
-const itemsCarrusel = [
-  { src: '/videos/NET.mp4' },
-  { src: '/videos/DIS.mp4' },
-  { src: '/videos/SPO.mp4' },
-  { src: '/videos/YOU.mp4' },
-  { src: '/videos/CHR.mp4' },
-  { src: '/videos/IPTV.mp4' },
-];
-
-function PrevArrow({ onClick }) {
-  return (
-    <button aria-label="Anterior" className="slick-custom-arrow slick-prev" onClick={onClick}>
-      ‹
-    </button>
-  );
-}
-function NextArrow({ onClick }) {
-  return (
-    <button aria-label="Siguiente" className="slick-custom-arrow slick-next" onClick={onClick}>
-      ›
-    </button>
-  );
-}
+import { useRef, useEffect } from 'react';
 
 export default function Carrusel() {
-  const sliderRef = useRef(null);
-  const videoRefs = useRef([]);
-  const containerRef = useRef(null);
-  const [isGrabbing, setIsGrabbing] = useState(false);
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    videoRefs.current = videoRefs.current.slice(0, itemsCarrusel.length);
-    // play first video on mount (muted autoplay)
-    const first = videoRefs.current[0];
-    if (first) {
-      first.muted = true;
-      first.play().catch(() => {});
+    // Intentar reproducir automáticamente de forma segura
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+      videoRef.current.play().catch((error) => {
+        console.log("Autoplay bloqueado por el navegador:", error);
+      });
     }
   }, []);
 
-  const settings = {
-    dots: true,
-    arrows: true,
-    prevArrow: <PrevArrow />,
-    nextArrow: <NextArrow />,
-    infinite: true,
-    speed: 700,
-    fade: true,
-    cssEase: 'cubic-bezier(.2,.9,.2,1)',
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    pauseOnHover: true,
-    adaptiveHeight: true,
-
-    // drag / swipe
-    draggable: true,
-    swipe: true,
-    swipeToSlide: true,
-    touchMove: true,
-    touchThreshold: 8,
-
-    beforeChange: (current, next) => {
-      const cur = videoRefs.current[current];
-      if (cur && !cur.paused) {
-        try { cur.pause(); cur.currentTime = 0;
-        } catch (_) {}
-      }
-    },
-    afterChange: (index) => {
-      const v = videoRefs.current[index];
-      if (v) {
-        try { v.currentTime = 0; v.muted = true;
-        v.play().catch(() => {}); } catch (_) {}
-      }
-    },
-  };
-
-  // cursor visual mientras el usuario arrastra
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    let pointerDown = false;
-    let startX = 0;
-    let moved = false;
-
-    const onPointerDown = (e) => {
-      if (e.button !== undefined && e.button !== 0) return;
-      pointerDown = true;
-      startX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
-      moved = false;
-      setIsGrabbing(true);
-    };
-    const onPointerMove = (e) => {
-      if (!pointerDown) return;
-      const x = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
-      if (Math.abs(x - startX) > 6) moved = true;
-    };
-    const onPointerUp = () => { pointerDown = false; setIsGrabbing(false); };
-    const onPointerCancel = () => { pointerDown = false; setIsGrabbing(false); };
-
-    el.addEventListener('pointerdown', onPointerDown, { passive: true });
-    el.addEventListener('pointermove', onPointerMove, { passive: true });
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerCancel);
-    return () => {
-      el.removeEventListener('pointerdown', onPointerDown);
-      el.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerCancel);
-    };
-  }, []);
-  
-  const handleOverlayClick = (e) => {
-    // placeholder para futuras interacciones
-    e.stopPropagation();
-  };
-
   return (
-    <div ref={containerRef} className={`carrusel-container ${isGrabbing ? 'grabbing' : 'grab'}`}>
-      <Slider ref={sliderRef} {...settings}>
-        {itemsCarrusel.map((item, index) => (
-          <div key={index} className="slide-wrap">
-            <div className="media-frame">
-              <video
-                ref={(el) => (videoRefs.current[index] = el)}
-                src={item.src}
-                className="carrusel-media"
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                style={{ pointerEvents: 'none' }}
-              />
-              <div className="media-overlay" onClick={handleOverlayClick} />
-            </div>
-          </div>
-        ))}
-      </Slider>
+    <div className="video-container">
+      <div className="media-frame">
+        <video
+          ref={videoRef}
+          src="/videos/intro.mp4"
+          className="video-media"
+          muted
+          loop
+          playsInline
+          autoPlay
+          preload="auto"
+        />
+        {/* Overlay opcional por si quieres añadir texto o filtros encima */}
+        <div className="media-overlay" />
+      </div>
 
       <style jsx>{`
-        /*
-          DIMENSIONES ACTUALIZADAS:
-          Se elimina la altura fija y se usa 'aspect-ratio: 3 / 1' para que el carrusel
-          siempre mantenga la proporción 3:1 tanto en PC como en móvil,
-          evitando el espacio negro innecesario.
-        */
-        .carrusel-container {
+        .video-container {
           width: 100%;
-          max-width: 1500px; /* Aumentado para aprovechar la alta resolución */
-          
-          /* --- INICIO DEL CAMBIO CLAVE --- */
-          /* Eliminar height: 500px; y usar aspect-ratio 3:1 */
+          max-width: 1500px;
+          /* Mantenemos tu proporción 3:1 */
           aspect-ratio: 3 / 1; 
-          /* --- FIN DEL CAMBIO CLAVE --- */
           
           margin: 40px auto;
           border-radius: 20px;
@@ -167,30 +43,23 @@ export default function Carrusel() {
           box-shadow: 0 18px 48px rgba(0,0,0,0.55);
           position: relative;
           background-color: #0f0f10;
-          touch-action: pan-y;
         }
 
-        .carrusel-container.grab { cursor: grab; }
-        .carrusel-container.grabbing { cursor: grabbing; }
+        .media-frame {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
 
-        .slide-wrap { width: 100%; height: 100%; display: flex !important; align-items: center;
-          justify-content: center; position: relative; }
-        .media-frame { width: 100%; height: 100%; position: relative; }
-
-        .carrusel-media {
+        .video-media {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
-          border: none;
-          transition: transform 1s cubic-bezier(.2,.9,.2,1), opacity 0.7s ease;
-          transform-origin: center center;
+          /* Sutil efecto de zoom para que se vea más dinámico */
+          transform: scale(1.02);
         }
 
-        .slick-active .carrusel-media { transform: scale(1.03); opacity: 1; }
-        .slick-slide:not(.slick-active) .carrusel-media { transform: scale(1); opacity: 0.6; }
-
-        /* overlay: captura clicks y mantiene pointer events para slider */
         .media-overlay {
           position: absolute;
           inset: 0;
@@ -198,37 +67,15 @@ export default function Carrusel() {
           background: transparent;
         }
 
-        .slick-custom-arrow { position: absolute; top: 50%;
-          transform: translateY(-50%); z-index: 50; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(10,10,10,0.55); color: #fff; font-size: 24px;
-          display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease; box-shadow: 0 6px 18px rgba(8,8,10,0.45);
-        }
-        .slick-prev { left: 14px; }
-        .slick-next { right: 14px; }
-        .slick-custom-arrow:hover { transform: translateY(-50%) scale(1.06); background: rgba(139,92,246,0.9); }
-
-        /* AJUSTE PARA MÓVILES */
+        /* Ajuste para móviles */
         @media (max-width: 768px) {
-          .carrusel-container {
-            /* aspect-ratio ya controla la altura (3:1). Solo ajustamos el margen y radio. */
-            border-radius: 12px; 
-            /* --- INICIO DEL CAMBIO CLAVE EN MÓVIL --- */
-            /* Se reduce el margen vertical (de 24px a 12px) para cerrar el hueco. */
-            margin: 12px auto; 
-            /* --- FIN DEL CAMBIO CLAVE EN MÓVIL --- */
+          .video-container {
+            border-radius: 12px;
+            margin: 12px auto;
+            /* Si en móvil el 3:1 queda muy estrecho, puedes cambiarlo aquí: */
+            /* aspect-ratio: 16 / 9; */
           }
-          /* Podrías querer hacer las flechas más pequeñas en móvil, por ejemplo: */
-          /* .slick-custom-arrow { width: 36px; height: 36px; font-size: 20px; } */
         }
-      `}</style>
-
-      <style jsx global>{`
-        .slick-slider .slick-list, .slick-slider .slick-track { height: 100% !important; }
-        .slick-slider .slick-slide { height: 100%; display: block; }
-        .slick-slide > div { height: 100%; } /* inner wrapper */
-
-        .slick-dots { bottom: 16px; z-index: 40; }
-        .slick-dots li button:before { font-size: 12px; color: rgba(191,191,191,0.7); opacity: 1; }
-        .slick-dots li.slick-active button:before { color: #ffffff; opacity: 1; }
       `}</style>
     </div>
   );
