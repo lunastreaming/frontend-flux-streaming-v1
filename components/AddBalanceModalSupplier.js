@@ -125,11 +125,8 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
   // PayPal: paypal.svg, paypal-qr.png
   // Lemon: lemon.svg, lemon-qr.png
   const methods = [
-    { key: 'Yape', label: 'Yape', info: '+51 902 229 594', copy: '+51902229594', qr: ['/images/YAPE1-QR.png', '/images/YAPE2-QR.png'], logo: '/images/yape.png' },
-    { key: 'Plin', label: 'Plin', info: '+51 935 769 255', copy: '+51935769255', qr: ['/images/PLIN-QR.png'], logo: '/images/plin.png' },
-    { key: 'Binance', label: 'Binance', info: 'Cuenta: 1025532462', copy: '1025532462', qr: ['/images/BINANCE-QR.png'], logo: '/images/binance.svg' },
-    { key: 'PayPal', label: 'PayPal', info: 'randu.sq@gmail.com', copy: 'randu.sq@gmail.com', qr: ['/images/PAYPAL-QR.png'], logo: '/images/paypal.svg' },
-    { key: 'Lemon', label: 'Lemon', info: 'Cuenta Lemon', copy: 'CuentaLemon', qr: ['/images/LEMON-QR.png'], logo: '/images/lemon.svg' }
+    { key: 'Yape', label: 'Yape', info: '+51 906 844 368', copy: '+51906844368', qr: ['/images/YAPE1-QR.png'], logo: '/images/yape.png' },
+    { key: 'Binance', label: 'Binance', info: 'Cuenta: 1218812477', copy: '1218812477', qr: ['/images/BINANCE-QR.png'], logo: '/images/binance.svg' }
   ]
 
   const handleCopy = async (text) => {
@@ -312,11 +309,11 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
 
         /* Grilla responsive de métodos */
         .method-list {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 12px;
-          margin-top: 8px;
-        }
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Mantiene dos columnas equilibradas */
+  gap: 12px;
+  margin-top: 12px;
+}
         .method-btn {
           background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
           border: 1px solid rgba(255,255,255,0.06);
