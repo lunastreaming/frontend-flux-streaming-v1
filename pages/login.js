@@ -113,7 +113,7 @@ export default function Login() {
           </button>
 
           <h1 className="title">Bienvenido</h1>
-          <p className="subtitle">Login Flux Plataformas</p>
+          <p className="subtitle">Login Flux Streaming</p>
 
           {/* 🚨 MEJORA: Estilo de error con icono */}
           {error && (

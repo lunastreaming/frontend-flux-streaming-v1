@@ -21,7 +21,7 @@ html {
     /* OPTIMIZACIÓN DE FONDO */
     background: 
       linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%), 
-      url('/background.jpeg') center center no-repeat;
+      url('/background.png') center center no-repeat;
     
     background-size: cover;
     /* attachment: fixed es pesado para móviles, pero si lo mantienes, 
