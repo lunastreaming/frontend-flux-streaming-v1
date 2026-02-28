@@ -348,7 +348,7 @@ export default function Billetera() {
       </button>
       
       <a 
-        href={`https://wa.me/51902229594?text=${encodeURIComponent("Hola Flux solicite una recarga, envío el comprobante\nAceptar mi recarga por favor.")}`}
+        href={`https://wa.me/51906844368?text=${encodeURIComponent("Hola Flux solicite una recarga, envío el comprobante\nAceptar mi recarga por favor.")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="btn-whatsapp"
