@@ -68,7 +68,7 @@ export default function NavBarSupplier({ counts = {} }) {
       <div className="navbar-main">
         <Link href="/supplier" passHref legacyBehavior>
           <a className="logo-container" aria-label="Ir al inicio" onClick={closeMenu}>
-            <img src="/logo.png" alt="Flux Streaming Logo" className="logo-image" />
+            <img src="/logo2.png" alt="Flux Streaming Logo" className="logo-image" />
           </a>
         </Link>
 
