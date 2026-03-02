@@ -69,7 +69,7 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
   }
 
   const getMinForCurrencyNumber = () => {
-    const minPen = 10
+    const minPen = 5
     if (currency === 'PEN') return Number(minPen.toFixed(2))
     if (!rate || rate <= 0) return null
     const usdMinRaw = minPen / rate
@@ -83,7 +83,7 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
       setError('Ingresa un monto válido mayor a 0'); return
     }
     if (currency === 'PEN') {
-      const min = 10
+      const min = 5
       if (Number(parsed.toFixed(2)) < min) {
         setError(`El monto mínimo para Soles es ${min.toFixed(2)} PEN`); return
       }
@@ -108,7 +108,7 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
   }
 
   const minDisplay = (() => {
-    if (currency === 'PEN') return '10.00 PEN'
+    if (currency === 'PEN') return '5.00 PEN'
     if (currency === 'USD') {
       if (loadingRate) return 'Cargando tipo de cambio…'
       if (rateError || rate == null) return 'Tipo de cambio no disponible'
