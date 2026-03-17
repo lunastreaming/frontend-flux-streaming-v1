@@ -187,23 +187,21 @@ export default function RenewalPage() {
           alert(`Error al aprobar la renovación: ${res.status} ${txt}`)
         }
       } else if (confirmMode === 'refund') {
-        const res = await fetch(`${BASE_URL}/api/supplier/provider/stocks/${selectedStock.id}/refund`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buyerId: selectedStock.buyerId })
-        })
-        if (res.ok) {
-          const data = await res.json()
-          // El backend devuelve refundAmount; lo guardamos para mostrarlo inmediato en el modal
-          setSelectedStock(prev => ({ ...prev, refund: data.refundAmount }))
-          await fetchPage(page)
-        } else if (res.status === 401) {
-          router.replace('/supplier/login')
-        } else {
-          const txt = await res.text().catch(() => '')
-          alert(`Error al reembolsar: ${res.status} ${txt}`)
-        }
-      }
+  const res = await fetch(`${BASE_URL}/api/supplier/stocks/${selectedStock.id}/renewal/refund`, {
+    method: 'PATCH',
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  if (res.status === 204) {
+    await fetchPage(page); // Esto ahora funcionará porque el stock ya no será 'RENEWED'
+  } else {
+    const txt = await res.text();
+    alert(`Error: ${txt}`);
+  }
+}
     } catch (err) {
       console.error(err)
       alert('Error de red en la operación')
