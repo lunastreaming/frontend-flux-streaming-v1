@@ -2,12 +2,17 @@ import React from 'react';
 import { FaWhatsapp } from 'react-icons/fa';
 
 export default function Footer() {
+  // Mensaje en texto plano sin caracteres especiales para evitar errores de encoding
+  const messageText = "Hola, vengo de Flux Streaming y me encuentro interesado en la web. Me podrias dar mas informacion para obtener un sistema similar. Gracias.";
+  
+  const contactMessage = encodeURIComponent(messageText);
+
   return (
     <footer className="footer">
       <div className="footer-content">
         {/* Sección de Ayuda */}
         <div className="support-section">
-          <p className="footer-message">¿Necesitas ayuda? Escríbenos por WhatsApp</p>
+          <p className="footer-message">¿Necesitas ayuda? Escribenos por WhatsApp</p>
           <a
             href="https://wa.me/51906844368"
             target="_blank"
@@ -30,12 +35,12 @@ export default function Footer() {
           </div>
           
           <a 
-            href="https://wa.me/51935769255" 
+            href={`https://wa.me/51935769255?text=${contactMessage}`}
             className="dev-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            ¿Quieres un sistema similar? <span>Contáctanos aquí</span>
+            ¿Quieres un sistema similar? <span>Contactanos aqui</span>
           </a>
         </div>
       </div>
@@ -62,7 +67,6 @@ export default function Footer() {
           margin: 0 auto;
         }
 
-        /* Soporte */
         .support-section {
           display: flex;
           flex-direction: column;
@@ -87,7 +91,6 @@ export default function Footer() {
           transform: scale(1.1) rotate(5deg);
         }
 
-        /* Divisor */
         .footer-divider {
           width: 100%;
           border: 0;
@@ -95,7 +98,6 @@ export default function Footer() {
           margin: 0;
         }
 
-        /* Copyright Section */
         .copyright-section {
           display: flex;
           flex-direction: column;
@@ -131,17 +133,19 @@ export default function Footer() {
         .dev-link {
           color: #888;
           text-decoration: none;
-          font-size: 0.8rem;
+          font-size: 0.85rem;
           transition: color 0.2s;
         }
 
         .dev-link span {
-          color: #3498db; /* Un azul suave para diferenciar la acción */
+          color: #00a8ff;
           font-weight: 600;
+          text-decoration: underline;
+          text-underline-offset: 4px;
         }
 
         .dev-link:hover {
-          color: #BBB;
+          color: #FFF;
         }
 
         @media (max-width: 768px) {
