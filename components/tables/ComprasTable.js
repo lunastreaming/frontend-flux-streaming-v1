@@ -357,26 +357,37 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                   <td><div className="row-inner">{row.providerName || ''}</div></td>
                   <td><div className="row-inner">{row.providerPhone || ''}</div></td>
                   <td>
-                    <div className="row-inner config-cell">
-                      <button
-                        className="config-btn"
-                        onClick={() => openSupportModal(row)}
-                        aria-label="Abrir soporte"
-                      >
-                        <FaCog /> <span className="config-label">Soporte</span>
-                      </button>
+  <div className="row-inner config-cell">
+    {/* LÓGICA: Si el estado es RENEWED, mostramos el aviso informativo.
+      Si NO es RENEWED, mostramos el botón de Soporte normal.
+    */}
+    {row.status === 'RENEWED' ? (
+      <div className="status-info-box" title="Tu solicitud de renovación está pendiente de aprobación">
+        <FaRedo className="spin-icon" /> 
+        <span className="config-label">Pendiente de aprobación</span>
+      </div>
+    ) : (
+      <button
+        className="config-btn"
+        onClick={() => openSupportModal(row)}
+        aria-label="Abrir soporte"
+      >
+        <FaCog /> <span className="config-label">Soporte</span>
+      </button>
+    )}
 
-                      {row.renewable && (
-                        <button
-                          className="config-btn renew-btn"
-                          onClick={() => openRenewModal(row)}
-                          aria-label="Renovar stock"
-                        >
-                          <FaRedo /> <span className="config-label">Renovar</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
+    {/* El botón de Renovar se mantiene independiente según su propia validación */}
+    {row.renewable && (
+      <button
+        className="config-btn renew-btn"
+        onClick={() => openRenewModal(row)}
+        aria-label="Renovar stock"
+      >
+        <FaRedo /> <span className="config-label">Renovar</span>
+      </button>
+    )}
+  </div>
+</td>
                 </tr>
               )
             })}
@@ -516,6 +527,63 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
 }
 .edit-phone-btn:hover {
   color: #3b82f6;
+}
+
+
+.pending-approval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(234, 179, 8, 0.1); /* Color amarillento suave */
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fbbf24;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  cursor: help;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-icon {
+  animation: spin 3s linear infinite;
+}
+
+/* Cuadro informativo para el estado RENEWED */
+.status-info-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(234, 179, 8, 0.1); /* Fondo ámbar suave */
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #fcd34d;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* Animación sutil de rotación para el icono de renovación pendiente */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-icon {
+  animation: spin 4s linear infinite;
+  color: #fbbf24;
+}
+
+/* Ajuste para que los botones en la celda no se amontonen */
+.config-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
 }
       `}</style>
     </div>
