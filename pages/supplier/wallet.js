@@ -16,6 +16,8 @@ export default function BilleteraSupplier() {
   const hasFetchedRef = useRef(false)
   const [mounted, setMounted] = useState(false)
 
+  const [exchangeRate, setExchangeRate] = useState(null)
+
   // data
   const [balance, setBalance] = useState(0)
   const [movimientos, setMovimientos] = useState([])
@@ -57,6 +59,22 @@ export default function BilleteraSupplier() {
 
   useEffect(() => { setMounted(true) }, [])
 
+      //tipo de cambio
+  const fetchExchangeRate = useCallback(async (token) => {
+  try {
+    const res = await fetch(buildUrl('/api/categories/exchange/current'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setExchangeRate(data.rate) // Guardamos el 3.40 (o lo que venga)
+    }
+  } catch (err) {
+    console.error('Error fetching exchange rate:', err)
+  }
+}, [buildUrl])
+
+
   useEffect(() => {
     if (!router.isReady || hasFetchedRef.current) return
 
@@ -69,6 +87,8 @@ export default function BilleteraSupplier() {
     hasFetchedRef.current = true
       ; (async () => {
         try {
+
+          await fetchExchangeRate(token)
           await fetchMeAndPopulate(token)
           await fetchPendingRequests(token)
 
@@ -78,7 +98,7 @@ export default function BilleteraSupplier() {
           router.push('/supplier/loginSupplier')
         }
       })()
-  }, [router.isReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router.isReady, fetchExchangeRate]) // eslint-disable-line react-hooks/exhaustive-deps
 
 async function fetchMeAndPopulate(token) {
   const res = await fetch(buildUrl('/api/users/me'), {
@@ -403,7 +423,23 @@ async function fetchMeAndPopulate(token) {
           </div>
 
           <div className="balance-row">
-            <div className="balance-amount">${Number(balance || 0).toFixed(2)}</div>
+              <div className="balance-column">
+  <div className="balance-amount">
+    ${Number(balance || 0).toFixed(2)}
+  </div>
+  
+  {exchangeRate && (
+    <>
+      <div className="balance-equivalent">
+        ≈ S/ {(Number(balance || 0) * exchangeRate).toFixed(2)}
+      </div>
+      {/* NUEVA LÍNEA: TIPO DE CAMBIO ACTUAL */}
+      <div className="exchange-rate-info">
+        TC: S/ {Number(exchangeRate).toFixed(2)}
+      </div>
+    </>
+  )}
+</div>
 
             <div className="balance-actions">
               <button type="button" className="btn-add" onClick={handleAddClick}>Agregar saldo</button>
@@ -709,6 +745,19 @@ color: #07101a; }
           .pending-amt { min-width: 90px;
 }
         }
+
+                .balance-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.balance-equivalent {
+  font-size: 1.1rem;
+  color: #34d399; /* Un verde suave */
+  font-weight: 600;
+  margin-top: -4px;
+  opacity: 0.9;
+}
       `}</style>
     </>
   )
