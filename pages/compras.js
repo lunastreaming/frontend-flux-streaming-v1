@@ -11,7 +11,8 @@ import {
   FaClipboardList,
   FaLifeRing,
   FaCheckCircle,
-  FaUndo
+  FaUndo,
+  FaClock
 } from 'react-icons/fa'
 
 import ComprasTable from '../components/tables/ComprasTable'
@@ -25,6 +26,8 @@ export default function ComprasPage() {
 
   // --- Estados de montaje y token ---
   const [hasMounted, setHasMounted] = useState(false)
+
+   const [daysToExpire, setDaysToExpire] = useState(null);
   
   // --- Estados de la UI y datos ---
   const [viewFilter, setViewFilter] = useState('compras')
@@ -183,12 +186,40 @@ export default function ComprasPage() {
           </div>
         </div>
 
+        
+{/* FILTRO DINÁMICO PARA COMPRAS */}
+{viewFilter === 'compras' && (
+  <div className="filter-container">
+    <div 
+      className={`smart-chip ${daysToExpire === 5 ? 'active' : ''}`}
+      onClick={() => {
+        setDaysToExpire(daysToExpire === 5 ? null : 5);
+        setRefreshKey(prev => prev + 1);
+      }}
+    >
+      <div className="chip-content">
+        <FaClock className={`chip-icon ${daysToExpire === 5 ? 'pulse' : ''}`} />
+        <span className="chip-text">
+          {daysToExpire === 5 ? 'Mostrando: Vencimiento próximo' : 'Próximos a vencer'}
+        </span>
+      </div>
+      {daysToExpire === 5 && <span className="chip-close">×</span>}
+    </div>
+  </div>
+)}
+
   
         {/* Tablas */}
         <div className="table-container">
           {viewFilter === 'compras' && (
-            <ComprasTable key={refreshKey} search={search} endpoint="purchases" balance={balance} />
-          )}
+  <ComprasTable 
+    key={`${refreshKey}-${daysToExpire}`} // Cambiar la key fuerza el refresh al filtrar
+    search={search} 
+    endpoint="purchases" 
+    balance={balance}
+    days={daysToExpire} // Pasamos el número de días
+  />
+)}
           {viewFilter === 'pedido' && <PedidoTable key={refreshKey} search={search} />}
           {viewFilter === 'soporte' && <SoporteTable key={refreshKey} search={search} />}
           {viewFilter === 'resuelto' && <ResueltoTable key={refreshKey} search={search} />}
@@ -369,6 +400,96 @@ export default function ComprasPage() {
             transform: translateY(-2px);
           }
         }
+
+              .filter-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 4px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .smart-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+  }
+
+  .smart-chip:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  /* Estado Activo: Siguiendo tu línea de diseño de degradados */
+  .smart-chip.active {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1));
+    border-color: #ef4444;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+  }
+
+  .chip-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chip-icon {
+    font-size: 14px;
+    color: #9fb4c8;
+    transition: color 0.3s;
+  }
+
+  .smart-chip.active .chip-icon {
+    color: #ef4444;
+  }
+
+  .chip-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #cfe7ff;
+    letter-spacing: 0.3px;
+  }
+
+  .smart-chip.active .chip-text {
+    color: #fff;
+  }
+
+  .chip-close {
+    font-size: 18px;
+    color: #ef4444;
+    margin-left: 4px;
+    font-weight: 300;
+  }
+
+  /* Animación de pulso para el icono cuando está filtrando */
+  .pulse {
+    animation: pulse-red 2s infinite;
+  }
+
+  @keyframes pulse-red {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @media (min-width: 768px) {
+    .filter-container {
+      justify-content: flex-end; /* Lo alinea con los botones de la derecha en desktop */
+    }
+  }
       `}</style>
     </div>
   )

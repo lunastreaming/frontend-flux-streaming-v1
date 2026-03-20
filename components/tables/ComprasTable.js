@@ -7,7 +7,7 @@ import RenewModal from '../RenewModal'
 import EditPhoneModal from '../EditPhoneModal'
 import EditNameModal from '../EditNameModal'; 
 
-export default function ComprasTable({ endpoint = 'purchases', balance, search = '' }) {
+export default function ComprasTable({ endpoint = 'purchases', balance, search = '', days = null }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -124,16 +124,24 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
     setError(null)
     try {
       const token = localStorage.getItem('accessToken')
-      const res = await fetch(`${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data = await res.json()
+    
+    // Construimos la URL dinámicamente
+    let url = `${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`;
+    
+    if (days) {
+      url += `&days=${days}`; // Aquí se agrega el queryparam para el backend
+    }
 
-      // data: PagedResponse<StockResponse>
-      setItems(data.content || [])
-      setTotalPages(data.totalPages ?? 0)
-      setTotalElements(data.totalElements ?? 0)
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    if (!res.ok) throw new Error(`Error ${res.status}`)
+    const data = await res.json()
+
+    setItems(data.content || [])
+    setTotalPages(data.totalPages ?? 0)
+    setTotalElements(data.totalElements ?? 0)
     } catch (err) {
       setError(err.message || String(err))
       setItems([])
@@ -144,7 +152,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
     }
   }
 
-  useEffect(() => { fetchData(page) }, [endpoint, page])
+  useEffect(() => { fetchData(page) }, [endpoint, page, days])
 
   const createSupport = async (choice) => {
     try {
@@ -269,17 +277,30 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
                 const [year, month, day] = dateStr.split('T')[0].split('-')
                 return `${day}/${month}/${year}`
               }
+const isExpiringSoon = days !== null;            
 
-              const whatsappMsg = `Hola ${row.clientName ?? ''} 👋🏻
-🍿De ${row.productName ?? ''}🍿
-✉ usuario: ${row.username ?? ''}
+// Mensaje estándar de entrega de cuenta
+const mensajeCompraNormal = `Hola ${row.clientName ?? ''} 👋🏻
+🍿 Tu cuenta de ${row.productName ?? ''} 🍿
+✉ Usuario: ${row.username ?? ''}
 🔐 Contraseña: ${row.password ?? ''}
 🌍 Url: ${row.url ?? ''}
 👥 Perfil: ${row.numeroPerfil ?? ''}
 🔐 Pin: ${row.pin ?? ''}
-⏳ Contratado: ${row.daysRemaining ?? ''} días
+⏳ Duración: ${row.daysRemaining ?? ''} días
 🗓 Compra: ${formatDateMsg(row.startAt)}
-🗓 Vencimiento: ${formatDateMsg(row.endAt)}`
+🗓 Vencimiento: ${formatDateMsg(row.endAt)}`;
+
+// Mensaje de recordatorio de vencimiento
+const mensajeRecordatorioVencimiento = `Hola ${row.clientName ?? ''} 👋🏻
+Te escribo de *Luna Streaming* 🌙 para recordarte que tu servicio de *${row.productName ?? ''}* está próximo a vencer.
+
+🗓 *Fecha de vencimiento:* ${formatDateMsg(row.endAt)}
+⏳ *Días restantes:* ${row.daysRemaining ?? ''}
+
+Desea renovar su servicio?✨`;
+
+const whatsappMsg = isExpiringSoon ? mensajeRecordatorioVencimiento : mensajeCompraNormal;
 
               const onClickWhatsAppClient = () => {
                 const phoneRaw = row.clientPhone ?? ''
