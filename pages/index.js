@@ -62,6 +62,8 @@ const getOptimizedUrl = (url, width = 500) => {
 };
 
 export default function Home() {
+
+  const [isBlurEnabled, setIsBlurEnabled] = useState(false);
   const [imagenActiva, setImagenActiva] = useState(null)
   const [zoomActivo, setZoomActivo] = useState(false)
   const [zoomOrigin, setZoomOrigin] = useState({ x: '50%', y: '50%' })
@@ -360,7 +362,25 @@ export default function Home() {
       </Head>
 
       <Navbar />
-      <Carrusel />
+<div className="blur-header-controls">
+  <div className="blur-toggle-box">
+    <span className="blur-label">{isBlurEnabled ? "MODO TIKTOK ACTIVO" : "MODO TIKTOK"}</span>
+    <label className="neon-switch">
+      <input 
+        type="checkbox" 
+        checked={isBlurEnabled} 
+        onChange={() => setIsBlurEnabled(!isBlurEnabled)} 
+      />
+      <span className="neon-slider"></span>
+    </label>
+  </div>
+</div>
+
+<div className={isBlurEnabled ? "global-blur-active" : ""}>
+      <div id="carrusel-blur-target" className="local-wrapper">
+    <Carrusel />
+</div>
+
 
       <main className="page-root">
         <section className="hero">
@@ -703,7 +723,7 @@ export default function Home() {
           onSuccess={() => { fetchProducts(); setSelectedProduct(null) }}
         />
       )}
-
+</div>
       <Footer />
 
       <style jsx>{`
@@ -1579,6 +1599,193 @@ white-space: normal;
 }
 
 
+/* POSICIONAMIENTO DERECHA ABSOLUTO */
+  .blur-toggle-container {
+    position: absolute;
+    right: 30px;
+    top: 20px; 
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 16px;
+    border-radius: 30px;
+    border: 1px solid var(--accent-1);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+  }
+
+  .blur-label {
+    font-size: 0.65rem;
+    font-weight: 900;
+    color: var(--accent-1);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ESTILO DEL SWITCH */
+  .neon-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+  }
+  .neon-switch input { opacity: 0; width: 0; height: 0; }
+  .neon-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 20px;
+  }
+  .neon-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; width: 14px;
+    left: 3px; bottom: 3px;
+    background-color: #fff;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .neon-slider { background-color: var(--accent-1); }
+  input:checked + .neon-slider:before { transform: translateX(16px); }
+
+  /* --- LÓGICA DE DIFUMINADO --- */
+
+  /* 1. Forzar difuminado al Carrusel y Secciones */
+  .global-blur-active :global(.carrusel-container),
+  .global-blur-active :global(.carousel-wrapper), /* Intenta con varias clases comunes */
+  .global-blur-active .categories-section,
+  .global-blur-active .products-section {
+    filter: blur(12px) !important;
+    opacity: 0.6;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 2. REVELADO AL HACER HOVER (Vuelve a la normalidad) */
+  .global-blur-active :global(.carrusel-container:hover),
+  .global-blur-active .categories-section:hover,
+  .global-blur-active .products-section:hover {
+    filter: blur(0) !important;
+    opacity: 1;
+  }
+
+  /* 3. REVELADO INDIVIDUAL PARA CATEGORÍAS Y CARDS */
+  /* Cuando el mouse entra a la sección, las cards que NO tienen hover se ponen más borrosas */
+  .global-blur-active .categories-section:hover .circle-item:not(:hover),
+  .global-blur-active .products-section:hover .product-card:not(:hover) {
+    filter: blur(5px);
+    opacity: 0.3;
+  }
+
+  /* La card o categoría exacta sobre la que está el mouse */
+  .global-blur-active .circle-item:hover,
+  .global-blur-active .product-card:hover {
+    filter: blur(0) !important;
+    opacity: 1 !important;
+    transform: scale(1.05) translateY(-5px);
+    z-index: 10;
+  }
+
+  /* 1. ESPACIO PARA EL BOTÓN (Evita que tape el carrusel) */
+  .blur-header-controls {
+    width: 100%;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 15px 20px; /* Esto empuja el carrusel hacia abajo */
+    display: flex;
+    justify-content: flex-end;
+    background: transparent;
+  }
+
+  .blur-toggle-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 8px 16px;
+    border-radius: 40px;
+    border: 1px solid var(--accent-1);
+    backdrop-filter: blur(10px);
+  }
+
+  .blur-label {
+    font-size: 0.65rem;
+    font-weight: 900;
+    color: var(--accent-1);
+    letter-spacing: 1px;
+  }
+
+  /* 2. EL TRUCO DEL DIFUMINADO PARA EL CARRUSEL */
+  /* Aplicamos el blur a todos los hijos directos del contenedor activo */
+  .main-blur-container.active > :global(*) {
+    filter: blur(15px) !important;
+    opacity: 0.4;
+    transition: all 0.5s ease-in-out;
+    pointer-events: none; /* Bloquea clics mientras está difuso */
+  }
+
+  /* 3. REVELAR SECCIÓN AL PASAR EL MOUSE */
+  .main-blur-container.active > :global(*:hover) {
+    filter: blur(0) !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 4. REVELAR ELEMENTOS INTERNOS (Cards y Categorías) */
+  /* Cuando entras a una sección, los elementos individuales se ven */
+  .main-blur-container.active .categories-section:hover .circle-item,
+  .main-blur-container.active .products-section:hover .product-card {
+    filter: blur(0) !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Opcional: difuminar un poco las cards que NO estás tocando dentro de la sección */
+  .main-blur-container.active .products-section:hover .product-card:not(:hover) {
+    filter: blur(4px) !important;
+    opacity: 0.5;
+  }
+
+  /* ESTILO DEL SWITCH (Igual al anterior pero verificado) */
+  .neon-switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+  }
+  .neon-switch input { opacity: 0; width: 0; height: 0; }
+  .neon-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 20px;
+  }
+  .neon-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; width: 14px;
+    left: 3px; bottom: 3px;
+    background-color: #fff;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .neon-slider { background-color: var(--accent-1); }
+  input:checked + .neon-slider:before { transform: translateX(18px); }
+
+  /* Difuminar el carrusel cuando el modo privacidad está activo */
+.global-blur-active #carrusel-blur-target {
+  filter: blur(10px); /* Ajusta los px según prefieras */
+  transition: filter 0.3s ease;
+}
+
+/* Quitar difuminado al pasar el cursor sobre el contenedor del carrusel */
+.global-blur-active #carrusel-blur-target:hover {
+  filter: blur(0);
+}
 `}</style>
 
       <style jsx global>{`
