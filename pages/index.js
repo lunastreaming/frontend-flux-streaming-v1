@@ -64,6 +64,7 @@ const getOptimizedUrl = (url, width = 500) => {
 export default function Home() {
 
   const [isBlurEnabled, setIsBlurEnabled] = useState(false);
+  const [blurIntensity, setBlurIntensity] = useState(10);
   const [imagenActiva, setImagenActiva] = useState(null)
   const [zoomActivo, setZoomActivo] = useState(false)
   const [zoomOrigin, setZoomOrigin] = useState({ x: '50%', y: '50%' })
@@ -374,6 +375,20 @@ export default function Home() {
       <span className="neon-slider"></span>
     </label>
   </div>
+
+  {isBlurEnabled && (
+    <div style={{ marginLeft: '15px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+      <input 
+        type="range" 
+        min="1" 
+        max="30" 
+        value={blurIntensity} 
+        onChange={(e) => setBlurIntensity(e.target.value)}
+        style={{ width: '80px', accentColor: 'var(--accent-1)' }}
+      />
+      <span style={{ fontSize: '12px', color: 'var(--accent-1)' }}>{blurIntensity}px</span>
+    </div>
+  )}
 </div>
 
 <div className={isBlurEnabled ? "global-blur-active" : ""}>
@@ -1777,15 +1792,54 @@ white-space: normal;
   input:checked + .neon-slider:before { transform: translateX(18px); }
 
   /* Difuminar el carrusel cuando el modo privacidad está activo */
-.global-blur-active #carrusel-blur-target {
-  filter: blur(10px); /* Ajusta los px según prefieras */
-  transition: filter 0.3s ease;
-}
+.global-blur-active #carrusel-blur-target,
+  .global-blur-active .categories-section,
+  .global-blur-active .products-section,
+  .main-blur-container.active > :global(*) {
+    /* Aquí usamos la variable del slider */
+    filter: ${isBlurEnabled ? `blur(${blurIntensity}px)` : 'none'} !important;
+    opacity: 0.6;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
-/* Quitar difuminado al pasar el cursor sobre el contenedor del carrusel */
-.global-blur-active #carrusel-blur-target:hover {
-  filter: blur(0);
-}
+  /* 2. REVELADO TOTAL AL HACER HOVER EN LA SECCIÓN */
+  .global-blur-active #carrusel-blur-target:hover,
+  .global-blur-active .categories-section:hover,
+  .global-blur-active .products-section:hover,
+  .main-blur-container.active > :global(*:hover) {
+    filter: blur(0) !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 3. REVELADO INDIVIDUAL (Cards y Círculos) */
+  /* Cuando el mouse entra a la sección, permitimos ver los elementos internos */
+  .global-blur-active .categories-section:hover .circle-item,
+  .global-blur-active .products-section:hover .product-card,
+  .main-blur-container.active .categories-section:hover .circle-item,
+  .main-blur-container.active .products-section:hover .product-card {
+    filter: blur(0) !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 4. DIFUMINADO SUAVE PARA LOS ELEMENTOS QUE NO TIENEN EL MOUSE ENCIMA */
+  /* Esto crea un efecto de enfoque en la card que estás viendo */
+  .global-blur-active .categories-section:hover .circle-item:not(:hover),
+  .global-blur-active .products-section:hover .product-card:not(:hover) {
+    /* Usamos la mitad de la intensidad para un efecto elegante o un valor fijo bajo */
+    filter: blur(${Math.max(blurIntensity / 2, 2)}px);
+    opacity: 0.4;
+  }
+
+  /* La card exacta sobre la que está el mouse */
+  .global-blur-active .circle-item:hover,
+  .global-blur-active .product-card:hover {
+    filter: blur(0) !important;
+    opacity: 1 !important;
+    transform: scale(1.05) translateY(-5px);
+    z-index: 10;
+  }
 `}</style>
 
       <style jsx global>{`
