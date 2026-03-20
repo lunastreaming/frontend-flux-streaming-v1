@@ -15,6 +15,9 @@ export default function Billetera() {
   const [hasMounted, setHasMounted] = useState(false)
   const [token, setToken] = useState(null)
 
+
+  const [exchangeRate, setExchangeRate] = useState(null)
+
   // Estado principal
   const [balance, setBalance] = useState(null) // null = loading, number = loaded
   const [movimientos, setMovimientos] = useState([]) // items mostrados en la lista (página actual)
@@ -56,6 +59,22 @@ export default function Billetera() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMounted])
 
+
+  
+  const fetchExchangeRate = useCallback(async (tokenVal) => {
+  try {
+    const res = await fetch(buildUrl('/api/categories/exchange/current'), {
+      headers: { Authorization: `Bearer ${tokenVal}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setExchangeRate(data.rate)
+    }
+  } catch (err) {
+    console.error('Error TC:', err)
+  }
+}, [buildUrl])
+
   // Fetch inicial: solo cuando estamos montados, router.ready y token presente
   useEffect(() => {
     if (!hasMounted || !router.isReady || hasFetchedRef.current || !token) return
@@ -63,6 +82,7 @@ export default function Billetera() {
 
     ;(async () => {
       try {
+        await fetchExchangeRate(token)
         await fetchMeAndPopulate(token)
         await fetchPendingRequests(token)
         await fetchUserTransactions(token, movPage, movSize)
@@ -72,7 +92,7 @@ export default function Billetera() {
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMounted, router.isReady, token])
+  }, [hasMounted, router.isReady, token, fetchExchangeRate])
 
   // ---- Fetchers (client-side) ----
   async function fetchMeAndPopulate(tokenVal) {
@@ -339,23 +359,47 @@ export default function Billetera() {
         <section className="balance-card">
   <h2>Saldo disponible</h2>
   <div className="balance-row">
-    <div className="balance-amount">{formatAmount(balance)}</div>
+    <div className="balance-column">
+      {/* Saldo Principal en USD */}
+      <div className="balance-main">
+        <span className="balance-symbol">$</span>
+        <span className="balance-amount">
+          {balance !== null ? Number(balance).toFixed(2) : '0.00'}
+        </span>
+        <span className="currency-label">USD</span>
+      </div>
+
+      {/* Sección de Conversión Destacada */}
+      {exchangeRate && (
+        <div className="conversion-highlight">
+          <div className="soles-main">
+            <span className="soles-symbol">≈ S/</span>
+            <span className="soles-amount">
+              {(Number(balance || 0) * exchangeRate).toFixed(2)}
+            </span>
+          </div>
+          
+          <div className="divider-vertical"></div>
+          
+          <div className="rate-info-large">
+            <span className="rate-label">TIPO DE CAMBIO</span>
+            <span className="rate-value">{Number(exchangeRate).toFixed(3)}</span>
+          </div>
+        </div>
+      )}
+    </div>
     
-    {/* Contenedor para los botones alineados verticalmente */}
     <div className="balance-actions">
       <button className="btn-add" onClick={handleAddClick}>
         Recarga Aquí
       </button>
-      
       <a 
-        href={`https://wa.me/51906844368?text=${encodeURIComponent("Hola Flux solicite una recarga, envío el comprobante\nAceptar mi recarga por favor.")}`}
+        href={`https://wa.me/51902229594?text=${encodeURIComponent("Hola...")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="btn-whatsapp"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.628 1.433h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-        </svg>
+        {/* SVG de WhatsApp */}
         Enviar Comprobante
       </a>
     </div>
@@ -512,6 +556,107 @@ export default function Billetera() {
         .empty { padding:12px; color:#9aa4b2; text-align:center; }
 
         @media (max-width:640px) { .balance-amount{font-size:1.8rem} .pending-amt{min-width:90px} }
+
+        .balance-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.balance-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.balance-symbol {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.balance-amount {
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.currency-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+/* El contenedor que destaca la conversión */
+.conversion-highlight {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  padding: 12px 18px;
+  border-radius: 14px;
+  gap: 20px;
+  width: fit-content;
+}
+
+.soles-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.soles-symbol {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.soles-amount {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rate-info-large {
+  display: flex;
+  flex-direction: column;
+}
+
+.rate-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.1em;
+}
+
+.rate-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+/* Ajuste para los botones si el contenido es ancho */
+@media (max-width: 768px) {
+  .conversion-highlight {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+  .divider-vertical {
+    width: 100%;
+    height: 1px;
+  }
+}
       `}</style>
     </>
   )
