@@ -1750,12 +1750,41 @@ white-space: normal;
 
   /* 4. REVELAR ELEMENTOS INTERNOS (Cards y Categorías) */
   /* Cuando entras a una sección, los elementos individuales se ven */
-  .main-blur-container.active .categories-section:hover .circle-item,
-  .main-blur-container.active .products-section:hover .product-card {
-    filter: blur(0) !important;
-    opacity: 1;
-    pointer-events: auto;
-  }
+ /* 1. MANTENER DIFUMINADO TODO LO QUE NO SEA EL ELEMENTO SELECCIONADO */
+.global-blur-active .circle-item,
+.global-blur-active .product-card,
+.global-blur-active .categories-section,
+.global-blur-active .products-section {
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 2. SI ESTOY SOBRE UNA CARD, LAS CATEGORÍAS SE QUEDAN DIFUMINADAS */
+/* (Y viceversa) */
+.global-blur-active .products-section:hover .product-card:not(:hover) {
+  filter: blur(${blurIntensity * 1.5}px) !important;
+  opacity: 0.2;
+}
+
+.global-blur-active .categories-section:hover .circle-item:not(:hover) {
+  filter: blur(${blurIntensity * 1.5}px) !important;
+  opacity: 0.2;
+}
+
+/* 3. SOLO EL ELEMENTO CON EL MOUSE SE VE NÍTIDO */
+.global-blur-active .circle-item:hover,
+.global-blur-active .product-card:hover {
+  filter: blur(0) !important;
+  opacity: 1 !important;
+  transform: scale(1.05) translateY(-5px);
+  z-index: 100;
+  position: relative;
+}
+
+/* 4. BLOQUEO EXTRA: Si el mouse está en los productos, forzar difuminado en categorías */
+.global-blur-active .products-section:hover ~ .categories-section,
+.global-blur-active .categories-section:hover ~ .products-section {
+  filter: blur(${blurIntensity}px);
+}
 
   /* Opcional: difuminar un poco las cards que NO estás tocando dentro de la sección */
   .main-blur-container.active .products-section:hover .product-card:not(:hover) {
@@ -1816,12 +1845,30 @@ white-space: normal;
   /* Cuando el mouse entra a la sección, permitimos ver los elementos internos */
   .global-blur-active .categories-section:hover .circle-item,
   .global-blur-active .products-section:hover .product-card,
-  .main-blur-container.active .categories-section:hover .circle-item,
-  .main-blur-container.active .products-section:hover .product-card {
-    filter: blur(0) !important;
-    opacity: 1;
-    pointer-events: auto;
-  }
+  /* 1. ESTADO BASE: Cuando el modo está activo, todo se difumina */
+.global-blur-active .circle-item,
+.global-blur-active .product-card {
+  filter: blur(${blurIntensity}px);
+  opacity: 0.6;
+  transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* 2. REFORZAR DIFUMINADO: Si el mouse entra a la sección, 
+   los que NO estás tocando se difuminan AÚN MÁS */
+.global-blur-active .categories-section:hover .circle-item:not(:hover),
+.global-blur-active .products-section:hover .product-card:not(:hover) {
+  filter: blur(${Math.max(blurIntensity * 1.2, 5)}px) !important;
+  opacity: 0.3;
+}
+
+/* 3. ENFOQUE ÚNICO: Solo el elemento bajo el mouse se vuelve 100% nítido */
+.global-blur-active .circle-item:hover,
+.global-blur-active .product-card:hover {
+  filter: blur(0) !important;
+  opacity: 1 !important;
+  transform: scale(1.05) translateY(-5px);
+  z-index: 50; /* Importante para que resalte sobre los demás */
+}
 
   /* 4. DIFUMINADO SUAVE PARA LOS ELEMENTOS QUE NO TIENEN EL MOUSE ENCIMA */
   /* Esto crea un efecto de enfoque en la card que estás viendo */
