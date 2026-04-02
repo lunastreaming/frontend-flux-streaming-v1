@@ -204,7 +204,6 @@ export default function ExpiredPage() {
                   <col style={{ width: '180px' }} />
                   <col style={{ width: '160px' }} />
                   <col style={{ width: '160px' }} />
-                  <col style={{ width: '100px' }} />
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '130px' }} />
@@ -220,7 +219,6 @@ export default function ExpiredPage() {
                     <th>Password</th>
                     <th>Cliente</th>
                     <th>Celular cliente</th>
-                    <th>Pin</th>
                     <th>Inicio</th>
                     <th>Fin</th>
                     <th>Días restantes</th>
@@ -282,7 +280,6 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
                             <span className="client-phone">{r.buyerUsernamePhone ?? ''}</span>
                           </div>
                         </td>
-                        <td><div className="row-inner">{r.pin ?? ''}</div></td>
                         <td><div className="row-inner">{formatDateLocal(r.startAt)}</div></td>
                         <td><div className="row-inner">{formatDateLocal(r.endAt)}</div></td>
                         <td>
