@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
-import { FaSearch, FaEye, FaEyeSlash, FaTrash, FaWhatsapp } from 'react-icons/fa'
+import { FaSearch, FaEye, FaEyeSlash, FaTrash, FaWhatsapp, FaCheckSquare, FaSquare } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
 
 export default function ExpiredPage() {
@@ -22,7 +22,11 @@ export default function ExpiredPage() {
   const [search, setSearch] = useState('')
   const [visiblePasswords, setVisiblePasswords] = useState(() => new Set())
 
-  // ConfirmModal (eliminar)
+  // Selección múltiple
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+
+  // ConfirmModal (eliminar individual)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
 
@@ -73,6 +77,9 @@ export default function ExpiredPage() {
 
       const totalPagesCalc = Math.ceil((payload?.totalElements ?? content.length) / size) || 1
       setTotalPages(Number(payload?.totalPages ?? totalPagesCalc))
+      
+      // Limpiar selección al cambiar de página
+      setSelectedIds(new Set())
     } catch (err) {
       setError(err.message || String(err))
       setItems([])
@@ -131,7 +138,25 @@ export default function ExpiredPage() {
     )
   })
 
-  // Eliminar
+  // Funciones de Selección
+  const toggleSelectAll = () => {
+    if (selectedIds.size === displayed.length && displayed.length > 0) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(displayed.map(it => it.id)))
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev => {
+      const copy = new Set(prev)
+      if (copy.has(id)) copy.delete(id)
+      else copy.add(id)
+      return copy
+    })
+  }
+
+  // Eliminar Individual
   const handleDeleteClick = (stock) => {
     setSelectedStock(stock)
     setConfirmOpen(true)
@@ -152,6 +177,29 @@ export default function ExpiredPage() {
     } finally {
       setConfirmOpen(false)
       setSelectedStock(null)
+    }
+  }
+
+  // Eliminar Múltiple
+  const handleBulkDeleteConfirm = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/stocks/remove-multiple`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(Array.from(selectedIds))
+      })
+      if (!res.ok) throw new Error('Error en borrado masivo')
+      
+      setSelectedIds(new Set())
+      await fetchPage(page)
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo realizar la eliminación múltiple')
+    } finally {
+      setBulkConfirmOpen(false)
     }
   }
 
@@ -186,6 +234,16 @@ export default function ExpiredPage() {
               placeholder="Buscar id, producto, username, cliente..."
             />
           </div>
+
+          {selectedIds.size > 0 && (
+            <button 
+              className="bulk-delete-btn"
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              <FaTrash style={{ marginRight: 8 }} />
+              Eliminar seleccionados ({selectedIds.size})
+            </button>
+          )}
         </div>
 
         <div className="table-wrapper">
@@ -197,6 +255,7 @@ export default function ExpiredPage() {
             <div className="table-scroll" ref={scrollRef}>
               <table className="styled-table" role="table" aria-label="Stocks vencidos">
                 <colgroup>
+                  <col style={{ width: '50px' }} />
                   <col style={{ width: '60px' }} />
                   <col style={{ width: '120px' }} />
                   <col style={{ width: '220px' }} />
@@ -212,6 +271,13 @@ export default function ExpiredPage() {
 
                 <thead>
                   <tr>
+                    <th>
+                      <button className="select-btn-head" onClick={toggleSelectAll}>
+                        {selectedIds.size === displayed.length && displayed.length > 0 
+                          ? <FaCheckSquare color="#ef4444" /> 
+                          : <FaSquare color="rgba(255,255,255,0.2)" />}
+                      </button>
+                    </th>
                     <th>#</th>
                     <th>Id</th>
                     <th>Producto</th>
@@ -229,6 +295,7 @@ export default function ExpiredPage() {
                 <tbody>
                   {displayed.map((r, i) => {
                     const isVisible = visiblePasswords.has(r.id)
+                    const isSelected = selectedIds.has(r.id)
                     const masked = r.password ? '••••••••' : ''
                     const daysBadgeClass =
                       r.daysRemaining < 0
@@ -238,7 +305,16 @@ export default function ExpiredPage() {
                         : 'badge neutral'
 
                     return (
-                      <tr key={r.id ?? i}>
+                      <tr key={r.id ?? i} className={isSelected ? 'selected-row' : ''}>
+                        <td>
+                          <div className="row-inner">
+                            <button className="select-btn-row" onClick={() => toggleSelectOne(r.id)}>
+                              {isSelected 
+                                ? <FaCheckSquare color="#ef4444" /> 
+                                : <FaSquare color="rgba(255,255,255,0.15)" />}
+                            </button>
+                          </div>
+                        </td>
                         <td><div className="row-inner">{i + 1}</div></td>
                         <td><div className="row-inner id-cell">{r.id ?? ''}</div></td>
                         <td><div className="row-inner td-name" title={r.productName ?? ''}>{r.productName ?? ''}</div></td>
@@ -341,21 +417,38 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
         />
       )}
 
+      {bulkConfirmOpen && (
+        <ConfirmModal
+          open={bulkConfirmOpen}
+          onCancel={() => setBulkConfirmOpen(false)}
+          onConfirm={handleBulkDeleteConfirm}
+          message={`¿Estás seguro de que deseas eliminar los ${selectedIds.size} stocks seleccionados? Esta acción marcará los registros como eliminados.`}
+        />
+      )}
+
       <style jsx>{`
-        /* ... (Estilos iguales a los anteriores) ... */
-        .page-bg { min-height: 100vh; }
+        .page-bg { min-height: 100vh; background-color: #0b1220; }
         .page-container { padding: 36px 20px; max-width: 1400px; margin:0 auto; }
-        .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+        .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap: wrap; }
         .search-bar { display:flex; align-items:center; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:0 12px; height:40px; max-width:520px; width:100%; }
         .search-icon-inline { color:#9fb4c8; margin-right:8px; }
         .search-input-inline { flex:1; background:transparent; border:none; color:#fff; outline:none; font-size:0.95rem; }
+        
+        .bulk-delete-btn { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white; border: none; padding: 0 16px; height: 40px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); transition: transform 0.2s; }
+        .bulk-delete-btn:hover { transform: translateY(-2px); }
+
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
         .table-scroll { overflow:auto; border-radius:8px; }
-        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1100px; }
+        table.styled-table { width:100%; border-collapse:separate; border-spacing:0 12px; color:#e1e1e1; min-width:1200px; }
         thead tr { background: rgba(30,30,30,0.8); text-transform:uppercase; letter-spacing:0.06em; color:#cfcfcf; font-size:0.8rem; }
         thead th { padding:10px; text-align:center; font-weight:800; vertical-align:middle; white-space:nowrap; }
         tbody td { padding:0; vertical-align:middle; text-align:center; }
-        .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; }
+        
+        .row-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px; background-color: rgba(22,22,22,0.6); border-radius:12px; min-height:36px; transition: background-color 0.2s; }
+        .selected-row .row-inner { background-color: rgba(239, 68, 68, 0.15) !important; border: 1px solid rgba(239, 68, 68, 0.2); }
+        
+        .select-btn-head, .select-btn-row { background: transparent; border: none; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; padding: 0; }
+        
         .td-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
         .id-cell { font-weight:700; color:#cfe8ff; }
         .password-cell { justify-content:center; }
@@ -373,6 +466,12 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
         .phone-cell { display: flex; align-items: center; gap: 8px; }
         .table-scroll::-webkit-scrollbar { height: 12px; }
         .table-scroll::-webkit-scrollbar-thumb { background: linear-gradient(90deg, rgba(139,92,246,0.9), rgba(34,211,238,0.9)); border-radius: 999px; }
+
+        @media (max-width: 768px) {
+          .header-row { flex-direction: column; align-items: stretch; }
+          .bulk-delete-btn { width: 100%; justify-content: center; order: -1; margin-bottom: 8px; }
+          .search-bar { max-width: none; }
+        }
       `}</style>
     </div>
   )
