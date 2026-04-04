@@ -25,6 +25,9 @@ export default function StockModal({
     pin: ''
   })
 
+  // Estado para manejar múltiples PINs cuando es tipo PERFIL
+  const [pins, setPins] = useState({})
+
   const [showTopShadow, setShowTopShadow] = useState(false)
   const [showBottomShadow, setShowBottomShadow] = useState(false)
   const contentRef = useRef(null)
@@ -54,11 +57,13 @@ export default function StockModal({
         numeroPerfil: initialData.numeroPerfil ?? '',
         pin: initialData.pin ?? ''
       })
+      if (initialData.tipo === 'PERFIL' && initialData.numeroPerfil) {
+        setPins({ [initialData.numeroPerfil]: initialData.pin ?? '' })
+      }
     }
 
     const t = setTimeout(() => updateShadows(), 120)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialData, initialProducts])
 
   /* ---------- helpers ---------- */
@@ -72,6 +77,7 @@ export default function StockModal({
       numeroPerfil: '',
       pin: ''
     })
+    setPins({})
     setSubmitting(false)
   }
 
@@ -99,8 +105,7 @@ export default function StockModal({
     try {
       const headers = getAuthHeader()
       const url = `${process.env.NEXT_PUBLIC_API_URL}/api/products/provider/me`
-      const fetchOptions = headers ? { headers } : {}
-      const res = await fetch(url, fetchOptions)
+      const res = await fetch(url, headers ? { headers } : {})
       const text = await res.text().catch(() => '')
       if (!res.ok) throw new Error(`Error ${res.status}: ${text || res.statusText}`)
       const raw = text ? JSON.parse(text) : []
@@ -118,6 +123,10 @@ export default function StockModal({
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
+  const handlePinChange = (perfilNum, value) => {
+    setPins(prev => ({ ...prev, [perfilNum]: value }))
+  }
+
   const validate = () => {
     if (!form.productId) { alert('Selecciona un producto'); return false }
     if (!form.username?.trim()) { alert('El campo Username es obligatorio'); return false }
@@ -127,7 +136,6 @@ export default function StockModal({
       if (!Number.isInteger(n) || n < 1) { alert('Número de perfil debe ser un entero mayor o igual a 1'); return false }
       if (n > 7) { alert('Máximo 7 stocks por operación'); return false }
     }
-    if (form.numeroPerfil !== '' && isNaN(Number(form.numeroPerfil))) { alert('Número de perfil debe ser un número válido'); return false }
     return true
   }
 
@@ -137,7 +145,7 @@ export default function StockModal({
     try {
       const headersAuth = getAuthHeader()
       if (!headersAuth) {
-        alert('No estás autenticado. Inicia sesión e intenta nuevamente.')
+        alert('No estás autenticado.');
         setSubmitting(false)
         return
       }
@@ -150,37 +158,25 @@ export default function StockModal({
           url: form.url || null,
           tipo: form.tipo,
           numeroPerfil: form.numeroPerfil === '' ? null : Number(form.numeroPerfil),
-          pin: form.pin || null
+          pin: form.tipo === 'PERFIL' ? (pins[form.numeroPerfil] || null) : (form.pin || null)
         }
-
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stocks/${initialData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...headersAuth },
           body: JSON.stringify(payload)
         })
-        const txt = await res.text().catch(() => '')
-        if (!res.ok) throw new Error(`Error ${res.status}: ${txt || res.statusText}`)
-        const data = txt ? JSON.parse(txt) : {}
-        if (onSuccess) onSuccess(data)
+        if (!res.ok) throw new Error('Error al actualizar')
+        if (onSuccess) onSuccess()
         handleClose()
         return
       }
 
       let stocksToSend = []
       if (form.tipo === 'CUENTA') {
-        stocksToSend.push({
-          productId: form.productId,
-          username: form.username.trim(),
-          password: form.password || null,
-          url: form.url || null,
-          tipo: 'CUENTA',
-          numeroPerfil: null,
-          pin: form.pin || null
-        })
+        stocksToSend.push({ ...form, username: form.username.trim(), numeroPerfil: null })
       } else {
-        const n = Number(form.numeroPerfil || 0)
-        const capped = Math.min(n, 7)
-        for (let i = 1; i <= capped; i++) {
+        const n = Math.min(Number(form.numeroPerfil || 0), 7)
+        for (let i = 1; i <= n; i++) {
           stocksToSend.push({
             productId: form.productId,
             username: form.username.trim(),
@@ -188,129 +184,82 @@ export default function StockModal({
             url: form.url || null,
             tipo: 'PERFIL',
             numeroPerfil: i,
-            pin: form.pin || null
+            pin: pins[i] || null
           })
         }
       }
 
-      const body = { stocks: stocksToSend }
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stocks/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headersAuth },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ stocks: stocksToSend })
       })
-
-      const txt = await res.text().catch(() => '')
-      if (!res.ok) throw new Error(`Error ${res.status}: ${txt || res.statusText}`)
-      const resp = txt ? JSON.parse(txt) : {}
-      const created = resp?.created ?? resp?.createdStocks ?? resp ?? []
-
-      if (onSuccess) onSuccess(created)
+      if (!res.ok) throw new Error('Error en creación masiva')
+      if (onSuccess) onSuccess()
       handleClose()
     } catch (err) {
-      console.error('Error guardando stock batch:', err)
-      alert('No se pudo guardar el stock: ' + (err.message || err))
+      alert(err.message)
     } finally {
       setSubmitting(false)
     }
   }
 
-  /* ---------- close handler centralizado ---------- */
   function handleClose() {
-    console.log('[StockModal] handleClose called, onClose exists?', typeof onClose === 'function')
     resetForm()
-    if (typeof onClose === 'function') {
-      try { onClose() } catch (e) { console.error('onClose threw', e) }
-    }
+    if (onClose) onClose()
   }
 
-  /* ---------- scroll helpers ---------- */
   function updateShadows() {
     const el = contentRef.current
     if (!el) return
-    setTimeout(() => {
-      if (!el) return
-      const top = el.scrollTop > 8
-      const bottom = el.scrollHeight - el.clientHeight - el.scrollTop > 8
-      setShowTopShadow(top)
-      setShowBottomShadow(bottom)
-    }, 0)
+    setShowTopShadow(el.scrollTop > 8)
+    setShowBottomShadow(el.scrollHeight - el.clientHeight - el.scrollTop > 8)
   }
 
-  function onContentScroll() { updateShadows() }
+  if (!visible || !mounted) return null
 
-  /* ---------- IMPORTANT: respect 'visible' and SSR guard ---------- */
-  if (!visible) return null
-  if (typeof document === 'undefined' || !mounted) return null
-
-  /* ---------- RENDER (portal) ---------- */
   return ReactDOM.createPortal(
-    <div
-      style={styles.backdrop}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) handleClose()
-      }}
-      data-testid="stockmodal-backdrop"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={initialData && initialData.id ? 'Editar stock' : 'Nuevo stock'}
-        style={styles.modal}
-        onMouseDown={(e) => e.stopPropagation()}
-        data-testid="stockmodal-dialog"
-      >
+    <div style={styles.backdrop} onMouseDown={(e) => e.target === e.currentTarget && handleClose()}>
+      <div role="dialog" style={styles.modal} onMouseDown={(e) => e.stopPropagation()}>
         <header style={styles.header}>
-          <h3 style={styles.title}>{initialData && initialData.id ? '✏️ Editar stock' : '➕ Nuevo stock'}</h3>
-
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Cerrar"
-            style={styles.closeBtn}
-            data-testid="stockmodal-close"
-          >
-            <FaTimes />
-          </button>
+          <h3 style={styles.title}>{initialData?.id ? '✏️ Editar stock' : '➕ Nuevo stock'}</h3>
+          <button type="button" onClick={handleClose} style={styles.closeBtn}><FaTimes /></button>
         </header>
 
-        <div ref={contentRef} onScroll={onContentScroll} style={styles.contentWrap} className="stock-modal-scroll">
+        <div ref={contentRef} onScroll={updateShadows} style={styles.contentWrap} className="stock-modal-scroll">
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} style={styles.formGrid}>
+            
+            {/* PRODUCTO */}
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={styles.label}>Producto</label>
-              <select
-                name="productId"
-                value={form.productId}
-                onChange={handleChange}
-                style={styles.select}
-                disabled={loadingProducts}
-                aria-required="true"
-                data-testid="stockmodal-select-product"
-              >
-                <option value="" disabled style={styles.optionDisabled}>{loadingProducts ? 'Cargando productos…' : 'Selecciona producto'}</option>
-                {products.map(p => <option key={p.id} value={p.id} style={styles.option}>{p.name}</option>)}
+              <select name="productId" value={form.productId} onChange={handleChange} style={styles.select} disabled={loadingProducts}>
+                <option value="" disabled>{loadingProducts ? 'Cargando...' : 'Selecciona producto'}</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
 
+            {/* USERNAME */}
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={styles.label}>Username</label>
-              <input name="username" value={form.username} onChange={handleChange} placeholder="Usuario" style={styles.input} data-testid="stockmodal-username" />
+              <input name="username" value={form.username} onChange={handleChange} placeholder="Usuario" style={styles.input} />
             </div>
 
-            <div>
+            {/* PASSWORD */}
+            <div style={{ gridColumn: '1 / -1' }}>
               <label style={styles.label}>Password</label>
-              <input name="password" value={form.password} onChange={handleChange} placeholder="Password" style={{ ...styles.input, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }} data-testid="stockmodal-password" />
+              <input name="password" value={form.password} onChange={handleChange} placeholder="Password" style={{ ...styles.input, fontFamily: 'monospace' }} />
             </div>
 
+            {/* URL */}
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={styles.label}>URL</label>
-              <input name="url" value={form.url} onChange={handleChange} placeholder="https://..." style={styles.input} data-testid="stockmodal-url" />
+              <input name="url" value={form.url} onChange={handleChange} placeholder="https://..." style={styles.input} />
             </div>
 
+            {/* TIPO */}
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={styles.label}>Tipo</label>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 16 }}>
                 <label style={styles.radioLabel}>
                   <input type="radio" name="tipo" value="CUENTA" checked={form.tipo === 'CUENTA'} onChange={handleChange} />
                   <span style={styles.radioText}>Cuenta</span>
@@ -322,64 +271,68 @@ export default function StockModal({
               </div>
             </div>
 
-            <div>
-              <label style={styles.label}>Número de perfil</label>
-              <input name="numeroPerfil" value={form.numeroPerfil} onChange={handleChange} placeholder="123" style={styles.input} data-testid="stockmodal-numperfil" />
+            {/* NUMERO DE PERFIL / CANTIDAD */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={styles.label}>{form.tipo === 'PERFIL' ? 'Cantidad de perfiles (Máx 7)' : 'Número de perfil'}</label>
+              <input name="numeroPerfil" value={form.numeroPerfil} onChange={handleChange} placeholder="Ej: 4" style={styles.input} />
             </div>
 
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={styles.label}>PIN</label>
-              <input name="pin" value={form.pin} onChange={handleChange} placeholder="PIN" style={styles.input} data-testid="stockmodal-pin" />
-            </div>
+            {/* SECCIÓN DE PINS (UNO DEBAJO DEL OTRO) */}
+            {form.tipo === 'CUENTA' ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={styles.label}>PIN</label>
+                <input name="pin" value={form.pin} onChange={handleChange} placeholder="PIN" style={styles.input} />
+              </div>
+            ) : (
+              // Contenedor para perfiles: cada uno ocupa el ancho completo
+              <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {Array.from({ length: Math.min(Number(form.numeroPerfil || 0), 7) }).map((_, idx) => {
+                  const i = idx + 1;
+                  return (
+                    <div key={`pin-field-${i}`}>
+                      <label style={styles.label}>PIN Perfil {i}</label>
+                      <input 
+                        value={pins[i] || ''} 
+                        onChange={(e) => handlePinChange(i, e.target.value)} 
+                        placeholder={`Ingrese PIN para perfil ${i}`} 
+                        style={styles.input} 
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </form>
         </div>
 
         <footer style={styles.footer}>
-          <button type="button" onClick={handleClose} style={styles.cancelBtn} disabled={submitting} data-testid="stockmodal-cancel">Cancelar</button>
-          <button type="button" onClick={handleSubmit} style={styles.submitBtn(submitting)} disabled={submitting} data-testid="stockmodal-create">
-            {submitting ? 'Guardando...' : (initialData && initialData.id ? 'Guardar cambios' : 'Crear')}
+          <button type="button" onClick={handleClose} style={styles.cancelBtn} disabled={submitting}>Cancelar</button>
+          <button type="button" onClick={handleSubmit} style={styles.submitBtn(submitting)} disabled={submitting}>
+            {submitting ? 'Guardando...' : (initialData?.id ? 'Guardar cambios' : 'Crear')}
           </button>
         </footer>
 
-        <style>{`
-          .stock-modal-scroll { scrollbar-width: thin; scrollbar-color: rgba(155,178,200,0.6) transparent; overflow-x: hidden; }
-          .stock-modal-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
-          .stock-modal-scroll::-webkit-scrollbar-track { background: transparent; }
-          .stock-modal-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(155,178,200,0.18), rgba(155,178,200,0.28)); border-radius: 999px; border: 2px solid rgba(2,6,23,0.0); }
-          select option { background: #071026 !important; color: #EDF2F7 !important; }
-          select option[disabled] { color: #9CA3AF !important; }
-        `}</style>
+        <style>{`.stock-modal-scroll { scrollbar-width: thin; overflow-x: hidden; }`}</style>
       </div>
     </div>,
     document.body
   )
 }
 
-/* ===== estilos (idénticos a la versión anterior, adaptables) ===== */
 const styles = {
-  backdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(2,6,23,0.55)', zIndex: 2147483647, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 },
-  modal: { width: '100%', maxWidth: 760, background: 'linear-gradient(180deg, #071026 0%, #081426 100%)', color: '#EDF2F7', borderRadius: 12, boxShadow: '0 20px 60px rgba(2,6,23,0.7)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-  title: { margin: 0, fontSize: 17, fontWeight: 700 },
-  closeBtn: { background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: 18, cursor: 'pointer', padding: 6, lineHeight: 1 },
-  contentWrap: { position: 'relative', overflowY: 'auto', padding: 16, flex: '1 1 auto' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
-  label: { display: 'block', marginBottom: 6, fontWeight: 700, color: '#9FB4C8', fontSize: 13 },
-  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)', color: '#E6EEF7', outline: 'none' },
-  select: { padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: '#071026', color: '#E6EEF7', outline: 'none', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', backgroundImage: 'linear-gradient(45deg, transparent 50%, #9fb4c8 50%), linear-gradient(135deg, #9fb4c8 50%, transparent 50%)', backgroundPosition: 'calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px)', backgroundSize: '6px 6px, 6px 6px', backgroundRepeat: 'no-repeat', cursor: 'pointer' },
-  option: { background: '#071026', color: '#EDF2F7' }, optionDisabled: { color: '#9CA3AF' },
-  radioLabel: { display: 'flex', alignItems: 'center', gap: 8 }, radioText: { marginLeft: 6, color: '#E6EEF7' },
-  footer: { borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: 'linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00))', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 },
-  cancelBtn: { padding: '10px 14px', borderRadius: 8, background: '#e6eef7', color: '#081426', border: 'none', cursor: 'pointer' },
-  submitBtn: (disabled) => ({ padding: '10px 14px', borderRadius: 8, background: disabled ? 'linear-gradient(90deg,#94A3B8,#6B7280)' : 'linear-gradient(90deg,#06B6D4,#10B981)', color: disabled ? '#E6EEF7' : '#021018', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 700 })
+  backdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(2,6,23,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 },
+  modal: { width: '100%', maxWidth: 500, background: '#071026', color: '#EDF2F7', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: '90vh' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' },
+  title: { margin: 0, fontSize: 18, fontWeight: 700 },
+  closeBtn: { background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: 20, cursor: 'pointer' },
+  contentWrap: { overflowY: 'auto', padding: '20px', flex: '1 1 auto' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: 20 },
+  label: { display: 'block', marginBottom: 8, fontWeight: 600, color: '#9FB4C8', fontSize: 13 },
+  input: { width: '100%', padding: '12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', outline: 'none' },
+  select: { width: '100%', padding: '12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#071026', color: '#fff', outline: 'none' },
+  radioLabel: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+  radioText: { color: '#E6EEF7', fontSize: 14 },
+  footer: { borderTop: '1px solid rgba(255,255,255,0.05)', padding: '16px', display: 'flex', justifyContent: 'flex-end', gap: 12 },
+  cancelBtn: { padding: '10px 20px', borderRadius: 8, background: '#334155', color: '#fff', border: 'none', cursor: 'pointer' },
+  submitBtn: (disabled) => ({ padding: '10px 20px', borderRadius: 8, background: disabled ? '#475569' : 'linear-gradient(90deg,#06B6D4,#10B981)', color: '#fff', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 700 })
 }
-
-/* Responsive tweak */
-try {
-  const mq = window?.matchMedia?.('(max-width: 900px)')
-  if (mq && mq.matches) {
-    styles.formGrid.gridTemplateColumns = '1fr'
-    styles.modal.maxWidth = '96%'
-    styles.modal.maxHeight = '92vh'
-  }
-} catch (e) { /* ignore in SSR */ }

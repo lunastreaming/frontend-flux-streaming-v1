@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import StockModal from '../../components/StockModal'
 import ConfirmModal from '../../components/ConfirmModal'
-import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt, FaCheckDouble, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { FaEdit, FaTrashAlt, FaPlus, FaSearch, FaUpload, FaRedoAlt, FaCheckDouble, FaChevronLeft, FaChevronRight, FaTrash } from 'react-icons/fa'
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([])
@@ -48,38 +48,55 @@ export default function StocksPage() {
   }
 
   const fetchStocks = async (p = 0, searchTerm = '') => {
-  try {
-    const headers = getAuthHeaders()
-    if (!headers) return
-    
-    // Añade el parámetro &search= a la URL
-    const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}&search=${searchTerm}`, { headers })
-    const payload = await res.json()
-    
-    const content = Array.isArray(payload?.content) ? payload.content : []
-    
-    setStocks(content.map(normalizeStock).filter(Boolean))
-    setPage(Number(payload?.number ?? p))
-    setTotalElements(Number(payload?.totalElements ?? content.length))
-    setTotalPages(Number(payload?.totalPages ?? 1))
-  } catch (err) {
-    console.error('Error al cargar stocks:', err)
+    try {
+      const headers = getAuthHeaders()
+      if (!headers) return
+      
+      const res = await fetch(`${BASE_URL}/api/stocks/provider/me?page=${p}&size=${size}&search=${searchTerm}`, { headers })
+      const payload = await res.json()
+      
+      const content = Array.isArray(payload?.content) ? payload.content : []
+      
+      setStocks(content.map(normalizeStock).filter(Boolean))
+      setPage(Number(payload?.number ?? p))
+      setTotalElements(Number(payload?.totalElements ?? content.length))
+      setTotalPages(Number(payload?.totalPages ?? 1))
+    } catch (err) {
+      console.error('Error al cargar stocks:', err)
+    }
   }
-}
 
-const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inactive')
+  const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inactive')
 
-  const selectableOnPage = filtered.filter(s => s.status === 'inactive')
-  const handleSelectAll = (e) => setSelectedIds(e.target.checked ? selectableOnPage.map(s => s.id) : [])
-  const handleSelectOne = (id, status) => {
-    if (status !== 'inactive') return
+  // --- MEJORA DE LÓGICA DE SELECCIÓN ---
+  
+  // Ahora todos los elementos filtrados son seleccionables
+  const handleSelectAll = (e) => {
+    setSelectedIds(e.target.checked ? filtered.map(s => s.id) : [])
+  }
+
+  const handleSelectOne = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
+
+  // Identificamos cuáles de los seleccionados están inactivos
+  const selectedStocks = filtered.filter(s => selectedIds.includes(s.id))
+  const allSelectedAreInactive = selectedIds.length > 0 && selectedStocks.every(s => s.status === 'inactive')
+
+  // --- ACCIONES ---
 
   const triggerBulkActivate = () => {
     setConfirmPayload({
       action: 'bulkActivate',
       customMessage: `Has seleccionado ${selectedIds.length} ítems. Al activarlos, estarán disponibles para la venta. ¿Deseas continuar?`
+    })
+    setConfirmOpen(true)
+  }
+
+  const triggerBulkRemove = () => {
+    setConfirmPayload({
+      action: 'bulkRemove',
+      customMessage: `¿Estás seguro de que deseas eliminar permanentemente los ${selectedIds.length} stocks seleccionados?`
     })
     setConfirmOpen(true)
   }
@@ -104,6 +121,13 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
           body: JSON.stringify({ ids: selectedIds })
         })
         setSelectedIds([])
+      } else if (confirmPayload.action === 'bulkRemove') {
+        await fetch(`${BASE_URL}/api/stocks/remove-multiple`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify(selectedIds)
+        })
+        setSelectedIds([])
       } else if (confirmPayload.action === 'toggleStatus') {
         await fetch(`${BASE_URL}/api/stocks/${confirmPayload.id}/status`, {
           method: 'PATCH',
@@ -113,9 +137,10 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
       } else if (confirmPayload.action === 'remove') {
         await fetch(`${BASE_URL}/api/stocks/remove/${confirmPayload.id}`, { method: 'DELETE', headers })
       }
-      fetchStocks(page)
-    } catch (err) { alert(err.message) }
-    finally { 
+      fetchStocks(page, search)
+    } catch (err) { 
+      alert(err.message) 
+    } finally { 
       setConfirmLoading(false);
       setConfirmOpen(false) 
     }
@@ -132,12 +157,27 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
             <input type="text" placeholder="Buscar stock…" value={search} onChange={e => setSearch(e.target.value)} className="search-input-inline" /> 
           </div>
           <div className="header-actions">
-            {selectedIds.length > 0 && (
-              <button className="btn-bulk" onClick={triggerBulkActivate}>
-                <FaCheckDouble className="btn-icon" />
-                <span className="btn-text">ACTIVAR ({selectedIds.length})</span>
-              </button>
+            {/* Solo mostramos los botones masivos si TODOS los seleccionados son inactivas */}
+            {allSelectedAreInactive && (
+              <>
+                <button className="btn-bulk-delete" onClick={triggerBulkRemove}>
+                  <FaTrash className="btn-icon" />
+                  <span className="btn-text">ELIMINAR ({selectedIds.length})</span>
+                </button>
+                <button className="btn-bulk" onClick={triggerBulkActivate}>
+                  <FaCheckDouble className="btn-icon" />
+                  <span className="btn-text">ACTIVAR ({selectedIds.length})</span>
+                </button>
+              </>
             )}
+            
+            {/* Si hay seleccionados pero algunos están activos, mostramos un aviso sutil o simplemente no mostramos las acciones masivas de 'inactive' */}
+            {selectedIds.length > 0 && !allSelectedAreInactive && (
+                <span style={{ fontSize: '0.75rem', color: '#999', display: 'flex', alignItems: 'center' }}>
+                    Selección mixta (acciones masivas deshabilitadas)
+                </span>
+            )}
+
             <button className="btn-primary" onClick={() => { setEditingStock(null); setShowModal(true) }}>
               <FaPlus className="btn-icon" />
               <span className="btn-text">AGREGAR STOCK</span>
@@ -165,7 +205,13 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
           <table> 
             <thead>
               <tr className="thead-row">
-                <th style={{ width: '45px' }}><input type="checkbox" onChange={handleSelectAll} checked={selectableOnPage.length > 0 && selectedIds.length === selectableOnPage.length} disabled={selectableOnPage.length === 0}/></th>
+                <th style={{ width: '45px' }}>
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll} 
+                    checked={filtered.length > 0 && selectedIds.length === filtered.length} 
+                  />
+                </th>
                 <th>#</th>
                 <th>Nombre</th>
                 <th>Usuario</th>
@@ -179,8 +225,16 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
             </thead>
             <tbody>
               {filtered.map((s, i) => (
-                <tr key={s.id} className="body-row">
-                  <td><div className="row-inner"><input type="checkbox" checked={selectedIds.includes(s.id)} onChange={() => handleSelectOne(s.id, s.status)} disabled={s.status !== 'inactive'} /></div></td>
+                <tr key={s.id} className={`body-row ${selectedIds.includes(s.id) ? 'selected-row' : ''}`}>
+                  <td>
+                    <div className="row-inner">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(s.id)} 
+                        onChange={() => handleSelectOne(s.id)} 
+                      />
+                    </div>
+                  </td>
                   <td><div className="row-inner">{(page * size) + (i + 1)}</div></td>
                   <td><div className="row-inner td-name">{s.productName}</div></td>
                   <td><div className="row-inner">{s.username}</div></td>
@@ -191,14 +245,14 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
                   <td><div className="row-inner"><span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span></div></td> 
                   <td>
                     <div className="row-inner actions">
-                      <button className="btn-action" onClick={() => triggerToggleStatus(s)}>
+                      <button className="btn-action" onClick={() => triggerToggleStatus(s)} title="Cambiar estado">
                         {s.status === 'active' ? <FaRedoAlt /> : <FaUpload />} 
                       </button>
-                      <button className="btn-edit" onClick={() => { setEditingStock(s); setShowModal(true); }}>
+                      <button className="btn-edit" onClick={() => { setEditingStock(s); setShowModal(true); }} title="Editar">
                         <FaEdit />
                       </button>
                       {s.status === 'inactive' && (
-                        <button className="btn-delete" onClick={() => {
+                        <button className="btn-delete" title="Eliminar" onClick={() => {
                           setConfirmPayload({ id: s.id, name: s.productName, action: 'remove', customMessage: `¿Eliminar "${s.productName}" permanentemente?` });
                           setConfirmOpen(true);
                         }}><FaTrashAlt /></button>
@@ -235,22 +289,24 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
           onCancel={() => setConfirmOpen(false)} 
           loading={confirmLoading} 
         />
-        <StockModal visible={showModal} onClose={() => setShowModal(false)} onSuccess={() => fetchStocks(page)} initialData={editingStock} />
+        <StockModal visible={showModal} onClose={() => setShowModal(false)} onSuccess={() => fetchStocks(page, search)} initialData={editingStock} />
       </main>
 
       <style jsx>{`
         .header-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 32px; }
         .search-bar { flex: 1; display: flex; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0 12px; height: 38px; max-width: 420px; }
         .search-input-inline { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.85rem; outline: none; } 
-        .header-actions { display: flex; gap: 12px; } 
-        .btn-primary, .btn-bulk { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; } 
+        .header-actions { display: flex; gap: 12px; align-items: center; } 
+        .btn-primary, .btn-bulk, .btn-bulk-delete { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border: none; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; } 
         .btn-primary { background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #22c55e 100%); color: #000; } 
         .btn-bulk { background: #22c55e; color: #000; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); } 
-        .btn-primary:hover, .btn-bulk:hover { transform: scale(1.02); } 
+        .btn-bulk-delete { background: #ef4444; color: #fff; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .btn-primary:hover, .btn-bulk:hover, .btn-bulk-delete:hover { transform: scale(1.02); } 
         .table-wrapper { overflow-x: auto; background: rgba(22,22,22,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; backdrop-filter: blur(12px); } 
         table { width: 100%; border-collapse: separate; border-spacing: 0 12px; min-width: 1300px; }
         thead th { padding: 10px; text-align: left; color: #cfcfcf; font-size: 0.72rem; text-transform: uppercase; }
-        .row-inner { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(22,22,22,0.6); border-radius: 12px; min-height: 36px; color: #fff; font-size: 0.85rem; }
+        .row-inner { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(22,22,22,0.6); border-radius: 12px; min-height: 36px; color: #fff; font-size: 0.85rem; transition: background 0.2s; }
+        .selected-row .row-inner { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
         .td-name { font-weight: 700; color: #fff; } 
         .url-text { color: #ccc; } 
         .status-badge { padding: 6px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
@@ -272,7 +328,7 @@ const filtered = stocks.filter(s => s.status === 'active' || s.status === 'inact
         .page-indicator b { color: #8b5cf6; }
         @media (max-width: 640px) {
           .btn-text { display: none; } 
-          .btn-primary, .btn-bulk { padding: 0; width: 38px; justify-content: center; border-radius: 10px; }
+          .btn-primary, .btn-bulk, .btn-bulk-delete { padding: 0; width: 38px; justify-content: center; border-radius: 10px; }
           .header-row { flex-wrap: nowrap; gap: 8px; } 
           .search-bar { max-width: none; } 
           .pagination-wrapper { flex-direction: column; gap: 16px; text-align: center; }
