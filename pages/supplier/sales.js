@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
 import { FaSearch, FaRedoAlt, FaEye, FaEyeSlash, FaUndo, FaEdit, FaWhatsapp } from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
 import StockEditModal from '../../components/StockEditModal'
+import ExpiringSalesModal from '../../components/ExpiringSalesModal'
 
 export default function ProviderSalesPage() {
   const router = useRouter()
@@ -33,6 +34,10 @@ export default function ProviderSalesPage() {
 
   const [allVisible, setAllVisible] = useState(false);
 
+const [showExpiringSoon, setShowExpiringSoon] = useState(false);
+const [expiringOpen, setExpiringOpen] = useState(false);
+
+ 
   // Leer token
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -51,7 +56,10 @@ export default function ProviderSalesPage() {
     setLoading(true)
     setError(null)
     try {
-      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}&q=${encodeURIComponent(search)}`
+      const daysParam = showExpiringSoon ? 5 : '';
+
+      // 2. Construimos la URL usando 'days' en lugar de 'expiring'
+      const url = `${BASE_URL}/api/stocks/provider/sales?page=${p}&size=${size}&q=${encodeURIComponent(search)}&days=${daysParam}`
     
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
@@ -84,11 +92,38 @@ export default function ProviderSalesPage() {
     }
   }
 
-  useEffect(() => {
-    if (token === undefined || token === null) return
-    fetchPage(page)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, token])
+  // 2. Filtro de Búsqueda (Search)
+// 2. Filtro de Búsqueda y Lógica de Visualización
+  const displayedItems = useMemo(() => {
+    // 1. Empezamos con los items que vienen del API
+    let filtered = [...items];
+
+    // 2. Filtro de Búsqueda (Frontend) para respuesta inmediata
+    const q = search.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter(it => 
+        String(it.id ?? '').toLowerCase().includes(q) ||
+        String(it.productName ?? '').toLowerCase().includes(q) ||
+        String(it.username ?? '').toLowerCase().includes(q) ||
+        String(it.clientName ?? '').toLowerCase().includes(q) ||
+        String(it.buyerUsername ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // NOTA: El filtro de "showExpiringSoon" NO va aquí con lógica de fechas,
+    // porque ya lo hace el Backend en fetchPage. 
+    // Solo mantenemos el filtro de búsqueda para que la tabla sea fluida.
+
+    return filtered;
+  }, [items, search]); 
+  // Eliminamos showExpiringSoon de las dependencias de useMemo 
+  // porque cuando cambia, fetchPage trae nuevos 'items', y useMemo se actualiza solo.
+
+useEffect(() => {
+  if (token) {
+    fetchPage(0);
+  }
+}, [token]);
 
   useEffect(() => {
   const handler = setTimeout(() => {
@@ -96,7 +131,7 @@ export default function ProviderSalesPage() {
     fetchPage(0);
   }, 500); // Esperar 500ms tras dejar de escribir
   return () => clearTimeout(handler);
-}, [search]);
+}, [search, showExpiringSoon]);
 
   // Helpers UI
   const togglePasswordVisibility = (id) => {
@@ -108,14 +143,13 @@ export default function ProviderSalesPage() {
     })
   }
 
-  const toggleAllPasswords = () => {
-  // Si ya están todas (o la mayoría) visibles, las ocultamos todas
+const toggleAllPasswords = () => {
   if (visiblePasswords.size > 0) {
     setVisiblePasswords(new Set());
     setAllVisible(false);
   } else {
-    // Si no, agregamos todos los IDs de los items actuales al Set
-    const allIds = new Set(displayed.map(it => it.id).filter(id => id !== undefined));
+    // Cambia 'displayed' por 'displayedItems'
+    const allIds = new Set(displayedItems.map(it => it.id).filter(id => id !== undefined));
     setVisiblePasswords(allIds);
     setAllVisible(true);
   }
@@ -184,18 +218,6 @@ export default function ProviderSalesPage() {
       return null
     }
   }
-
-  const displayed = items.filter(it => {
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return (
-      String(it.id ?? '').toLowerCase().includes(q) ||
-      String(it.productName ?? '').toLowerCase().includes(q) ||
-      String(it.username ?? '').toLowerCase().includes(q) ||
-      String(it.clientName ?? '').toLowerCase().includes(q) ||
-      String(it.buyerUsername ?? '').toLowerCase().includes(q)
-    )
-  })
 
   // Reembolso: abrir modal
   const handleRefundClick = (stock) => {
@@ -271,7 +293,30 @@ export default function ProviderSalesPage() {
           </div>
 
           <div className="header-actions">
-            <button className="btn-action" onClick={() => setPage(p => p)} title="Refrescar"><FaRedoAlt /></button>
+            <button 
+  className="btn-action btn-expiring" // Añadimos una clase específica
+  style={{ 
+    background: showExpiringSoon 
+      ? 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)' 
+      : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
+    width: 'auto', 
+    gap: '8px' 
+  }}
+  onClick={() => setShowExpiringSoon(!showExpiringSoon)}
+  title={showExpiringSoon ? "Quitar Filtro" : "Próximos a vencer"}
+>
+  {/* Icono siempre visible */}
+  <span>{showExpiringSoon ? "❌" : "⏳"}</span>
+  
+  {/* Texto que se oculta en mobile */}
+  <span className="btn-text">
+    {showExpiringSoon ? "Quitar Filtro" : "Próximos a vencer"}
+  </span>
+</button>
+
+  <button className="btn-action" onClick={() => fetchPage(page)} title="Refrescar">
+    <FaRedoAlt />
+  </button>
           </div>
         </div>
 
@@ -338,7 +383,7 @@ export default function ProviderSalesPage() {
                 </thead>
 
                 <tbody>
-                  {displayed.map((r, i) => {
+                  {displayedItems.map((r, i) => {
                     const isVisible = visiblePasswords.has(r.id);
                     const masked = r.password ? '••••••••' : ''
                     const days =
@@ -451,7 +496,7 @@ Al 📲 ${r.clientPhone ?? ''}, para consultar si *${r.productName ?? ''}* será
         </div>
 
         <div className="pager-row">
-          <div className="pager-info">Mostrando {displayed.length} de {totalElements}</div>
+          <div className="pager-info">Mostrando {displayedItems.length} de {totalElements}</div>
           <div className="pager-controls">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} className="pager-btn" disabled={page <= 0}>Anterior</button>
             <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="pager-btn" disabled={page >= totalPages - 1}>Siguiente</button>
@@ -485,6 +530,16 @@ Al 📲 ${r.clientPhone ?? ''}, para consultar si *${r.productName ?? ''}* será
         />
       )}
 
+      {/* Nuevo modal de vencimientos */}
+{expiringOpen && (
+  <ExpiringSalesModal
+    visible={expiringOpen}
+    onClose={() => setExpiringOpen(false)}
+    token={token}
+    BASE_URL={BASE_URL}
+  />
+)}
+
       <style jsx>{`
         .page-bg { 
           background: radial-gradient(circle at top, #0b1220, #05060a);
@@ -497,7 +552,48 @@ Al 📲 ${r.clientPhone ?? ''}, para consultar si *${r.productName ?? ''}* será
         .search-input-inline { flex:1; background:transparent; border:none; color:#fff; outline:none; font-size:0.95rem; }
 
         .header-actions { display:flex; gap:8px; align-items:center; }
-        .btn-action { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; font-weight:700; color:#0d0d0d; background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); cursor:pointer; }
+       .btn-action { 
+  padding: 8px; 
+  border-radius: 8px; 
+  min-width: 36px; 
+  height: 36px; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  border: none; 
+  font-weight: 700; 
+  color: #0d0d0d; 
+  background: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%); 
+  cursor: pointer;
+  /* La magia para que los cambios de color y tamaño sean suaves */
+  transition: all 0.2s ease; 
+}
+  .btn-action:active {
+  transform: scale(0.95);
+}
+
+/* Texto del botón: por defecto se ve bien */
+.btn-text {
+  font-size: 0.85rem;
+  margin-left: 4px;
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 640px) {
+  /* Ocultamos el texto en pantallas pequeñas */
+  .btn-text {
+    display: none;
+  }
+
+  /* Ajustamos el botón para que sea un círculo/cuadrado perfecto */
+  .btn-expiring {
+    padding: 0 !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 50%; /* Opcional: lo hace circular en mobile */
+  }
+}
 
         .table-wrapper { overflow:hidden; background: rgba(22,22,22,0.6); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius:12px; padding:12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); }
         .table-scroll { overflow:auto; border-radius:8px; }
