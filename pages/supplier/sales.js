@@ -133,6 +133,14 @@ useEffect(() => {
   return () => clearTimeout(handler);
 }, [search, showExpiringSoon]);
 
+useEffect(() => {
+  // Solo disparamos si no estamos en la página 0 (que ya maneja el efecto de arriba)
+  // o si el cambio fue puramente de página.
+  if (token) {
+     fetchPage(page);
+  }
+}, [page]);
+
   // Helpers UI
   const togglePasswordVisibility = (id) => {
     setVisiblePasswords(prev => {
