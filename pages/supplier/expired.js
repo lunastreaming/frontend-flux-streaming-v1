@@ -4,8 +4,20 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Footer from '../../components/Footer'
-import { FaSearch, FaEye, FaEyeSlash, FaTrash, FaWhatsapp, FaCheckSquare, FaSquare } from 'react-icons/fa'
+import { 
+  FaSearch, 
+  FaEye, 
+  FaEyeSlash, 
+  FaTrash, 
+  FaWhatsapp, 
+  FaCheckSquare, 
+  FaSquare,
+  FaRetweet // Nuevo icono para republicar
+} from 'react-icons/fa'
 import ConfirmModal from '../../components/ConfirmModal'
+import RepublishStockModal from '../../components/RepublishStockModal'
+// Importa aquí el modal cuando lo tengas listo:
+// import RepublishStockModal from '../../components/RepublishStockModal'
 
 export default function ExpiredPage() {
   const router = useRouter()
@@ -29,6 +41,10 @@ export default function ExpiredPage() {
   // ConfirmModal (eliminar individual)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
+
+  // --- NUEVOS ESTADOS PARA REPUBLICAR ---
+  const [republishModalOpen, setRepublishModalOpen] = useState(false)
+  const [stockToRepublish, setStockToRepublish] = useState(null)
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
   const scrollRef = useRef(null)
@@ -169,7 +185,14 @@ export default function ExpiredPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!res.ok) throw new Error(`delete_failed ${res.status}`)
+      if (!res.ok) throw new Error(`Error al eliminar: ${res.status}`)
+      
+      setSelectedIds(prev => {
+        const copy = new Set(prev)
+        copy.delete(selectedStock.id)
+        return copy
+      })
+
       await fetchPage(page)
     } catch (err) {
       console.error(err)
@@ -182,25 +205,40 @@ export default function ExpiredPage() {
 
   // Eliminar Múltiple
   const handleBulkDeleteConfirm = async () => {
+    if (selectedIds.size === 0) return
+
     try {
+      const idsArray = Array.from(selectedIds)
+      
       const res = await fetch(`${BASE_URL}/api/stocks/remove-multiple`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(Array.from(selectedIds))
+        body: JSON.stringify(idsArray) 
       })
-      if (!res.ok) throw new Error('Error en borrado masivo')
+
+      if (!res.ok) {
+        const errorData = await res.text()
+        throw new Error(errorData || 'Error en borrado masivo')
+      }
       
       setSelectedIds(new Set())
       await fetchPage(page)
+      alert('Eliminación múltiple completada con éxito')
     } catch (err) {
-      console.error(err)
-      alert('No se pudo realizar la eliminación múltiple')
+      console.error("Bulk Delete Error:", err)
+      alert(`Error: ${err.message}`)
     } finally {
       setBulkConfirmOpen(false)
     }
+  }
+
+  // --- LÓGICA DE REPUBLICAR ---
+  const handleRepublishClick = (stock) => {
+    setStockToRepublish(stock)
+    setRepublishModalOpen(true)
   }
 
   if (token === undefined) {
@@ -266,7 +304,7 @@ export default function ExpiredPage() {
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '130px' }} />
-                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '120px' }} /> 
                 </colgroup>
 
                 <thead>
@@ -367,6 +405,15 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
                         </td>
                         <td>
                           <div className="row-inner config-cell">
+                            {/* BOTÓN REPUBLICAR */}
+                            <button
+                              className="config-btn republish"
+                              title="Republicar Stock"
+                              onClick={() => handleRepublishClick(r)}
+                            >
+                              <FaRetweet />
+                            </button>
+
                             <button
                               className="config-btn delete"
                               title="Eliminar"
@@ -426,6 +473,24 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
         />
       )}
 
+      {/* MODAL DE REPUBLICACIÓN (Placeholder hasta que crees el componente) */}
+      {/* MODAL DE REPUBLICACIÓN REAL */}
+{republishModalOpen && (
+  <RepublishStockModal 
+    open={republishModalOpen} 
+    stock={stockToRepublish} 
+    onClose={() => {
+      setRepublishModalOpen(false);
+      setStockToRepublish(null);
+    }} 
+    onSuccess={() => { 
+      setRepublishModalOpen(false); 
+      setStockToRepublish(null);
+      fetchPage(page); // Esto refresca la lista actual
+    }} 
+  />
+)}
+
       <style jsx>{`
         .page-bg { min-height: 100vh; background-color: #0b1220; }
         .page-container { padding: 36px 20px; max-width: 1400px; margin:0 auto; }
@@ -457,8 +522,34 @@ Al 📲 ${r.clientPhone || ''}, para consultar si ${r.productName || ''} será r
         .badge { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 10px; border-radius:999px; font-weight:700; font-size:0.9rem; line-height:1; color:#0b1220; background:#94a3b8; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2); }
         .badge.positive { background:#22c55e; color:#052e1a; }
         .badge.negative { background:#ef4444; color:#3b0a0a; }
-        .config-cell { display:flex; justify-content:center; }
-        .config-btn.delete { padding:8px; border-radius:8px; min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:none; cursor:pointer; color:#fff; background: linear-gradient(135deg,#f87171 0%,#ef4444 100%); }
+
+        /* ESTILOS DE ACCIONES */
+        .config-cell { display:flex; justify-content:center; gap: 8px; }
+        
+        .config-btn.republish {
+          padding: 8px;
+          border-radius: 8px;
+          min-width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          cursor: pointer;
+          color: #fff;
+          background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+          transition: transform 0.2s;
+        }
+        .config-btn.republish:hover { transform: scale(1.1); }
+
+        .config-btn.delete { 
+          padding:8px; border-radius:8px; min-width:36px; height:36px; 
+          display:inline-flex; align-items:center; justify-content:center; 
+          border:none; cursor:pointer; color:#fff; 
+          background: linear-gradient(135deg,#f87171 0%,#ef4444 100%); 
+        }
+
         .pager-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
         .pager-btn { padding:8px 12px; border-radius:8px; border:none; background:rgba(255,255,255,0.03); color:#e1e1e1; cursor:pointer; }
         .pager-btn:disabled { opacity:0.45; cursor:not-allowed; }
