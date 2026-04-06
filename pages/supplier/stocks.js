@@ -71,10 +71,19 @@ export default function StocksPage() {
   // --- MEJORA DE LÓGICA DE SELECCIÓN ---
   
   // Ahora todos los elementos filtrados son seleccionables
-  const handleSelectAll = (e) => {
-    setSelectedIds(e.target.checked ? filtered.map(s => s.id) : [])
+const handleSelectAll = (e) => {
+  if (e.target.checked) {
+    // Solo filtramos los que tienen estado 'inactive'
+    const onlyInactives = filtered
+      .filter(s => s.status === 'inactive')
+      .map(s => s.id);
+    
+    setSelectedIds(onlyInactives);
+  } else {
+    // Si desmarcamos, vaciamos la selección como antes
+    setSelectedIds([]);
   }
-
+}
   const handleSelectOne = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
@@ -207,10 +216,14 @@ export default function StocksPage() {
               <tr className="thead-row">
                 <th style={{ width: '45px' }}>
                   <input 
-                    type="checkbox" 
-                    onChange={handleSelectAll} 
-                    checked={filtered.length > 0 && selectedIds.length === filtered.length} 
-                  />
+  type="checkbox" 
+  onChange={handleSelectAll} 
+  // Ahora está marcado solo si todos los inactivos disponibles están seleccionados
+  checked={
+    filtered.filter(s => s.status === 'inactive').length > 0 && 
+    selectedIds.length === filtered.filter(s => s.status === 'inactive').length
+  } 
+/>
                 </th>
                 <th>#</th>
                 <th>Nombre</th>
