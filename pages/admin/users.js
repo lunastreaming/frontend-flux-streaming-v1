@@ -310,10 +310,8 @@ export default function AdminUsersPage() {
                                     `¿Desea afiliarse?\n` +
                                     `por el módico pago de S/.25.00 o $8.00\n\n` +
                                     `Medios de pago\n\n` +
-                                    `JOSUE R. SOMOCURCIO\n` +
-                                    `-YAPE o PLIN : 935 769 255\n` +
-                                    `-BINANCE : 1025532462\n` +
-                                    `-PAYPAL: randu.sq@gmail.com\n\n` +
+                                    `Massiel De La Cruz\n` +
+                                    `-YAPE: 906 844 368\n` +
                                     `ENVIAR CAPTURA PARA LA ACTIVACIÒN`
                                   )}`}
                                   target="_blank"
