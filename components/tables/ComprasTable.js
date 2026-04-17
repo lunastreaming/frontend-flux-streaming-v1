@@ -293,7 +293,7 @@ const mensajeCompraNormal = `Hola ${row.clientName ?? ''} 👋🏻
 
 // Mensaje de recordatorio de vencimiento
 const mensajeRecordatorioVencimiento = `Hola ${row.clientName ?? ''} 👋🏻
-Te escribo de *Luna Streaming* 🌙 para recordarte que tu servicio de *${row.productName ?? ''}* está próximo a vencer.
+Te escribo de *Flux Streaming* 🌙 para recordarte que tu servicio de *${row.productName ?? ''}* está próximo a vencer.
 
 🗓 *Fecha de vencimiento:* ${formatDateMsg(row.endAt)}
 ⏳ *Días restantes:* ${row.daysRemaining ?? ''}
