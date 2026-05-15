@@ -446,9 +446,9 @@ export default function Billetera() {
                 </div>
 
                 <div className="pending-actions">
-                  <span className={`tx-badge ${m.status === 'approved' || m.status === 'complete' ? 'approved' : m.status === 'pending' ? 'pending' : 'rejected'}`}>
-                    {m.status}
-                  </span>
+                  <span className={`tx-badge ${['approved', 'complete', 'applied'].includes(m.status) ? 'approved' : m.status === 'pending' ? 'pending' : 'rejected'}`}>
+  {m.status}
+</span>
                 </div>
               </li>
             ))}
