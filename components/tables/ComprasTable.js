@@ -30,6 +30,9 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [nameToEdit, setNameToEdit] = useState({ id: null, currentName: '' });
 
+    // Guardará el texto final después de que el usuario deje de escribir
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+
   const openEditName = (id, name) => {
   setNameToEdit({ id, currentName: name });
   setShowEditNameModal(true);
@@ -119,29 +122,33 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
     setShowSupportModal(false)
   }
 
-  const fetchData = async (pageToLoad = 0) => {
+const fetchData = async (pageToLoad = 0) => {
     setLoading(true);
     setError(null)
     try {
       const token = localStorage.getItem('accessToken')
     
-    // Construimos la URL dinámicamente
-    let url = `${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`;
-    
-    if (days) {
-      url += `&days=${days}`; // Aquí se agrega el queryparam para el backend
-    }
+      let url = `${BASE_URL}/api/stocks/${endpoint}?page=${pageToLoad}&size=${SIZE}`;
+      
+      // 🌟 Usamos debouncedSearch en lugar de search
+      if (debouncedSearch && debouncedSearch.trim() !== '') {
+        url += `&q=${encodeURIComponent(debouncedSearch.trim())}`;
+      }
+      
+      if (days) {
+        url += `&days=${days}`;
+      }
 
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
-    if (!res.ok) throw new Error(`Error ${res.status}`)
-    const data = await res.json()
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
 
-    setItems(data.content || [])
-    setTotalPages(data.totalPages ?? 0)
-    setTotalElements(data.totalElements ?? 0)
+      setItems(data.content || [])
+      setTotalPages(data.totalPages ?? 0)
+      setTotalElements(data.totalElements ?? 0)
     } catch (err) {
       setError(err.message || String(err))
       setItems([])
@@ -152,7 +159,41 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
     }
   }
 
-  useEffect(() => { fetchData(page) }, [endpoint, page, days])
+  // 1. ✨ EL DEBOUNCE (Mantenlo limpio): Captura el 'search' instantáneo y genera el 'debouncedSearch' tras 400ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 400)
+
+    return () => clearTimeout(handler)
+  }, [search])
+
+  // 2. ✨ EL CONTROLADOR UNIFICADO: Escucha ÚNICAMENTE al término retrasado (debouncedSearch)
+  useEffect(() => {
+    let active = true;
+
+    const cargarDatosOrdenados = async () => {
+      // Si el usuario escribe una nueva búsqueda y no estamos en la página 0,
+      // primero reseteamos la página. Esto volverá a disparar este useEffect de forma limpia.
+      if (page !== 0) {
+        setPage(0);
+        return; 
+      }
+
+      // Si ya estamos en la página 0 (o limpió la búsqueda), ejecutamos la petición única
+      if (active) {
+        await fetchData(0);
+      }
+    };
+
+    cargarDatosOrdenados();
+
+    return () => {
+      active = false; // Evita carreras de respuestas asíncronas si el usuario cambia de pestaña rápido
+    };
+    
+    // 🌟 IMPORTANTE: Quitamos 'search' de aquí. Ahora el componente solo reacciona a 'debouncedSearch' y a la paginación.
+  }, [endpoint, page, days, debouncedSearch]);
 
   const createSupport = async (choice) => {
     try {
@@ -192,10 +233,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
   }
 
   // calcular items visibles por búsqueda (si aplica)
-  const displayed = useMemo(() => {
-    const q = (search || '').toLowerCase()
-    return items.filter(i => (i.productName ?? '').toLowerCase().includes(q))
-  }, [items, search])
+const displayed = items;
 
   if (loading) return <div className="info">Cargando…</div>
   if (error) return <div className="error">Error: {error}</div>
@@ -206,7 +244,7 @@ export default function ComprasTable({ endpoint = 'purchases', balance, search =
       <div className="no-results">
         <img src="/SinCompras.png" alt="No hay compras registradas" className="no-results-image" />
         <p className="no-results-text">
-          {search ?
+          {search ? // Usamos 'search' aquí para retroalimentación visual instantánea
             `No se encontraron compras que coincidan con "${search}".` :
             'Aún no tienes compras registradas.'
           }

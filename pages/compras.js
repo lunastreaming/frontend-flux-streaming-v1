@@ -122,10 +122,11 @@ export default function ComprasPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey, BASE_URL, hasMounted])
 
-  const handleClick = (view) => {
-    setViewFilter(view)
-    setRefreshKey(prev => prev + 1)
-  }
+ const handleClick = (view) => {
+  setViewFilter(view)
+  setSearch('') // ✨ Agrega esto: Limpia el texto para que no afecte a las otras tablas
+  setRefreshKey(prev => prev + 1)
+}
 
   // Renderizado condicional inicial
   if (!hasMounted) {
