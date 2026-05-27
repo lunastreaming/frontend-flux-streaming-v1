@@ -316,11 +316,23 @@ const displayed = items;
               const masked = row.password ? '••••••••' : ''
 
               const formatDateMsg = (dateStr) => {
-                if (!dateStr) return ''
-                // Extrae YYYY-MM-DD y lo reordena
-                const [year, month, day] = dateStr.split('T')[0].split('-')
-                return `${day}/${month}/${year}`
-              }
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    if (Number.isNaN(d.getTime())) return ''
+    
+    // Obtiene el día, mes y año local del navegador
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return d.toLocaleDateString('es-PE', {
+      timeZone: userTimeZone,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }) // Retorna directamente "DD/MM/YYYY" local
+  } catch {
+    return ''
+  }
+}
 const isExpiringSoon = days !== null;            
 
 // Mensaje estándar de entrega de cuenta
