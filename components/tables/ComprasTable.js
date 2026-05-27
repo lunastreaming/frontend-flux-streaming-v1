@@ -160,40 +160,37 @@ const fetchData = async (pageToLoad = 0) => {
   }
 
   // 1. ✨ EL DEBOUNCE (Mantenlo limpio): Captura el 'search' instantáneo y genera el 'debouncedSearch' tras 400ms
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 400)
+ // 1. ✨ EL DEBOUNCE: Captura el 'search' instantáneo y genera el 'debouncedSearch' tras 400ms
+useEffect(() => {
+  const handler = setTimeout(() => {
+    setDebouncedSearch(search)
+  }, 400)
 
-    return () => clearTimeout(handler)
-  }, [search])
+  return () => clearTimeout(handler)
+}, [search])
 
-  // 2. ✨ EL CONTROLADOR UNIFICADO: Escucha ÚNICAMENTE al término retrasado (debouncedSearch)
-  useEffect(() => {
-    let active = true;
+// 2. ✨ RESET DE PÁGINA: Si cambia el criterio de búsqueda o filtros de tiempo, volvemos a la página 0
+useEffect(() => {
+  setPage(0)
+}, [debouncedSearch, endpoint, days])
 
-    const cargarDatosOrdenados = async () => {
-      // Si el usuario escribe una nueva búsqueda y no estamos en la página 0,
-      // primero reseteamos la página. Esto volverá a disparar este useEffect de forma limpia.
-      if (page !== 0) {
-        setPage(0);
-        return; 
-      }
+// 3. ✨ CONTROLADOR UNIFICADO DE CARGA: Escucha los cambios de página y filtros definitivos
+useEffect(() => {
+  let active = true
 
-      // Si ya estamos en la página 0 (o limpió la búsqueda), ejecutamos la petición única
-      if (active) {
-        await fetchData(0);
-      }
-    };
+  const cargarDatos = async () => {
+    if (active) {
+      // Pasamos explícitamente el valor actual de la página al fetch
+      await fetchData(page)
+    }
+  }
 
-    cargarDatosOrdenados();
+  cargarDatos()
 
-    return () => {
-      active = false; // Evita carreras de respuestas asíncronas si el usuario cambia de pestaña rápido
-    };
-    
-    // 🌟 IMPORTANTE: Quitamos 'search' de aquí. Ahora el componente solo reacciona a 'debouncedSearch' y a la paginación.
-  }, [endpoint, page, days, debouncedSearch]);
+  return () => {
+    active = false // Evita Race Conditions
+  }
+}, [endpoint, page, days, debouncedSearch])
 
   const createSupport = async (choice) => {
     try {
@@ -228,9 +225,18 @@ const fetchData = async (pageToLoad = 0) => {
   const goPrev = () => setPage(p => Math.max(0, p - 1))
   const goNext = () => setPage(p => (p + 1 < totalPages ? p + 1 : p))
   const jumpTo = (e) => {
+  const val = Number(e.target.value) - 1
+  if (!Number.isNaN(val) && val >= 0 && val < totalPages) setPage(val)
+}
+
+const handleKeyDownJump = (e) => {
+  if (e.key === 'Enter') {
     const val = Number(e.target.value) - 1
-    if (!Number.isNaN(val) && val >= 0 && val < totalPages) setPage(val)
+    if (!Number.isNaN(val) && val >= 0 && val < totalPages) {
+      setPage(val)
+    }
   }
+}
 
   // calcular items visibles por búsqueda (si aplica)
 const displayed = items;
@@ -464,13 +470,13 @@ const whatsappMsg = isExpiringSoon ? mensajeRecordatorioVencimiento : mensajeCom
       <div className="pagination-extra">
         <label htmlFor="jump">Ir a página:</label>
         <input
-          id="jump"
-          type="number"
-          min={1}
-          max={Math.max(totalPages, 1)}
-          onChange={jumpTo}
-          placeholder="N°"
-        />
+  id="jump"
+  type="number"
+  min={1}
+  max={Math.max(totalPages, 1)}
+  onKeyDown={handleKeyDownJump}
+  placeholder="Enter"
+/>
       </div>
 
       {/* Modales */}
