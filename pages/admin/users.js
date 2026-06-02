@@ -4,9 +4,11 @@ import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
 import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
+import LatestRecharges from '../../components/LatestRecharges'
+import LatestPurchases from '../../components/LatestPurchases'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp, FaWallet
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp, FaWallet, FaHistory, FaChartLine
 } from 'react-icons/fa'
 
 export default function AdminUsersPage() {
@@ -31,6 +33,9 @@ export default function AdminUsersPage() {
   const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
   const [confirmData, setConfirmData] = useState({ open: false, userId: null, username: null, action: null, message: '', loading: false })
   const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
+
+  const [rechargeHistoryModal, setRechargeHistoryModal] = useState({ open: false, userId: null, username: null });
+  const [purchaseHistoryModal, setPurchaseHistoryModal] = useState({ open: false, userId: null, username: null });
 
   const roleLabels = {
     'seller': 'Vendedor',
@@ -339,8 +344,30 @@ export default function AdminUsersPage() {
                             {roleLabels[u.role?.toLowerCase()] || u.role}
                           </span>
                         </td>
-                        <td className="mono highlight">{u.balance?.toFixed(2) || '0.00'}</td>
-                        <td className="mono">{u.salesCount || 0}</td>
+                        <td className="mono highlight">
+  <div className="metric-cell">
+    <span>{u.balance?.toFixed(2) || '0.00'}</span>
+    <button 
+      className="btn-inline-history" 
+      title="Ver historial de recargas / billetera"
+      onClick={() => setRechargeHistoryModal({ open: true, userId: u.id, username: u.username })}
+    >
+      <FaHistory size={13} />
+    </button>
+  </div>
+</td>
+                        <td className="mono">
+  <div className="metric-cell text-white">
+    <span>{u.salesCount || 0}</span>
+    <button 
+      className="btn-inline-history sales-btn" 
+      title="Ver historial de ventas"
+      onClick={() => setPurchaseHistoryModal({ open: true, userId: u.id, username: u.username })}
+    >
+      <FaChartLine size={13} />
+    </button>
+  </div>
+</td>
                         <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'Activo' : 'Inactivo'}</span></td>
                         <td>
                           <div className="actions">
@@ -399,6 +426,59 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      
+{/* Modal de Historial de Recargas */}
+{rechargeHistoryModal.open && (
+  <div className="modal-overlay-transfer" onClick={() => setRechargeHistoryModal({ open: false, userId: null, username: null })}>
+    <div className="modern-modal-content" onClick={(e) => e.stopPropagation()}>
+      
+      {/* Botón Flotante "X" de Cierre */}
+      <button 
+        className="modern-close-btn" 
+        onClick={() => setRechargeHistoryModal({ open: false, userId: null, username: null })}
+        aria-label="Cerrar"
+      >
+        &times;
+      </button>
+
+      <div className="modern-modal-header border-cyan">
+        <h2>Auditoría de Cuenta</h2>
+        <p className="user-tag">@{rechargeHistoryModal.username}</p>
+      </div>
+      
+      <div className="modern-modal-body">
+        <LatestRecharges userId={rechargeHistoryModal.userId} apiBase={API_BASE} ensureValidAccess={ensureValidAccess} />
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modal de Historial de Ventas/Compras */}
+{purchaseHistoryModal.open && (
+  <div className="modal-overlay-transfer" onClick={() => setPurchaseHistoryModal({ open: false, userId: null, username: null })}>
+    <div className="modern-modal-content" onClick={(e) => e.stopPropagation()}>
+      
+      {/* Botón Flotante "X" de Cierre */}
+      <button 
+        className="modern-close-btn" 
+        onClick={() => setPurchaseHistoryModal({ open: false, userId: null, username: null })}
+        aria-label="Cerrar"
+      >
+        &times;
+      </button>
+
+      <div className="modern-modal-header border-indigo">
+        <h2>Reporte de Ventas</h2>
+        <p className="user-tag">@{purchaseHistoryModal.username}</p>
+      </div>
+      
+      <div className="modern-modal-body">
+        <LatestPurchases userId={purchaseHistoryModal.userId} apiBase={API_BASE} ensureValidAccess={ensureValidAccess} />
+      </div>
+    </div>
+  </div>
+)}
 
       <style jsx>{`
         .admin-container { min-height: 100vh; font-family: 'Inter', sans-serif; color: #fff; }
@@ -612,6 +692,117 @@ export default function AdminUsersPage() {
         .btn-refresh { background: none; border: none; color: #9aa0a6; cursor: pointer; font-size: 1.25rem; }
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+
+        
+        .metric-cell {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+          min-width: 90px;
+        }
+        .btn-inline-history {
+          background: rgba(34, 211, 238, 0.1);
+          border: 1px solid rgba(34, 211, 238, 0.2);
+          color: #22d3ee;
+          padding: 4px 6px;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        .btn-inline-history:hover {
+          background: #22d3ee;
+          color: #000;
+          transform: scale(1.05);
+        }
+        .sales-btn {
+          background: rgba(99, 102, 241, 0.1);
+          border: 1px solid rgba(99, 102, 241, 0.2);
+          color: #818cf8;
+        }
+        .sales-btn:hover {
+          background: #6366f1;
+          color: #fff;
+        }
+        .max-w-lg {
+          max-width: 480px !important;
+          width: 95% !important;
+        }
+        
+        /* Contenedor del Modal Rediseñado estilo Cristal Oscuro */
+        .modern-modal-content {
+          background: #0b131a;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 1.75rem;
+          width: 95%;
+          max-width: 460px;
+          position: relative;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 
+                      0 0 40px rgba(6, 182, 212, 0.05);
+          animation: modalFadeUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes modalFadeUp {
+          from { transform: scale(0.95) translateY(10px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Botón de Cierre Flotante Premium ("X") */
+        .modern-close-btn {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #1e293b;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          color: #94a3b8;
+          font-size: 1.25rem;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          padding-bottom: 3px; /* Corrección óptica de eje */
+        }
+        .modern-close-btn:hover {
+          background: #ef4444;
+          color: #fff;
+          transform: rotate(90deg);
+          box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Encabezado del Modal */
+        .modern-modal-header {
+          margin-bottom: 1.25rem;
+          padding-bottom: 0.75rem;
+          border-b: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .modern-modal-header h2 {
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #fff;
+          margin: 0;
+        }
+        .user-tag {
+          font-size: 0.8rem;
+          color: #64748b;
+          margin: 2px 0 0 0;
+          font-family: monospace;
+        }
+        .border-cyan { border-bottom: 2px solid #06b6d4; }
+        .border-indigo { border-bottom: 2px solid #6366f1; }
+        
+        .modern-modal-body {
+          width: 100%;
+        }
         
       `}</style>
 
