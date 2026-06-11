@@ -22,9 +22,32 @@ export default function WalletUserPending() {
     message: ''
   })
 
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+
   useEffect(() => {
     fetchPending()
+    loadActivePaymentMethods()
   }, [])
+
+  const loadActivePaymentMethods = async () => {
+    try {
+      const token = await getAuthToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const res = await fetch(`${BASE}/api/admin/payment-methods/active`, {
+        method: 'GET',
+        headers
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPaymentMethods(data)
+      }
+    } catch (err) {
+      console.error('Error cargando métodos de pago:', err)
+    }
+  }
 
   const getAuthToken = async () => {
     try {
@@ -70,7 +93,7 @@ export default function WalletUserPending() {
     }
   }
 
-  const performAction = async (id, action) => {
+const performAction = async (id, action) => {
     setActionLoading(prev => ({ ...prev, [id]: true }))
     setError(null)
     try {
@@ -82,11 +105,16 @@ export default function WalletUserPending() {
         ? `${BASE}/api/wallet/admin/approve/${id}`
         : `${BASE}/api/wallet/admin/reject/${id}`
 
+      // 🔴 Condicionamos el payload: solo envía ID si es aprobación de una RECARGA
+      const body = (action === 'approve' && confirmData.type === 'recharge')
+        ? JSON.stringify({ paymentMethodId: selectedPaymentMethod })
+        : JSON.stringify({})
+
       const res = await fetch(url, {
         method: 'POST',
         headers,
         credentials: token ? 'omit' : 'include',
-        body: JSON.stringify({})
+        body
       })
 
       if (res.status === 401 || res.status === 403) {
@@ -100,6 +128,7 @@ export default function WalletUserPending() {
       }
 
       setItems(prev => prev.filter(i => i.id !== id))
+      setSelectedPaymentMethod('') // Limpiar selección tras éxito
     } catch (err) {
       console.error(`Error ${action} top-up ${id}:`, err)
       setError(`No se pudo ${action === 'approve' ? 'aprobar' : 'rechazar'} la recarga`)
@@ -108,10 +137,13 @@ export default function WalletUserPending() {
     }
   }
 
-  const requestActionWithConfirm = (id, action, userName, amount) => {
+  const requestActionWithConfirm = (id, action, userName, amount, type) => {
     const actionText = action === 'approve' ? 'aprobar' : 'rechazar'
-    const message = `¿Seguro que quieres ${actionText} la recarga de ${userName ?? 'este usuario'} por ${typeof amount === 'number' ? amount.toFixed(2) : amount}?`
-    setConfirmData({ open: true, id, action, message })
+    const displayAmount = typeof amount === 'number' ? amount.toFixed(2) : amount
+    const message = `¿Seguro que quieres ${actionText} la recarga de ${userName ?? 'este usuario'} por ${displayAmount}?`
+    
+    // Almacenamos el type en minúsculas para evitar problemas de mayúsculas/minúsculas
+    setConfirmData({ open: true, id, action, message, type: type?.toLowerCase() })
   }
 
   const handleConfirm = async () => {
@@ -241,22 +273,22 @@ export default function WalletUserPending() {
 
                     <div className="actions">
                       <button
-                        className="btn-approve"
-                        onClick={() => requestActionWithConfirm(item.id, 'approve', item.user ?? item.userName, item.amount)}
-                        disabled={Boolean(actionLoading[item.id])}
-                        aria-label={`Aprobar recarga ${item.id}`}
-                      >
-                        {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaCheckCircle />}
-                      </button>
+  className="btn-approve"
+  onClick={() => requestActionWithConfirm(item.id, 'approve', item.user ?? item.userName, item.amount, item.type)} 
+  disabled={Boolean(actionLoading[item.id])}
+  aria-label={`Aprobar recarga ${item.id}`}
+>
+  {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaCheckCircle />}
+</button>
 
                       <button
-                        className="btn-reject"
-                        onClick={() => requestActionWithConfirm(item.id, 'reject', item.user ?? item.userName, item.amount)}
-                        disabled={Boolean(actionLoading[item.id])}
-                        aria-label={`Rechazar recarga ${item.id}`}
-                      >
-                        {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaTimesCircle />}
-                      </button>
+  className="btn-reject"
+  onClick={() => requestActionWithConfirm(item.id, 'reject', item.user ?? item.userName, item.amount, item.type)}
+  disabled={Boolean(actionLoading[item.id])}
+  aria-label={`Rechazar recarga ${item.id}`}
+>
+  {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaTimesCircle />}
+</button>
                     </div>
                   </div>
                 </article>
@@ -266,16 +298,47 @@ export default function WalletUserPending() {
         </main>
       </div>
 
-      <ConfirmModal
-        open={confirmData.open}
-        title={confirmData.action === 'approve' ? 'Confirmar aprobación' : 'Confirmar rechazo'}
-        message={confirmData.message}
-        confirmText={confirmData.action === 'approve' ? 'Aprobar' : 'Rechazar'}
-        cancelText="Cancelar"
-        onConfirm={handleConfirm}
-        onCancel={handleCancelConfirm}
-        loading={Boolean(confirmData.open && confirmData.id && actionLoading[confirmData.id])}
-      />
+      <ConfirmModal 
+  open={confirmData.open} 
+  title={confirmData.action === 'approve' ? 'Confirmar aprobación' : 'Confirmar rechazo'} 
+  message={
+    <div>
+      <p style={{ marginBottom: '16px' }}>{confirmData.message}</p>
+      
+      {/* 🔴 VALIDACIÓN VISUAL: Solo se muestra si es APROBACIÓN y el tipo es RECARGA */}
+      {confirmData.action === 'approve' && confirmData.type === 'recharge' && (
+        <div className="payment-method-selector">
+          <label style={{ display: 'block', fontSize: '0.85rem', color: '#9aa0a6', marginBottom: '8px' }}>
+            Seleccionar cuenta de destino:
+          </label>
+          <select 
+            className="select-custom"
+            value={selectedPaymentMethod}
+            onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+            style={{ width: '100%', marginBottom: '10px' }}
+          >
+            <option value="">-- Seleccionar método --</option>
+            {paymentMethods.map(m => (
+              <option key={m.id} value={m.id} style={{ backgroundColor: '#121214' }}>
+                {m.name} ({m.type})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  }
+  confirmText={confirmData.action === 'approve' ? 'Aprobar' : 'Rechazar'} 
+  cancelText="Cancelar" 
+  onConfirm={handleConfirm} 
+  onCancel={() => {
+    handleCancelConfirm()
+    setSelectedPaymentMethod('') // Reseteamos la selección si el admin cancela
+  }} 
+  /* 🔴 VALIDACIÓN DE SEGURIDAD: Deshabilita el botón si es recarga y no seleccionó método */
+  confirmDisabled={confirmData.action === 'approve' && confirmData.type === 'recharge' && !selectedPaymentMethod}
+  loading={Boolean(confirmData.open && confirmData.id && actionLoading[confirmData.id])} 
+/>
       <style jsx>{`
         .error-msg {
           max-width: 720px;
@@ -377,6 +440,21 @@ export default function WalletUserPending() {
         .spin { animation: spin 1s linear infinite; }
         .spin.small { width:16px; height:16px; }
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+        .select-custom {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+}
+.select-custom option {
+  background-color: #121214;
+  color: #fff;
+}
+  
       `}</style>
     </>
   )

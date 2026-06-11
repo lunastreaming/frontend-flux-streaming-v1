@@ -87,7 +87,7 @@ const submit = async () => {
       setError('Ingresa un monto válido mayor a 0'); return
     }
     if (currency === 'PEN') {
-      const min = 10
+      const min = 5
       if (Number(parsed.toFixed(2)) < min) {
         setError(`El monto mínimo para Soles es ${min.toFixed(2)} PEN`); return
       }

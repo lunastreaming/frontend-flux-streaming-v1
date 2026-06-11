@@ -31,10 +31,34 @@ export default function WalletSupplierPending() {
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
 
-  useEffect(() => {
-    fetchPending()
-    fetchMe()
-  }, [])
+
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+
+ useEffect(() => {
+  fetchPending()
+  fetchMe()
+  loadActivePaymentMethods() // Cargar métodos al iniciar
+}, [])
+
+const loadActivePaymentMethods = async () => {
+  try {
+    const token = await getAuthToken()
+    const res = await fetch(`${BASE}/api/admin/payment-methods/active`, {
+      method: 'GET',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setPaymentMethods(data)
+    }
+  } catch (err) {
+    console.error('Error cargando métodos de pago:', err)
+  }
+}
 
   const getAuthToken = async () => {
     try {
@@ -103,51 +127,52 @@ export default function WalletSupplierPending() {
     }
   }
 
-  const performAction = async (id, action) => {
-    setActionLoading(prev => ({ ...prev, [id]: true }))
-    setError(null)
-    try {
-      const token = await getAuthToken()
-      const headers = { 'Content-Type': 'application/json' }
-      if (token) headers['Authorization'] = `Bearer ${token}`
-
-      const url =
-        action === 'approve'
-          ? `${BASE}/api/wallet/admin/approve/${id}`
-          : `${BASE}/api/wallet/admin/reject/${id}`
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        credentials: token ? 'omit' : 'include',
-        body: JSON.stringify({})
-      })
-
-      if (res.status === 401) {
-        try { logout() } catch (_) {}
-        throw new Error('No autorizado')
-      }
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => null)
-        throw new Error(txt || `Error ${res.status}`)
-      }
-
-      setItems(prev => prev.filter(i => i.id !== id))
-    } catch (err) {
-      console.error(`Error ${action} wallet request ${id}:`, err)
-      const label = action === 'approve' ? 'aprobar' : 'rechazar'
-      setError(`No se pudo ${label} la solicitud`)
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: false }))
+const performAction = async (id, action) => {
+  setActionLoading(prev => ({ ...prev, [id]: true }))
+  setError(null)
+  try {
+    const token = await getAuthToken()
+    const headers = { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
     }
+
+    const url = action === 'approve'
+      ? `${BASE}/api/wallet/admin/approve/${id}`
+      : `${BASE}/api/wallet/admin/reject/${id}`
+
+    // Si es aprobación de recarga mandamos el ID, si no (retiro o rechazo), va vacío
+const body = (action === 'approve' && confirmData.type === 'recharge')
+  ? JSON.stringify({ paymentMethodId: selectedPaymentMethod }) 
+  : JSON.stringify({})
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      credentials: token ? 'omit' : 'include',
+      body
+    })
+
+    if (!res.ok) throw new Error(await res.text() || `Error ${res.status}`)
+
+    setItems(prev => prev.filter(i => i.id !== id))
+    setSelectedPaymentMethod('') // Limpiar selección
+  } catch (err) {
+    console.error(`Error ${action}:`, err)
+    setError(`No se pudo ${action === 'approve' ? 'aprobar' : 'rechazar'} la solicitud`)
+  } finally {
+    setActionLoading(prev => ({ ...prev, [id]: false }))
   }
+}
 
   // Confirm para aprobar/rechazar
-  const requestActionWithConfirm = (id, action, userName, displayAmount) => {
+ // Confirm para aprobar/rechazar
+  const requestActionWithConfirm = (id, action, userName, displayAmount, type) => {
     const actionText = action === 'approve' ? 'aprobar' : 'rechazar'
-    const message = `¿Seguro que quieres ${actionText} la solicitud de ${userName ?? 'este proveedor'} por ${displayAmount}?`
-    setConfirmData({ open: true, id, action, message })
+    const message = `¿Seguro que quieres ${actionText} la solicitud de ${userName ?? 'este proveedor'} por ${displayAmount}?` 
+    
+    // Guardamos también el tipo ('recharge', 'withdrawal', etc.)
+    setConfirmData({ open: true, id, action, message, type: type?.toLowerCase() })
   }
 
   const handleConfirm = async () => {
@@ -279,22 +304,22 @@ export default function WalletSupplierPending() {
 
                     <div className="actions">
                       <button
-                        className="btn-approve"
-                        onClick={() => requestActionWithConfirm(item.id, 'approve', item.user, formatItemAmount(item))}
-                        disabled={Boolean(actionLoading[item.id])}
-                        aria-label={`Aprobar solicitud ${item.id}`}
-                      >
-                        {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaCheckCircle />}
-                      </button>
+  className="btn-approve"
+  onClick={() => requestActionWithConfirm(item.id, 'approve', item.user, formatItemAmount(item), item.type)}
+  disabled={Boolean(actionLoading[item.id])} 
+  aria-label={`Aprobar solicitud ${item.id}`}
+>
+  {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaCheckCircle />}
+</button>
 
                       <button
-                        className="btn-reject"
-                        onClick={() => requestActionWithConfirm(item.id, 'reject', item.user, formatItemAmount(item))}
-                        disabled={Boolean(actionLoading[item.id])}
-                        aria-label={`Rechazar solicitud ${item.id}`}
-                      >
-                        {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaTimesCircle />}
-                      </button>
+  className="btn-reject"
+  onClick={() => requestActionWithConfirm(item.id, 'reject', item.user, formatItemAmount(item), item.type)}
+  disabled={Boolean(actionLoading[item.id])} 
+  aria-label={`Rechazar solicitud ${item.id}`}
+>
+  {actionLoading[item.id] ? <FaSpinner className="spin small" /> : <FaTimesCircle />} 
+</button>
 
                       {canTransfer && userBalance != null && (
                         <button
@@ -316,16 +341,47 @@ export default function WalletSupplierPending() {
         </main>
       </div>
 
-      <ConfirmModal
-        open={confirmData.open}
-        title={confirmData.action === 'approve' ? 'Confirmar aprobación' : 'Confirmar rechazo'}
-        message={confirmData.message}
-        confirmText={confirmData.action === 'approve' ? 'Aprobar' : 'Rechazar'}
-        cancelText="Cancelar"
-        onConfirm={handleConfirm}
-        onCancel={handleCancelConfirm}
-        loading={Boolean(confirmData.open && confirmData.id && actionLoading[confirmData.id])}
-      />
+<ConfirmModal
+  open={confirmData.open}
+  title={confirmData.action === 'approve' ? 'Confirmar aprobación' : 'Confirmar rechazo'}
+  message={
+    <div>
+      <p style={{ marginBottom: '16px' }}>{confirmData.message}</p>
+      
+      {/* 🔴 VALIDACIÓN: Solo aparece si es APROBACIÓN y tipo RECARGA */}
+      {confirmData.action === 'approve' && confirmData.type === 'recharge' && (
+        <div className="payment-method-selector">
+          <label style={{ display: 'block', fontSize: '0.85rem', color: '#9aa0a6', marginBottom: '8px' }}>
+            Seleccionar cuenta de destino:
+          </label>
+          <select 
+            className="select-custom"
+            value={selectedPaymentMethod}
+            onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+            style={{ width: '100%', marginBottom: '10px' }}
+          >
+            <option value="">-- Seleccionar método --</option>
+            {paymentMethods.map(m => (
+              <option key={m.id} value={m.id} style={{ backgroundColor: '#121214' }}>
+                {m.name} ({m.type})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  }
+  confirmText={confirmData.action === 'approve' ? 'Aprobar' : 'Rechazar'}
+  onConfirm={handleConfirm}
+  onCancel={() => {
+    handleCancelConfirm()
+    setSelectedPaymentMethod('')
+  }}
+  cancelText="Cancelar" 
+  /* 🔴 VALIDACIÓN DEL BOTÓN: Solo se bloquea si es una recarga y no se ha seleccionado un método */
+  confirmDisabled={confirmData.action === 'approve' && confirmData.type === 'recharge' && !selectedPaymentMethod}
+  loading={Boolean(confirmData.open && confirmData.id && actionLoading[confirmData.id])} 
+/>
 
       {showTransferModal && selectedItem?.currentBalance != null && (
         <TransferToUserModal
@@ -440,6 +496,21 @@ export default function WalletSupplierPending() {
         .spin { animation: spin 1s linear infinite; }
         .spin.small { width:16px; height:16px; }
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+
+        .select-custom {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+}
+.select-custom option {
+  background-color: #121214;
+  color: #fff;
+}
       `}</style>
     </>
   )

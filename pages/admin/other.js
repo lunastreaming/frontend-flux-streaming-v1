@@ -21,6 +21,17 @@ export default function Other() {
   const [editingKey, setEditingKey] = useState(null)
   const [editedValue, setEditedValue] = useState('')
 
+  // Nuevos Endpoints
+const PAYMENT_METHODS_ENDPOINT = `${API_BASE}/api/admin/payment-methods`
+const UPDATE_PAYMENT_METHOD_ENDPOINT = (id) => `${API_BASE}/api/admin/payment-methods/${id}`
+
+// Nuevos Estados
+const [paymentMethods, setPaymentMethods] = useState([])
+const [editingMethodId, setEditingMethodId] = useState(null)
+const [newMethod, setNewMethod] = useState({ name: '', type: 'BILLETERA', color: '#10b981', description: '' })
+
+const [editingMethod, setEditingMethod] = useState(null)
+
   useEffect(() => {
     loadAll()
   }, [])
@@ -34,11 +45,12 @@ export default function Other() {
     return null
   }
 
-  const loadAll = async () => {
+const loadAll = async () => {
     setLoading(true)
     setError(null)
     try {
-      await Promise.all([loadExchange(), loadSettings()])
+      // Añadimos loadPaymentMethods aquí 
+      await Promise.all([loadExchange(), loadSettings(), loadPaymentMethods()])
     } catch (err) {
       console.error('Error cargando datos:', err)
       setError('No se pudieron cargar los datos')
@@ -171,6 +183,108 @@ const saveSetting = async (key, newValue, isBool = false) => {
     return s?.valueNum ?? null
   }
 
+
+  const loadPaymentMethods = async () => {
+  try {
+    const token = await getAuthToken()
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const res = await fetch(PAYMENT_METHODS_ENDPOINT, { method: 'GET', headers })
+    if (!res.ok) throw new Error(await res.text())
+    const data = await res.json()
+    setPaymentMethods(data)
+  } catch (err) {
+    console.error('Error cargando métodos de pago:', err)
+  }
+}
+
+const saveNewMethod = async () => {
+  if (!newMethod.name) return setError('El nombre es obligatorio')
+  setLoading(true)
+  try {
+    const token = await getAuthToken()
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    const res = await fetch(PAYMENT_METHODS_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(newMethod)
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await loadPaymentMethods()
+    setNewMethod({ name: '', type: 'BILLETERA', color: '#10b981', description: '' })
+  } catch (err) {
+    setError('Error al crear el método')
+  } finally {
+    setLoading(false)
+  }
+}
+
+const toggleMethodStatus = async (method) => {
+  setLoading(true)
+  try {
+    const token = await getAuthToken()
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    const res = await fetch(UPDATE_PAYMENT_METHOD_ENDPOINT(method.id), {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ ...method, isActive: !method.isActive })
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await loadPaymentMethods()
+  } catch (err) {
+    setError('No se pudo cambiar el estado')
+  } finally {
+    setLoading(false)
+  }
+}
+
+// Modificamos la función delete para que llame a tu endpoint DELETE (que desactiva)
+const deleteMethod = async (id) => {
+  if (!confirm('¿Estás seguro de que deseas eliminar este método de pago?')) return
+  setLoading(true)
+  try {
+    const token = await getAuthToken()
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    
+    const res = await fetch(`${PAYMENT_METHODS_ENDPOINT}/${id}`, {
+      method: 'DELETE',
+      headers
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await loadPaymentMethods()
+  } catch (err) {
+    console.error(err)
+    setError('No se pudo eliminar el método')
+  } finally {
+    setLoading(false)
+  }
+}
+
+// Función para guardar los cambios cuando se edita
+const saveEditMethod = async () => {
+  if (!editingMethod.name) return setError('El nombre es obligatorio')
+  setLoading(true)
+  try {
+    const token = await getAuthToken()
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    
+    const res = await fetch(UPDATE_PAYMENT_METHOD_ENDPOINT(editingMethod.id), {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(editingMethod)
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await loadPaymentMethods()
+    setEditingMethod(null) // Cerramos el modo edición
+  } catch (err) {
+    console.error(err)
+    setError('No se pudieron guardar los cambios')
+  } finally {
+    setLoading(false)
+  }
+}
+
   return (
     <>
       <Head><title>Otros | Admin</title></Head>
@@ -224,56 +338,96 @@ const saveSetting = async (key, newValue, isBool = false) => {
             </div>
           </section>
                     {/* Configuración proveedores */}
-          <section className="card-settings" style={{ marginTop: 16 }}>
-            <div className="card-header">
-              <h2 className="card-title">Configuración proveedores</h2>
-              <div className="card-actions">
-                <button className="btn" onClick={loadSettings}>
-                  {loading ? <span className="spin small" /> : 'Refrescar'}
-                </button>
-              </div>
+<section className="card-settings" style={{ marginTop: 16 }}>
+  <div className="card-header">
+    <h2 className="card-title">Configuración proveedores</h2>
+    <div className="card-actions">
+      <button className="btn" onClick={loadSettings}>
+        {loading ? <span className="spin small" /> : 'Refrescar'}
+      </button>
+    </div>
+  </div>
+  <div className="card-body">
+    {error && <div className="error">{error}</div>}
+
+    <div className="exchange-grid">
+      
+      {/* NUEVO: supplierTransferDiscount */}
+      <div className="row">
+        <div>
+          <div className="label">Descuento por transferencia</div>
+          <div className="muted small">Descuento aplicado al proveedor en transferencias</div>
+        </div>
+
+        {!editingKey || editingKey !== 'supplierTransferDiscount' ? (
+          <div style={{ textAlign: 'right' }}>
+            <div className="value">
+              {getSettingValue('supplierTransferDiscount') != null
+                ? `${(Number(getSettingValue('supplierTransferDiscount')) * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
+                : '—'}
             </div>
-            <div className="card-body">
-              {error && <div className="error">{error}</div>}
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn primary" onClick={() => startEditSetting('supplierTransferDiscount', getSettingValue('supplierTransferDiscount'))}>
+                Editar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'right' }}>
+            <input
+              className="input-rate"
+              value={editedValue}
+              onChange={(e) => setEditedValue(e.target.value)}
+              inputMode="decimal"
+              aria-label="Editar supplierTransferDiscount"
+              placeholder="0.20"
+            />
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
+              <button className="btn primary" onClick={() => saveSetting('supplierTransferDiscount', editedValue)} disabled={loading}>Guardar</button>
+            </div>
+          </div>
+        )}
+      </div>
 
-              <div className="exchange-grid">
-                {/* supplierDiscount */}
-                <div className="row">
-                  <div>
-                    <div className="label">Descuento por proveedor</div>
-                    <div className="muted small">Descuento aplicado al proveedor</div>
-                  </div>
+      {/* NUEVO: supplierWithdrawalDiscount */}
+      <div className="row">
+        <div>
+          <div className="label">Descuento por retiro</div>
+          <div className="muted small">Descuento aplicado al proveedor en retiros de fondos</div>
+        </div>
 
-                  {!editingKey || editingKey !== 'supplierDiscount' ? (
-                    <div style={{ textAlign: 'right' }}>
-                      <div className="value">
-                        {getSettingValue('supplierDiscount') != null
-                          ? `${(Number(getSettingValue('supplierDiscount')) * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
-                          : '—'}
-                      </div>
-                      <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button className="btn primary" onClick={() => startEditSetting('supplierDiscount', getSettingValue('supplierDiscount'))}>
-                          Editar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'right' }}>
-                      <input
-                        className="input-rate"
-                        value={editedValue}
-                        onChange={(e) => setEditedValue(e.target.value)}
-                        inputMode="decimal"
-                        aria-label="Editar supplierDiscount"
-                        placeholder="0.10"
-                      />
-                      <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
-                        <button className="btn primary" onClick={() => saveSetting('supplierDiscount', editedValue)} disabled={loading}>Guardar</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {!editingKey || editingKey !== 'supplierWithdrawalDiscount' ? (
+          <div style={{ textAlign: 'right' }}>
+            <div className="value">
+              {getSettingValue('supplierWithdrawalDiscount') != null
+                ? `${(Number(getSettingValue('supplierWithdrawalDiscount')) * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
+                : '—'}
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn primary" onClick={() => startEditSetting('supplierWithdrawalDiscount', getSettingValue('supplierWithdrawalDiscount'))}>
+                Editar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'right' }}>
+            <input
+              className="input-rate"
+              value={editedValue}
+              onChange={(e) => setEditedValue(e.target.value)}
+              inputMode="decimal"
+              aria-label="Editar supplierWithdrawalDiscount"
+              placeholder="0.20"
+            />
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={cancelEditSetting}>Cancelar</button>
+              <button className="btn primary" onClick={() => saveSetting('supplierWithdrawalDiscount', editedValue)} disabled={loading}>Guardar</button>
+            </div>
+          </div>
+        )}
+      </div>
+
 
                 {/* supplierPublication */}
                 <div className="row">
@@ -429,6 +583,136 @@ const saveSetting = async (key, newValue, isBool = false) => {
     </div>
   </div>
 </section>
+{/* Gestión de Métodos de Pago */}
+<section className="card-settings" style={{ marginTop: 16 }}>
+  <div className="card-header">
+    <h2 className="card-title">Métodos de Pago</h2>
+    <div className="card-actions">
+      <button className="btn" onClick={loadPaymentMethods}>
+        {loading ? <span className="spin small" /> : 'Refrescar'}
+      </button>
+    </div>
+  </div>
+
+  <div className="card-body">
+    {/* Formulario de creación rápida */}
+    {!editingMethod ? (
+      <div className="method-form">
+        <input 
+          className="input-rate" 
+          style={{ textAlign: 'left', minWidth: '200px' }}
+          placeholder="Nombre (ej: Yape Principal)" 
+          value={newMethod.name}
+          onChange={(e) => setNewMethod({...newMethod, name: e.target.value})}
+        />
+        <select 
+          className="select-custom" 
+          value={newMethod.type}
+          onChange={(e) => setNewMethod({...newMethod, type: e.target.value})}
+        >
+          <option value="BILLETERA">Billetera</option>
+          <option value="BANCO">Banco</option>
+          <option value="CRYPTO">Crypto</option>
+        </select>
+        <input 
+          type="color" 
+          className="color-picker"
+          value={newMethod.color}
+          onChange={(e) => setNewMethod({...newMethod, color: e.target.value})}
+        />
+        <button className="btn primary" onClick={saveNewMethod} disabled={loading}>
+          Añadir
+        </button>
+      </div>
+    ) : (
+      // Formulario de EDICIÓN
+      <div className="method-form editing-box">
+        <div style={{ width: '100%', fontSize: '0.85rem', color: '#06b6d4', marginBottom: 4, fontWeight: 700 }}>
+          EDITANDO MÉTODO DE PAGO
+        </div>
+        <input 
+          className="input-rate" 
+          style={{ textAlign: 'left', minWidth: '200px' }}
+          value={editingMethod.name}
+          onChange={(e) => setEditingMethod({...editingMethod, name: e.target.value})}
+        />
+        <select 
+          className="select-custom" 
+          value={editingMethod.type}
+          onChange={(e) => setEditingMethod({...editingMethod, type: e.target.value})}
+        >
+          <option value="BILLETERA">Billetera</option>
+          <option value="BANCO">Banco</option>
+          <option value="CRYPTO">Crypto</option>
+        </select>
+        <input 
+          type="color" 
+          className="color-picker"
+          value={editingMethod.color}
+          onChange={(e) => setEditingMethod({...editingMethod, color: e.target.value})}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={() => setEditingMethod(null)}>Cancelar</button>
+          <button className="btn primary" onClick={saveEditMethod} disabled={loading}>Guardar</button>
+        </div>
+      </div>
+    )}
+
+    {/* Listado de métodos */}
+    <div className="exchange-grid" style={{ marginTop: 12 }}>
+      {paymentMethods.map((method) => (
+        <div key={method.id} className="row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div 
+              style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: method.color }} 
+            />
+            <div>
+              <div className="label" style={{ color: '#fff', fontWeight: 600 }}>{method.name}</div>
+              <div className="muted small">{method.type}</div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {/* Toggle de estado */}
+            <div className="toggle-container">
+              <span className={`status-badge ${method.isActive ? 'active' : ''}`}>
+                {method.isActive ? 'Activo' : 'Inactivo'}
+              </span>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={method.isActive}
+                  onChange={() => toggleMethodStatus(method)}
+                  disabled={loading}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+
+            {/* Botones de acción rápida */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button 
+                className="btn-action edit" 
+                onClick={() => setEditingMethod(method)}
+                title="Editar"
+              >
+                ✏️
+              </button>
+              <button 
+                className="btn-action delete" 
+                onClick={() => deleteMethod(method.id)}
+                title="Eliminar"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
         </main>
       </div>
 
@@ -557,6 +841,86 @@ const saveSetting = async (key, newValue, isBool = false) => {
 }
 input:checked + .slider { background: linear-gradient(90deg, #06b6d4, #10b981); }
 input:checked + .slider:before { transform: translateX(22px); }
+
+
+.method-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.color-picker {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+
+/* Corrección para el Combo Box (Select) en temas oscuros */
+.select-custom {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  min-width: 140px;
+  font-size: 1.05rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Evita que los textos salgan blancos sobre fondo blanco nativo */
+.select-custom option {
+  background-color: #121214 !important;
+  color: #fff !important;
+  padding: 10px;
+}
+
+.method-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.editing-box {
+  background: rgba(6, 182, 212, 0.03);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(6, 182, 212, 0.3);
+}
+
+.color-picker {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Botoncitos pequeños de acción (Editar y eliminar) */
+.btn-action {
+  background: rgba(255,255,255,0.03);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.btn-action:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.btn-action.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
       `}</style>
     </>
   )
