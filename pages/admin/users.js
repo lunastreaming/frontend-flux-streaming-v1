@@ -6,9 +6,10 @@ import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
 import LatestRecharges from '../../components/LatestRecharges'
 import LatestPurchases from '../../components/LatestPurchases'
+import InactiveUsersReport from '../../components/InactiveUsersReport'
 import { useAuth } from '../../context/AuthProvider'
 import {
-  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp, FaWallet, FaHistory, FaChartLine
+  FaSearch, FaSyncAlt, FaCheck, FaKey, FaTag, FaGift, FaUserFriends, FaTrash, FaPen, FaWhatsapp, FaWallet, FaHistory, FaChartLine, FaUserClock
 } from 'react-icons/fa'
 
 export default function AdminUsersPage() {
@@ -36,6 +37,8 @@ export default function AdminUsersPage() {
 
   const [rechargeHistoryModal, setRechargeHistoryModal] = useState({ open: false, userId: null, username: null });
   const [purchaseHistoryModal, setPurchaseHistoryModal] = useState({ open: false, userId: null, username: null });
+
+  const [showInactiveReport, setShowInactiveReport] = useState(false)
 
   const roleLabels = {
     'seller': 'Vendedor',
@@ -253,16 +256,43 @@ export default function AdminUsersPage() {
       <div className="admin-container">
         <AdminNavBar />
         <main className="admin-content">
-          <header className="content-header">
-            <div>
-              <h1 className="title">Usuarios</h1>
-              <p className="subtitle">Administración de Sellers y Clientes</p>
-            </div>
-            <button className="btn-refresh" onClick={() => fetchUsers(page)}>
-              <FaSyncAlt className={loading ? 'animate-spin' : ''} />
-            </button>
-          </header>
+                    <header className="content-header">
+  <div>
+    <h1 className="title">
+      {showInactiveReport ? "Alertas de Retención" : "Usuarios"}
+    </h1>
+    <p className="subtitle">
+      {showInactiveReport ? "Usuarios inactivos en ventanas de tiempo críticas" : "Administración de Sellers y Clientes"}
+    </p>
+  </div>
+  
+  {/* NUEVO BOTÓN DE ALERTAS QUE REEMPLAZA AL REFRESH */}
+  <button 
+    className={`btn-alerts-toggle ${showInactiveReport ? 'active' : ''}`} 
+    onClick={() => setShowInactiveReport(!showInactiveReport)}
+    title={showInactiveReport ? "Volver a la Lista General" : "Ver Reporte de Inactividad"}
+  >
+    {showInactiveReport ? (
+      <>
+        <FaUserFriends style={{ marginRight: '6px' }} />
+        Ver Lista General
+      </>
+    ) : (
+      <>
+        <FaUserClock style={{ marginRight: '6px' }} />
+        Alertas Usuarios
+      </>
+    )}
+  </button>
+</header>
 
+{showInactiveReport ? (
+  <InactiveUsersReport 
+    apiBase={API_BASE} 
+    ensureValidAccess={ensureValidAccess} 
+  />
+) : (
+  <>
           <section className="controls-row">
             <div className="search-container">
               <div className="search-box">
@@ -395,6 +425,10 @@ export default function AdminUsersPage() {
             </div>
             {loading && <div className="loading-overlay">Cargando datos...</div>}
           </section>
+
+          
+          </>
+)}
         </main>
       </div>
 
@@ -804,6 +838,42 @@ export default function AdminUsersPage() {
           width: 100%;
         }
         
+        
+        /* Estilos para el nuevo botón alternador de alertas */
+.btn-alerts-toggle {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.btn-alerts-toggle:hover {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Estado cuando ya estás viendo el reporte (Botón de Regresar) */
+.btn-alerts-toggle.active {
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
+}
+
+.btn-alerts-toggle.active:hover {
+  background: #06b6d4;
+  color: #000;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+}
+  
       `}</style>
 
 

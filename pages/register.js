@@ -111,9 +111,17 @@ export default function Register() {
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/register`
 
   // 🚨 CAMBIO DE VALIDACIÓN: Requiere 6 caracteres
+  // 🚨 VALIDACIÓN ACTUALIZADA: Sincronizada con las reglas del Backend
   const validateUsername = value => {
     if (!value || !value.trim()) return 'El usuario es obligatorio'
-    if (value.trim().length < 6) return 'El usuario debe tener al menos 6 caracteres' // 🚨 Cambiado de 3 a 6
+    if (value.trim().length < 6) return 'El usuario debe tener al menos 6 caracteres'
+    
+    // Regla del Backend: Solo letras y números, sin espacios ni caracteres especiales
+    const usernameRegex = /^[a-zA-Z0-9]+$/
+    if (!usernameRegex.test(value)) {
+      return 'El usuario solo puede contener letras y números (sin espacios ni caracteres especiales)'
+    }
+    
     return null
   }
   const validatePassword = value => {
@@ -273,7 +281,8 @@ export default function Register() {
               type="text"
               placeholder="Usuario"
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              // 🚨 MEJORA: Evita que el usuario escriba espacios vacíos desde el teclado
+              onChange={e => setUsername(e.target.value.replace(/\s/g, ''))}
               onBlur={() => handleBlur('username')}
               required
               aria-invalid={!!errors.username}

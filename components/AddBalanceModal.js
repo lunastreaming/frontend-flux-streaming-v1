@@ -54,12 +54,16 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
     return Number((minPen / rate).toFixed(2))
   }
 
-  const submit = async () => {
+const submit = async () => {
     setError(null)
-    const parsed = parseFloat(amount)
+    
+    // Convertimos cualquier coma a punto para procesarlo correctamente
+    const standardizedAmount = amount.replace(',', '.')
+    const parsed = parseFloat(standardizedAmount)
+
     if (!amount || isNaN(parsed) || parsed <= 0) { setError('Ingresa un monto válido mayor a 0'); return }
     if (currency === 'PEN') {
-      const min = 5
+      const min = 10
       if (Number(parsed.toFixed(2)) < min) { setError(`El monto mínimo para Soles es ${min.toFixed(2)} PEN`); return }
     } else {
       if (rate == null) { setError('No se pudo obtener el tipo de cambio. Intenta nuevamente.'); return }
@@ -70,7 +74,8 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
 
     setSubmitting(true)
     try {
-      await onAdd({ amount: Number(parseFloat(amount).toFixed(2)), currency })
+      // Enviamos 'parsed' (que ya tiene el punto correcto) al backend
+      await onAdd({ amount: Number(parsed.toFixed(2)), currency })
       setSubmitting(false); onClose()
     } catch (err) {
       setSubmitting(false); setError(err?.message || 'Error al procesar el depósito')
@@ -126,7 +131,17 @@ export default function AddBalanceModal({ open, onClose, onAdd }) {
       <div className="modal-body">
         <div className="field">
           <label>Monto</label>
-          <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" disabled={submitting} />
+          <input 
+  inputMode="decimal" 
+  value={amount} 
+  onChange={(e) => {
+    // Expresión regular: solo permite números, puntos y comas
+    const val = e.target.value.replace(/[^0-9.,]/g, '');
+    setAmount(val);
+  }} 
+  placeholder="0.00" 
+  disabled={submitting} 
+/>
           <div className="min-info">Mínimo: <strong>{minDisplay}</strong></div>
         </div>
 

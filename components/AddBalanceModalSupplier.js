@@ -76,14 +76,18 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
     return Number(usdMinRaw.toFixed(2))
   }
 
-  const submit = async () => {
+const submit = async () => {
     setError(null)
-    const parsed = parseFloat(amount)
-    if (!amount || isNaN(parsed) || parsed <= 0) {
+    
+    // Convertimos la coma a punto
+    const standardizedAmount = amount.replace(',', '.')
+    const parsed = parseFloat(standardizedAmount)
+    
+    if (!standardizedAmount || isNaN(parsed) || parsed <= 0) {
       setError('Ingresa un monto válido mayor a 0'); return
     }
     if (currency === 'PEN') {
-      const min = 5
+      const min = 10
       if (Number(parsed.toFixed(2)) < min) {
         setError(`El monto mínimo para Soles es ${min.toFixed(2)} PEN`); return
       }
@@ -98,7 +102,8 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
 
     setSubmitting(true)
     try {
-      await onAdd({ amount: Number(parseFloat(amount).toFixed(2)), currency })
+      // Enviamos el número ya procesado ('parsed')
+      await onAdd({ amount: Number(parsed.toFixed(2)), currency })
       setSubmitting(false)
       onClose()
     } catch (err) {
@@ -165,7 +170,11 @@ export default function AddBalanceModalSupplier({ open, onClose, onAdd }) {
           <input
             inputMode="decimal"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              // Expresión regular: solo permite números, puntos y comas
+              const val = e.target.value.replace(/[^0-9.,]/g, '');
+              setAmount(val);
+            }}
             placeholder="0.00"
             disabled={submitting}
           />
