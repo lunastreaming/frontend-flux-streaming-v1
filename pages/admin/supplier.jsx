@@ -4,11 +4,12 @@ import AdminNavBar from '../../components/AdminNavBar'
 import ConfirmModal from '../../components/ConfirmModal'
 import AdminPasswordModal from '../../components/AdminPasswordModal'
 import AdminPhoneModal from '../../components/AdminPhoneModal'
-import AdminSubscriptionsTab from '../../components/AdminSubscriptionsTab' // Importación del componente nuevo
+import AdminSubscriptionsTab from '../../components/AdminSubscriptionsTab'
+import AdminSupplierReport from '../../components/AdminSupplierReport' // <-- NUEVA IMPORTACIÓN
 import { useAuth } from '../../context/AuthProvider'
 import {
   FaSearch, FaSyncAlt, FaCheck, FaKey, FaTrash, FaExchangeAlt, FaBan, FaPen, FaExclamationTriangle,
-  FaUserShield, FaIdCard
+  FaUserShield, FaIdCard, FaChartLine // <-- AGREGA FaChartLine AQUÍ
 } from 'react-icons/fa'
 
 export default function AdminSuppliersPage() {
@@ -19,6 +20,9 @@ export default function AdminSuppliersPage() {
   const PROVIDERS_ENDPOINT = `${API_BASE}/api/users/providers`
 
   const [activeTab, setActiveTab] = useState('profiles') // 'profiles' o 'subscriptions'
+
+  // Estado para la apertura del componente financiero
+  const [viewReport, setViewReport] = useState({ open: false, providerId: null, providerName: '' })
 
   // Estados exclusivos de la Pestaña de Proveedores
   const [suppliers, setSuppliers] = useState([])
@@ -33,9 +37,9 @@ export default function AdminSuppliersPage() {
   // Modales heredados
   const [phoneModal, setPhoneModal] = useState({ open: false, userId: null, username: null, currentPhone: '' })
   const [pwdModal, setPwdModal] = useState({ open: false, userId: null, username: null })
-  const [confirmData, setConfirmData] = useState({ 
-    open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null 
-  })
+ const [confirmData, setConfirmData] = useState({ 
+  open: false, userId: null, username: null, action: null, message: '', loading: false, canTransfer: null 
+})
 
   // Debounce exclusivo de proveedores activos
   useEffect(() => {
@@ -129,126 +133,152 @@ export default function AdminSuppliersPage() {
         <AdminNavBar />
         <main className="admin-content">
           
-          <header className="content-header">
-            <div>
-              <h1 className="title">Proveedores</h1>
-              <p className="subtitle">Gestión de accesos, transferencias y membresías de servicios</p>
+          {/* CONTROL DE INTERRUPCIÓN VISUAL PARA EL REPORTE */}
+          {viewReport.open ? (
+            <div className="animate-fade-in">
+              <AdminSupplierReport 
+                providerId={viewReport.providerId}
+                providerName={viewReport.providerName}
+                onBack={() => setViewReport({ open: false, providerId: null, providerName: '' })}
+              />
             </div>
-            {activeTab === 'profiles' && (
-              <button className="btn-refresh" onClick={() => fetchSuppliers(page)}>
-                <FaSyncAlt className={loading ? 'animate-spin' : ''} />
-              </button>
-            )}
-          </header>
-
-          {/* NACHBAR DE TABS */}
-          <div className="modern-tabs">
-            <button className={`tab-item ${activeTab === 'profiles' ? 'active' : ''}`} onClick={() => setActiveTab('profiles')}>
-              <FaUserShield className="tab-icon" /> Perfiles Activos
-            </button>
-            <button className={`tab-item ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => setActiveTab('subscriptions')}>
-              <FaIdCard className="tab-icon" /> Membresías y Deudas
-            </button>
-          </div>
-
-          {/* RENDERIZADO CONDICIONAL DE COMPONENTES */}
-          {activeTab === 'profiles' ? (
-            <>
-              <section className="controls-row">
-                <div className="search-container">
-                  <div className="search-box">
-                    <FaSearch className="icon" />
-                    <input placeholder="Buscar por nombre, username o celular..." value={query} onChange={(e) => setQuery(e.target.value)} />
-                  </div>
-                </div>
-                <div className="modern-pager">
-                  <div className="pager-info">Total: <span className="total-badge">{totalElements}</span></div>
-                  <div className="pager-actions">
-                    <button onClick={() => page > 1 && fetchSuppliers(page - 1)} disabled={page === 1 || loading} className="pager-btn">Anterior</button>
-                    <div className="page-indicator">{page} / {totalPages}</div>
-                    <button onClick={() => page < totalPages && fetchSuppliers(page + 1)} disabled={page === totalPages || loading} className="pager-btn">Siguiente</button>
-                  </div>
-                </div>
-              </section>
-
-              <section className="table-container">
-                {error && <div className="error-message">{error}</div>}
-                <div className="table-wrapper">
-                  <table className="users-table">
-                    <thead>
-                      <tr>
-                        <th>No.</th><th>Nombre</th><th>Username</th><th>Celular</th><th>Balance</th><th>Transfer</th><th>Habilitado</th><th>Estado</th><th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {suppliers.map((u, idx) => {
-                        const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'));
-                        const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer);
-                        const isDeletable = String(currentStatus).toLowerCase() === 'inactive'; 
-                        const pStatus = (u.providerStatus || 'inactive').toLowerCase();
-
-                        return (
-                          <tr key={u.id}>
-                            <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
-                            <td className="bold">{u.name || u.username || '-'}</td>
-                            <td>{u.username || '-'}</td>
-                            <td>
-                              <div className="phone-cell">
-                                {u.phone || '-'}
-                                <button onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} className="edit-phone"><FaPen size={11} /></button>
-                              </div>
-                            </td>
-                            <td className="mono highlight">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '0.00')}</td>
-                            <td className="bold">{canTransfer ? 'SÍ' : 'NO'}</td> 
-                            <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'SÍ' : 'NO'}</span></td>
-                            <td><span className={`p-status ${pStatus}`}>{pStatus}</span></td>
-                            <td className="actions-cell">
-                              <div className="actions">
-                                <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus)} className={currentStatus === 'active' ? 'btn-disable' : 'btn-verify'}><FaCheck /></button>
-                                <button onClick={() => setPwdModal({ open: true, userId: u.id, username: u.username })}><FaKey /></button>
-                                <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'transfer', canTransfer)} className={canTransfer ? 'btn-transfer-on' : 'btn-transfer-off'}>{canTransfer ? <FaExchangeAlt /> : <FaBan />}</button>
-                                <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'emergency', null, pStatus)} className={pStatus === 'emergency' ? 'btn-emergency-on' : 'btn-emergency-off'}><FaExclamationTriangle /></button>
-                                <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable}><FaTrash /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {loading && <div className="loading-overlay">Cargando proveedores...</div>}
-              </section>
-            </>
           ) : (
-            // INYECCIÓN LIMPIA DEL NUEVO COMPONENTE DE MEMBRESÍAS
-            <AdminSubscriptionsTab 
-              API_BASE={API_BASE} 
-              callEndpoint={callEndpoint} 
-              loading={loading} 
-              setLoading={setLoading} 
-            />
+            <>
+              <header className="content-header">
+                <div>
+                  <h1 className="title">Proveedores</h1>
+                  <p className="subtitle">Gestión de accesos, transferencias y membresías de servicios</p>
+                </div>
+                {activeTab === 'profiles' && (
+                  <button className="btn-refresh" onClick={() => fetchSuppliers(page)}>
+                    <FaSyncAlt className={loading ? 'animate-spin' : ''} />
+                  </button>
+                )}
+              </header>
+
+              {/* NAV DE TABS */}
+              <div className="modern-tabs">
+                <button className={`tab-item ${activeTab === 'profiles' ? 'active' : ''}`} onClick={() => setActiveTab('profiles')}>
+                  <FaUserShield className="tab-icon" /> Perfiles Activos
+                </button>
+                <button className={`tab-item ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => setActiveTab('subscriptions')}>
+                  <FaIdCard className="tab-icon" /> Membresías y Deudas
+                </button>
+              </div>
+
+              {/* RENDERIZADO CONDICIONAL DE PESTAÑAS */}
+              {activeTab === 'profiles' ? (
+                <>
+                  <section className="controls-row">
+                    <div className="search-container">
+                      <div className="search-box">
+                        <FaSearch className="icon" />
+                        <input placeholder="Buscar por nombre, username o celular..." value={query} onChange={(e) => setQuery(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="modern-pager">
+                      <div className="pager-info">Total: <span className="total-badge">{totalElements}</span></div>
+                      <div className="pager-actions">
+                        <button onClick={() => page > 1 && fetchSuppliers(page - 1)} disabled={page === 1 || loading} className="pager-btn">Anterior</button>
+                        <div className="page-indicator">{page} / {totalPages}</div>
+                        <button onClick={() => page < totalPages && fetchSuppliers(page + 1)} disabled={page === totalPages || loading} className="pager-btn">Siguiente</button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="table-container">
+                    {error && <div className="error-message">{error}</div>}
+                    <div className="table-wrapper">
+                      <table className="users-table">
+                        <thead>
+                          <tr>
+                            <th>No.</th><th>Nombre</th><th>Username</th><th>Celular</th><th>Balance</th><th>Transfer</th><th>Habilitado</th><th>Estado</th><th>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {suppliers.map((u, idx) => {
+                            const currentStatus = (u.status ?? (u.active ? 'active' : 'inactive'));
+                            const canTransfer = Boolean(u.canTransfer ?? u.can_transfer ?? u.allowTransfer);
+                            const isDeletable = String(currentStatus).toLowerCase() === 'inactive'; 
+                            const pStatus = (u.providerStatus || 'inactive').toLowerCase();
+
+                            return (
+                              <tr key={u.id}>
+                                <td className="mono">{(page - 1) * pageSize + idx + 1}</td>
+                                <td className="bold">{u.name || u.username || '-'}</td>
+                                <td>{u.username || '-'}</td>
+                                <td>
+                                  <div className="phone-cell">
+                                    {u.phone || '-'}
+                                    <button onClick={() => setPhoneModal({ open: true, userId: u.id, username: u.username, currentPhone: u.phone })} className="edit-phone"><FaPen size={11} /></button>
+                                  </div>
+                                </td>
+                                <td className="mono highlight">{typeof u.balance === 'number' ? u.balance.toFixed(2) : (u.balance ?? '0.00')}</td>
+                                <td className="bold">{canTransfer ? 'SÍ' : 'NO'}</td> 
+                                <td><span className={`status ${currentStatus}`}>{currentStatus === 'active' ? 'SÍ' : 'NO'}</span></td>
+                                <td><span className={`p-status ${pStatus}`}>{pStatus}</span></td>
+                                <td className="actions-cell">
+                                  <div className="actions">
+                                    {/* NUEVO BOTÓN FINANCIERO ADICIONADO */}
+                                    <button 
+                                      onClick={() => setViewReport({ open: true, providerId: u.id, providerName: u.name || u.username })} 
+                                      className="btn-metrics"
+                                      title="Ver Reporte de Ventas"
+                                    >
+                                      <FaChartLine />
+                                    </button>
+                                    <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus)} className={currentStatus === 'active' ? 'btn-disable' : 'btn-verify'}><FaCheck /></button>
+                                    <button onClick={() => setPwdModal({ open: true, userId: u.id, username: u.username })}><FaKey /></button>
+                                    <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'transfer', canTransfer)} className={canTransfer ? 'btn-transfer-on' : 'btn-transfer-off'}>{canTransfer ? <FaExchangeAlt /> : <FaBan />}</button>
+                                    <button onClick={() => requestConfirmAction(u.id, u.username, currentStatus, 'emergency', null, pStatus)} className={pStatus === 'emergency' ? 'btn-emergency-on' : 'btn-emergency-off'}><FaExclamationTriangle /></button>
+                                    <button onClick={() => isDeletable && requestConfirmAction(u.id, u.username, currentStatus, 'delete')} className={isDeletable ? 'btn-danger' : 'btn-danger disabled'} disabled={!isDeletable}><FaTrash /></button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {loading && <div className="loading-overlay">Cargando proveedores...</div>}
+                  </section>
+                </>
+              ) : (
+                <AdminSubscriptionsTab 
+                  API_BASE={API_BASE} 
+                  callEndpoint={callEndpoint} 
+                  loading={loading} 
+                  setLoading={setLoading} 
+                  aria-live="polite"
+                />
+              )}
+            </>
           )}
         </main>
       </div>
 
       <style jsx>{`
         .admin-container { min-height: 100vh; font-family: 'Inter', sans-serif; color: #fff; }
-        .admin-content { max-width: 100%; padding: 2rem; }
+        .admin-content { max-width: 100%; padding: 1rem; }
+        @media (min-width: 768px) { .admin-content { padding: 2rem; } }
         .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .title { font-size: 1.875rem; font-weight: 700; margin: 0; }
-        .subtitle { color: #9aa0a6; font-size: 0.875rem; margin: 0.25rem 0 0; }
-        .modern-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 2px; }
-        .tab-item { background: transparent; border: none; color: #9aa0a6; padding: 0.75rem 1.25rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; border-radius: 0.5rem 0.5rem 0 0; transition: 0.2s; position: relative; }
+        .title { font-size: 1.5rem; font-weight: 700; margin: 0; }
+        @media (min-width: 768px) { .title { font-size: 1.875rem; } }
+        .subtitle { color: #9aa0a6; font-size: 0.8rem; margin: 0.25rem 0 0; }
+        @media (min-width: 768px) { .subtitle { font-size: 0.875rem; } }
+        .modern-tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 2px; overflow-x: auto; }
+        .tab-item { background: transparent; border: none; color: #9aa0a6; padding: 0.6rem 1rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; border-radius: 0.5rem 0.5rem 0 0; transition: 0.2s; position: relative; white-space: nowrap; }
         .tab-item:hover { color: #fff; background: rgba(255,255,255,0.02); }
         .tab-item.active { color: #6366f1; background: rgba(99, 102, 241, 0.05); }
         .tab-item.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: #6366f1; }
         .controls-row { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.05); }
-        .search-container { width: 100%; max-width: 400px; }
+        .search-container { width: 100%; max-width: 100%; }
+        @media (min-width: 768px) { .search-container { max-width: 400px; } }
         .search-box { display: flex; align-items: center; gap: 0.75rem; background: rgba(0,0,0,0.2); padding: 0.75rem 1rem; border-radius: 0.625rem; border: 1px solid rgba(255,255,255,0.1); }
         .search-box input { background: transparent; border: none; outline: none; color: #fff; width: 100%; font-size: 16px; }
         .search-box .icon { color: #555; }
-        .modern-pager { display: flex; align-items: center; gap: 0.5rem; }
+        .modern-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; justify-content: space-between; width: 100%; }
+        @media (min-width: 768px) { .modern-pager { width: auto; } }
         .pager-info { font-size: 0.85rem; color: #9aa0a6; }
         .total-badge { background: #06b6d4; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
         .pager-actions { display: flex; align-items: center; background: rgba(255,255,255,0.03); padding: 0.25rem; border-radius: 0.625rem; border: 1px solid rgba(255,255,255,0.1); }
@@ -258,7 +288,7 @@ export default function AdminSuppliersPage() {
         @media (min-width: 768px) { .controls-row { flex-direction: row; justify-content: space-between; } .modern-pager { margin-left: auto; } }
         .table-container { width: 100%; position: relative; }
         .table-wrapper { width: 100%; overflow-x: auto; background: rgba(255,255,255,0.01); border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.05); }
-        .users-table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1000px; }
+        .users-table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1050px; }
         th { padding: 1rem; background: rgba(255,255,255,0.03); color: #9aa0a6; font-size: 0.75rem; text-transform: uppercase; text-align: center; }
         td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; text-align: center; }
         .bold { font-weight: 600; white-space: nowrap; }
@@ -266,8 +296,10 @@ export default function AdminSuppliersPage() {
         .highlight { color: #22d3ee; }
         .phone-cell { display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
         .edit-phone { background: none; border: none; color: #06b6d4; cursor: pointer; }
-        .actions { display: flex; gap: 0.5rem; justify-content: center; }
-        .actions button { width: 2.125rem; height: 2.125rem; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; border: none; background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; }
+        .actions { display: flex; gap: 0.35rem; justify-content: center; flex-wrap: nowrap; }
+        .actions button { width: 2.125rem; height: 2.125rem; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; border: none; background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; flex-shrink: 0; }
+        .btn-metrics { background: rgba(99, 102, 241, 0.2) !important; color: #a5b4fc !important; border: 1px solid rgba(99, 102, 241, 0.4) !important; }
+        .btn-metrics:hover { background: rgba(99, 102, 241, 0.4) !important; color: #fff !important; }
         .btn-verify { background: #10b981 !important; color: #000 !important; }
         .btn-disable { background: #f59e0b !important; color: #000 !important; }
         .btn-transfer-on { background: #3b82f6 !important; color: #fff !important; }
@@ -288,6 +320,8 @@ export default function AdminSuppliersPage() {
         .btn-refresh { background: none; border: none; color: #9aa0a6; cursor: pointer; font-size: 1.25rem; }
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       <ConfirmModal {...confirmData} onConfirm={handleConfirm} onCancel={() => setConfirmData({ ...confirmData, open: false })} />
